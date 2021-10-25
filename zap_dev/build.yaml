@@ -1,0 +1,16 @@
+builders:
+  zap_dev:
+    import: 'package:zap_dev/builders.dart'
+    builder_factories: ["preparing", "api", "zapBuilder"]
+    auto_apply: dependents
+    build_to: cache
+    applies_builders: ["|zap_cleanup"]
+    build_extensions:
+      ".zap": 
+        - ".zap.dart"
+        - ".zap.tmp.dart"
+
+post_process_builders:
+  zap_cleanup:
+    import: 'package:zap_dev/builders.dart'
+    builder_factory: zapCleanup
