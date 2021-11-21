@@ -69,3 +69,9 @@ class UpdateIf extends Action {
 
   UpdateIf(this.node);
 }
+
+class UpdateAsyncValue extends Action {
+  final ReactiveAsyncBlock block;
+
+  UpdateAsyncValue(this.block);
+}

@@ -386,18 +386,9 @@ class _AsyncTagHandler extends TagHandler {
   @override
   void start(Parser parser, _FoundMacroTag tag) {
     final match = _regex.firstMatch(tag.tagSpecificContent)!;
-    String expression;
-
-    if (match.groupCount == 3) {
-      isStream = true;
-
-      expression = match.group(3)!;
-      variable = match.group(2)!;
-    } else {
-      isStream = false;
-      expression = match.group(2)!;
-      variable = match.group(1)!;
-    }
+    final expression = match.group(3)!;
+    variable = match.group(2)!;
+    isStream = match.group(1) != null;
 
     final exprStart =
         tag.contentOffset + tag.tagSpecificContent.indexOf(expression);

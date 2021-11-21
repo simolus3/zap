@@ -31,6 +31,7 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
   var _isAlive = false;
 
   int _updateBitmask = 0;
+  final Map<Fragment, int> _fragmentUpdates = {};
   Completer<void>? _scheduledUpdate;
 
   ZapComponent();
@@ -114,6 +115,8 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
     }
 
     update(delta);
+    _fragmentUpdates.forEach((fragment, flag) => fragment.update(flag));
+    _fragmentUpdates.clear();
 
     for (final after in _afterUpdateListeners) {
       after();
@@ -171,8 +174,42 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
   }
 
   @protected
+  void $invalidateSubcomponent(Fragment fragment, int delta) {
+    final scheduled = _scheduledUpdate;
+
+    if (scheduled == null) {
+      // No update scheduled yet, do that now!
+      _fragmentUpdates[fragment] = delta;
+      final completer = _scheduledUpdate = Completer.sync();
+
+      scheduleMicrotask(() {
+        _scheduledUpdate = null;
+
+        try {
+          _runUpdate(_updateBitmask);
+        } finally {
+          completer.complete();
+        }
+      });
+    } else {
+      // An update has been scheduled already. Let's just join that one!
+      _fragmentUpdates.update(
+        fragment,
+        (value) => value | delta,
+        ifAbsent: () => delta,
+      );
+    }
+  }
+
+  @protected
   T $invalidateAssign<T>(int flags, T value) {
     $invalidate(flags);
+    return value;
+  }
+
+  @protected
+  T $invalidateAssignSubcomponent<T>(Fragment f, int flags, T value) {
+    $invalidateSubcomponent(f, flags);
     return value;
   }
 }

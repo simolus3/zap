@@ -11,3 +11,4 @@
 {#await snapshot from stream.first}
   Hello {snapshot}
 {/await}
+

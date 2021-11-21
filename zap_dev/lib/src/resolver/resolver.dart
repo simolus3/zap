@@ -352,14 +352,6 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
     return resolver.dartAnalysis._resolveExpression(expr);
   }
 
-  ZapVariableScope _scopeOf(zap.DartExpression expr) {
-    final scopes = resolver.scope;
-    final scoped = scopes.expressionToScope[expr]!;
-    final scope = scopes.scopes[scoped.scope]!;
-
-    return scope;
-  }
-
   @override
   void visitAdjacentAttributeStrings(zap.AdjacentAttributeStrings e, void arg) {
     throw ArgumentError('Should have been desugared in the preparation step!');
@@ -751,6 +743,11 @@ class _FindComponents {
         );
         subComponents.add(ResolvedSubComponent(
             flow.subComponents, scope, node.fragment, flow.flow));
+
+        flows.add(Flow(
+          _FindReferencedVariables.find(node.expression.expression, variables),
+          UpdateAsyncValue(node),
+        ));
       } else {
         node.children.forEach(processNode);
       }

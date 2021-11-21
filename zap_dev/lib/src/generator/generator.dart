@@ -332,6 +332,18 @@ abstract class _ComponentOrSubcomponentWriter {
       buffer
         ..write(nodeName)
         ..write('.reEvaluate($nameOfBranchFunction());');
+    } else if (action is UpdateAsyncValue) {
+      final block = action.block;
+      final nodeName = generator._nameForNode(block);
+
+      final setter = block.isStream ? 'stream' : 'future';
+      final wrapper =
+          block.isStream ? '$_prefix.\$safeStream' : '$_prefix.\$safeFuture';
+      final type = block.type.getDisplayString(withNullability: true);
+
+      buffer.write('$nodeName.$setter = $wrapper<$type>(() => ');
+      writeDartWithPatchedReferences(block.expression.expression);
+      buffer.write(');');
     }
   }
 
@@ -480,8 +492,10 @@ abstract class _ComponentOrSubcomponentWriter {
       buffer.writeln('}})..create()');
     } else if (node is ReactiveAsyncBlock) {
       final childClass = generator._nameForMisc(node.fragment.owningComponent!);
-      final name = generator._nameForVar(node.fragment.resolvedScope
-          .findForSubcomponent(SubcomponentVariableKind.asyncSnapshot)!);
+      final name = node.fragment.resolvedScope
+          .findForSubcomponent(SubcomponentVariableKind.asyncSnapshot)!
+          .element
+          .name;
       final updateFunction =
           '(fragment, snapshot) => (fragment as $childClass).$name = snapshot';
 
@@ -490,6 +504,58 @@ abstract class _ComponentOrSubcomponentWriter {
           '$_prefix.$className($childClass(this), $updateFunction)..create()');
     } else {
       throw ArgumentError('Unknown node type: $node');
+    }
+  }
+
+  void writePropertyAccessors() {
+    final variablesThatNeedChanges =
+        component.scope.declaredVariables.where((variable) {
+      if (variable is DartCodeVariable) {
+        return variable.isProperty;
+      } else if (variable is SubcomponentVariable) {
+        switch (variable.kind) {
+          case SubcomponentVariableKind.asyncSnapshot:
+            return true;
+        }
+      } else {
+        return false;
+      }
+    });
+
+    for (final variable in variablesThatNeedChanges) {
+      final element = variable.element;
+      final type = variable.type.getDisplayString(withNullability: true);
+      final name = generator._nameForVar(variable);
+
+      // int get foo => $$_v0;
+      buffer
+        ..write(type)
+        ..write(' get ')
+        ..write(element.name)
+        ..write(' => ')
+        ..write(name)
+        ..writeln(';');
+
+      if (variable.isMutable) {
+        // set foo (int value) {
+        //   if (value != $$_v0) {
+        //     $$_v0 = value;
+        //     $invalidate(bitmask);
+        //   }
+        // }
+        buffer
+          ..writeln('set ${element.name} ($type value) {')
+          ..writeln('  if (value != $name) {')
+          ..writeln('    $name = value;');
+        if (variable.needsUpdateTracking) {
+          final update = _DartSourceRewriter(generator, component.scope, 0, '')
+              .invalidateExpression(variable.updateBitmask.toString());
+          buffer.writeln('    $update');
+        }
+        buffer
+          ..writeln('  }')
+          ..writeln('}');
+      }
     }
   }
 
@@ -681,46 +747,6 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
 
     buffer.writeln(');}');
   }
-
-  void writePropertyAccessors() {
-    final dartVariables =
-        component.scope.declaredVariables.whereType<DartCodeVariable>();
-    final properties = dartVariables.where((e) => e.isProperty);
-
-    for (final variable in properties) {
-      final element = variable.element;
-      final type = element.type.getDisplayString(withNullability: true);
-      final name = generator._nameForVar(variable);
-
-      // int get foo => $$_v0;
-      buffer
-        ..write(type)
-        ..write(' get ')
-        ..write(element.name)
-        ..write(' => ')
-        ..write(name)
-        ..writeln(';');
-
-      if (!variable.isMutable) {
-        // set foo (int value) {
-        //   if (value != $$_v0) {
-        //     $$_v0 = value;
-        //     $invalidate(bitmask);
-        //   }
-        // }
-        buffer
-          ..writeln('set foo ($type value) {')
-          ..writeln('  if (value != $name) {')
-          ..writeln('    $name = value;');
-        if (variable.needsUpdateTracking) {
-          buffer.writeln('    \$invalidate(${variable.updateBitmask});');
-        }
-        buffer
-          ..writeln('  }')
-          ..writeln('}');
-      }
-    }
-  }
 }
 
 class _SubComponentWriter extends _ComponentOrSubcomponentWriter {
@@ -748,10 +774,17 @@ class _SubComponentWriter extends _ComponentOrSubcomponentWriter {
     // Inside subfragments, variables are instiated by the parent component
     // before calling create()
 
-    for (final variable in component.scope.declaredVariables) {
+    for (final variable
+        in component.scope.declaredVariables.cast<SubcomponentVariable>()) {
       final type = variable.type.getDisplayString(withNullability: true);
       final name = generator._nameForVar(variable);
-      buffer.writeln('late $type $name; // ${variable.element.name}');
+
+      switch (variable.kind) {
+        case SubcomponentVariableKind.asyncSnapshot:
+          buffer.writeln(
+              '$type $name = const $_prefix.ZapSnapshot.unresolved(); // ${variable.element.name}');
+          break;
+      }
     }
 
     writeNodesAndBlockHelpers();
@@ -759,6 +792,7 @@ class _SubComponentWriter extends _ComponentOrSubcomponentWriter {
     writeMountMethod();
     writeUpdateMethod();
     writeRemoveMethod();
+    writePropertyAccessors();
 
     buffer.writeln('}');
   }
@@ -835,6 +869,15 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
     return result.toString();
   }
 
+  String invalidateExpression(String bitmaskCode) {
+    if (scope == rootScope) {
+      return '\$invalidate($bitmaskCode);';
+    } else {
+      final prefix = _prefixFor(rootScope);
+      return '$prefix.\$invalidateSubcomponent(this, $bitmaskCode);';
+    }
+  }
+
   void _visitCompoundAssignmentExpression(CompoundAssignmentExpression node) {
     final target = node.writeElement;
     final variable = _variableFor(target);
@@ -844,7 +887,14 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
     // be used as an expression while also scheduling a node update!
     if (notifyUpdate) {
       final updateCode = variable!.updateBitmask;
-      _replaceRange(node.offset, 0, '\$invalidateAssign($updateCode, ');
+
+      if (scope == rootScope) {
+        _replaceRange(node.offset, 0, '\$invalidateAssign($updateCode, ');
+      } else {
+        final prefix = _prefixFor(rootScope);
+        _replaceRange(node.offset, 0,
+            '$prefix.\$invalidateAssignSubcomponent(this, $updateCode, ');
+      }
     }
 
     node.visitChildren(this);
@@ -870,7 +920,7 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
   }
 
   @override
-  void visitIdentifier(Identifier node) {
+  void visitSimpleIdentifier(SimpleIdentifier node) {
     final target = node.staticElement;
     final variable = _variableFor(target);
 
