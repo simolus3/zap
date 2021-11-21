@@ -29,6 +29,33 @@ class IfStatement extends Macro {
   }
 }
 
+class AsyncBlock extends Macro {
+  bool isStream;
+  String variableName;
+  DartExpression futureOrStream;
+  TemplateComponent body;
+
+  AsyncBlock.future(this.variableName, this.futureOrStream, this.body)
+      : isStream = false;
+
+  AsyncBlock.stream(this.variableName, this.futureOrStream, this.body)
+      : isStream = true;
+
+  @override
+  Iterable<AstNode> get children => [futureOrStream, body];
+
+  @override
+  R accept<A, R>(AstVisitor<A, R> visitor, A arg) {
+    return visitor.visitAsyncBlock(this, arg);
+  }
+
+  @override
+  void transformChildren<A>(Transformer<A> transformer, A arg) {
+    futureOrStream = futureOrStream.accept(transformer, arg) as DartExpression;
+    body = body.accept(transformer, arg) as TemplateComponent;
+  }
+}
+
 class Text extends TemplateComponent {
   String text;
 

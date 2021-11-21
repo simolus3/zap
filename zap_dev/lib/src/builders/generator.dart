@@ -1,12 +1,12 @@
 import 'dart:async';
 
 import 'package:analyzer/dart/analysis/results.dart';
-import 'package:build/build.dart';
+import 'package:build/build.dart' hide Resolver;
 import 'package:dart_style/dart_style.dart';
 import 'package:path/path.dart' as p;
 
 import '../errors.dart';
-import '../generator.dart';
+import '../generator/generator.dart';
 import '../resolver/preparation.dart';
 import '../resolver/resolver.dart';
 import 'common.dart';
@@ -30,20 +30,21 @@ class ZapBuilder implements Builder {
     // first.
     final result = await element.session.getResolvedLibraryByElement(element)
         as ResolvedLibraryResult;
+    final componentName = p.url.basenameWithoutExtension(input.path);
 
-    final component = await resolveComponent(
+    final resolver = Resolver(
       prepResult,
       element,
       result.units.single.unit,
       ErrorReporter(reportError),
-      buildStep,
+      componentName,
     );
 
-    final componentName = p.url.basenameWithoutExtension(input.path);
+    final component = await resolver.resolve(buildStep);
 
-    final generator = Generator(componentName, prepResult, component)..write();
+    final generator = Generator(component, prepResult)..write();
 
-    var output = generator.buffer.toString();
+    var output = generator.libraryScope.render();
     try {
       output = DartFormatter().format(output);
     } on FormatterException {

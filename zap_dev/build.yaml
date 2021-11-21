@@ -9,6 +9,7 @@ builders:
       ".zap": 
         - ".zap.dart"
         - ".zap.tmp.dart"
+        - ".zap.tmp.css"
 
 post_process_builders:
   zap_cleanup:

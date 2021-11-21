@@ -1,6 +1,6 @@
 import 'dart:html';
 
-import 'fragment.dart';
+import '../core/fragment.dart';
 
 /// An if-else construct that selects between multiple components, or none.
 class IfBlock extends Fragment {

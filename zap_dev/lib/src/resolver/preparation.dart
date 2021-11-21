@@ -2,6 +2,7 @@ import '../ast.dart';
 import '../errors.dart';
 import '../parser/parser.dart';
 import '../utils/dart.dart';
+import 'style/add_class.dart';
 
 const zapPrefix = '__zap__';
 const componentFunctionWrapper = '${zapPrefix}_component';
@@ -14,7 +15,6 @@ Future<PrepareResult> prepare(
 
   final fileBuilder = StringBuffer();
   final script = checker.script?.readInnerText(reporter);
-  final introducedExpressionVariables = <String, String>{};
   var imports = '';
 
   if (script != null) {
@@ -34,15 +34,7 @@ Future<PrepareResult> prepare(
 
   // The analyzer does not provide an API to parse and resolve expressions, so
   // write them as top-level fields which we can then take a look at.
-  var counter = 0;
-  for (final expression in checker.dartExpressions) {
-    if (!introducedExpressionVariables.containsKey(expression)) {
-      final variable = '$zapPrefix${counter++}';
-      introducedExpressionVariables[expression] = variable;
-
-      fileBuilder.writeln('final $variable = $expression;');
-    }
-  }
+  _DartExpressionWriter(fileBuilder).start(checker._rootScope);
 
   if (script != null) {
     fileBuilder.writeln('}');
@@ -50,10 +42,17 @@ Future<PrepareResult> prepare(
 
   component = component.accept(_ComponentRewriter(), null) as TemplateComponent;
 
+  final rawStyle = checker.style?.readInnerText(reporter);
+  String? resolvedStyle;
+  if (rawStyle != null) {
+    resolvedStyle = rewriteComponentCss(rawStyle, 'zap-test');
+  }
+
   return PrepareResult._(
     imports,
     fileBuilder.toString(),
-    introducedExpressionVariables,
+    resolvedStyle,
+    checker._rootScope,
     component,
     checker.style,
     checker.script,
@@ -63,7 +62,8 @@ Future<PrepareResult> prepare(
 class PrepareResult {
   final String imports;
   final String temporaryDartFile;
-  final Map<String, String> introducedDartExpressions;
+  final String? cssFile;
+  final PreparedVariableScope rootScope;
   final TemplateComponent component;
 
   final Element? style;
@@ -72,7 +72,8 @@ class PrepareResult {
   PrepareResult._(
     this.imports,
     this.temporaryDartFile,
-    this.introducedDartExpressions,
+    this.cssFile,
+    this.rootScope,
     this.component,
     this.style,
     this.script,
@@ -85,13 +86,42 @@ class _ComponentSanityChecker extends RecursiveVisitor<void> {
   var _isInTag = false;
   Element? script;
   Element? style;
-  Set<String> dartExpressions = {};
+  final PreparedVariableScope _rootScope = PreparedVariableScope();
+  late PreparedVariableScope _scope = _rootScope;
 
   _ComponentSanityChecker(this.errors);
 
   @override
   void visitDartExpression(DartExpression e, void arg) {
-    dartExpressions.add(e.dartExpression);
+    final expr = ScopedDartExpression(e, _scope);
+    _scope.dartExpressions.add(expr);
+  }
+
+  @override
+  void visitAsyncBlock(AsyncBlock e, void arg) {
+    final previous = _scope;
+    final child = AsyncBlockVariableScope(e)..parent = previous;
+
+    // The target stream or future is evaluated in the parent scope
+    e.futureOrStream.accept(this, arg);
+
+    _scope = child;
+    e.body.accept(this, arg);
+    _scope = previous..children.add(child);
+  }
+
+  @override
+  void visitIfStatement(IfStatement e, void arg) {
+    final previous = _scope;
+    final child = SubFragmentScope(e)..parent = previous;
+
+    // The condition is still evaluated in the parent scope
+    e.condition.accept(this, arg);
+
+    _scope = child;
+    e.then.accept(this, arg);
+    e.otherwise?.accept(this, arg);
+    _scope = previous..children.add(child);
   }
 
   @override
@@ -123,6 +153,85 @@ class _ComponentSanityChecker extends RecursiveVisitor<void> {
     super.visitElement(e, arg);
     _isInTag = inTagBefore;
   }
+}
+
+class _DartExpressionWriter {
+  final StringBuffer target;
+  var _scopeCounter = 0;
+  var _variableCounter = 0;
+
+  _DartExpressionWriter(this.target);
+
+  void writeVariable(ScopedDartExpression expr) {
+    final variable = '$zapPrefix${_variableCounter++}';
+    expr.localVariableName = variable;
+    target.writeln('final $variable = ${expr.expression.dartExpression};');
+  }
+
+  void start(PreparedVariableScope root) {
+    return _writeExpressionsAndChildren(root);
+  }
+
+  void _writeExpressionsAndChildren(PreparedVariableScope scope) {
+    for (final expr in scope.dartExpressions) {
+      writeVariable(expr);
+    }
+
+    for (final child in scope.children) {
+      writeInnerScope(child);
+    }
+  }
+
+  void writeInnerScope(PreparedVariableScope scope) {
+    final name = '${zapPrefix}_scope_${_scopeCounter++}';
+    scope.blockName = name;
+
+    if (scope is AsyncBlockVariableScope) {
+      target.writeln('$name<T>(ZapSnapshot<T> ${scope.block.variableName}) {');
+    } else if (scope is SubFragmentScope) {
+      // Just write a scope without parameters
+      target.writeln('$name() {');
+    }
+
+    _writeExpressionsAndChildren(scope);
+    target.writeln('}');
+  }
+}
+
+class PreparedVariableScope {
+  final Set<ScopedDartExpression> dartExpressions = {};
+  final List<PreparedVariableScope> children = [];
+
+  Macro? introducedFor;
+  PreparedVariableScope? parent;
+
+  /// The name of the function introduced in generated code to lookup this
+  /// expression.
+  String? blockName;
+}
+
+class AsyncBlockVariableScope extends PreparedVariableScope {
+  final AsyncBlock block;
+
+  AsyncBlockVariableScope(this.block) {
+    introducedFor = block;
+  }
+}
+
+class SubFragmentScope extends PreparedVariableScope {
+  final Macro forNode;
+
+  SubFragmentScope(this.forNode);
+}
+
+class ScopedDartExpression {
+  final DartExpression expression;
+  final PreparedVariableScope scope;
+
+  /// The local variable introduced in generated code to hold this expression.
+  late String localVariableName;
+
+  ScopedDartExpression(this.expression, this.scope);
 }
 
 class _ComponentRewriter extends Transformer<void> {

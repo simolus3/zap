@@ -2,7 +2,6 @@ import 'dart:typed_data';
 
 import 'package:charcode/charcode.dart';
 import 'package:html/dom.dart' as html;
-import 'package:html/parser.dart';
 import 'package:source_span/source_span.dart';
 
 import '../ast.dart';
@@ -57,6 +56,8 @@ class Parser {
           // Opening a new tag, e.g. `{#if answer == 42}`
           if (content.startsWith('if')) {
             handlerStack.add(_IfTagHandler()..start(this, tag));
+          } else if (content.startsWith('await')) {
+            handlerStack.add(_AsyncTagHandler()..start(this, tag));
           } else {
             errors.reportError(ZapError('Unknown tag',
                 file.span(tag.offsetOfLeftBrace, tag.offsetOfRightBrace)));
@@ -372,4 +373,53 @@ class _PendingElse {
   TemplateComponent? body;
 
   _PendingElse(this.condition);
+}
+
+class _AsyncTagHandler extends TagHandler {
+  static final RegExp _regex = RegExp(r'\s*await\s+(each\s)?(\w+)\sfrom\s(.*)');
+
+  late DartExpression expression;
+  late String variable;
+  late bool isStream;
+  late TemplateComponent child;
+
+  @override
+  void start(Parser parser, _FoundMacroTag tag) {
+    final match = _regex.firstMatch(tag.tagSpecificContent)!;
+    String expression;
+
+    if (match.groupCount == 3) {
+      isStream = true;
+
+      expression = match.group(3)!;
+      variable = match.group(2)!;
+    } else {
+      isStream = false;
+      expression = match.group(2)!;
+      variable = match.group(1)!;
+    }
+
+    final exprStart =
+        tag.contentOffset + tag.tagSpecificContent.indexOf(expression);
+    this.expression = DartExpression(expression)
+      ..span = parser.file.span(exprStart, exprStart + expression.length);
+  }
+
+  @override
+  void inner(Parser parser, _FoundMacroTag tag) {
+    parser.errors.reportError(ZapError('Unexpected inner tag',
+        parser.file.span(tag.offsetOfLeftBrace, tag.offsetOfRightBrace)));
+  }
+
+  @override
+  void text(TemplateComponent inner) {
+    child = inner;
+  }
+
+  @override
+  TemplateComponent end(Parser parser, _FoundMacroTag tag) {
+    return isStream
+        ? AsyncBlock.stream(variable, expression, child)
+        : AsyncBlock.future(variable, expression, child);
+  }
 }

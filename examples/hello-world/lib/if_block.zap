@@ -12,7 +12,6 @@
   </button>
 {:else}
   <button on:click={logIn}>
-  
     Log in
   </button>
 {/if}

@@ -1,18 +1,21 @@
 import 'package:analyzer/dart/ast/ast.dart';
 
+import 'dart.dart';
 import 'reactive_dom.dart';
-import 'variable.dart';
 
 class Flow {
-  final Set<Variable> dependencies;
+  final Set<BaseZapVariable> dependencies;
   final Action action;
+
+  Iterable<BaseZapVariable> get _mutableDependencies =>
+      dependencies.where((dep) => dep.isMutable);
 
   Flow(this.dependencies, this.action);
 
-  bool get isOneOffAction => dependencies.isEmpty;
+  bool get isOneOffAction => _mutableDependencies.isEmpty;
 
   int get bitmask {
-    return dependencies.fold(
+    return _mutableDependencies.fold(
         0, (prev, variable) => prev | variable.updateBitmask);
   }
 }

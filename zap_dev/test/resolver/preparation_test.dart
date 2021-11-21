@@ -15,7 +15,7 @@ void main() {
 </script>
 
 <h1 on:click={update}>Hello {name}!</h1>
-      
+
 ''',
       Uri.parse('package:foo/bar.zap'),
       ErrorReporter((error) => fail('Unexpected error: $error')),

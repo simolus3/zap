@@ -23,6 +23,7 @@ abstract class AstVisitor<A, R> {
   R visitAttributeLiteral(AttributeLiteral e, A arg);
 
   R visitIfStatement(IfStatement e, A arg);
+  R visitAsyncBlock(AsyncBlock e, A arg);
   R visitText(Text e, A arg);
   R visitAdjacentNodes(AdjacentNodes e, A arg);
 }
@@ -62,6 +63,11 @@ abstract class GeneralizingVisitor<A, R> extends AstVisitor<A, R> {
 
   @override
   R visitIfStatement(IfStatement e, A arg) {
+    return defaultNode(e, arg);
+  }
+
+  @override
+  R visitAsyncBlock(AsyncBlock e, A arg) {
     return defaultNode(e, arg);
   }
 

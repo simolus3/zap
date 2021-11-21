@@ -1,8 +1,22 @@
-import 'package:analyzer/dart/ast/ast.dart';
+import 'package:analyzer/dart/element/type.dart';
 
+import 'component.dart';
+import 'dart.dart';
 import 'external_component.dart';
-import 'model.dart';
 import 'types/dom_types.dart';
+
+class DomFragment {
+  final List<ReactiveNode> rootNodes;
+  final ZapVariableScope resolvedScope;
+
+  ComponentOrSubcomponent? owningComponent;
+
+  DomFragment(this.rootNodes, this.resolvedScope);
+
+  Iterable<ReactiveNode> get allNodes {
+    return rootNodes.expand((e) => e.selfAndAllDescendants);
+  }
+}
 
 abstract class ReactiveNode {
   Iterable<ReactiveNode> get children;
@@ -34,18 +48,37 @@ class ReactiveElement extends ReactiveNode {
   }
 }
 
-class SubComponent extends ReactiveNode {
-  final ExternalComponent component;
-  final Map<String, Expression> expressions;
+class ReactiveIf extends ReactiveNode {
+  final List<ResolvedDartExpression> conditions;
+  final List<DomFragment> whens;
+  final DomFragment? otherwise;
 
-  SubComponent(this.component, this.expressions);
+  ReactiveIf(this.conditions, this.whens, this.otherwise);
 
   @override
-  Iterable<ReactiveNode> get children => [];
+  Iterable<ReactiveNode> get children => const Iterable.empty();
+}
+
+class ReactiveAsyncBlock extends ReactiveNode {
+  final bool isStream;
+  final DartType type;
+  final ResolvedDartExpression expression;
+
+  final DomFragment fragment;
+
+  ReactiveAsyncBlock({
+    required this.isStream,
+    required this.type,
+    required this.expression,
+    required this.fragment,
+  });
+
+  @override
+  Iterable<ReactiveNode> get children => const Iterable.empty();
 }
 
 class ReactiveAttribute {
-  final Expression backingExpression;
+  final ResolvedDartExpression backingExpression;
   final AttributeMode mode;
 
   ReactiveAttribute(this.backingExpression, this.mode);
@@ -57,22 +90,14 @@ enum AttributeMode {
   setIfNotNullClearOtherwise,
 }
 
-class ReactiveIf extends ReactiveNode {
-  final List<Expression> conditions;
-  final List<List<ReactiveNode>> whens;
-  final List<ReactiveNode>? otherwise;
+class SubComponent extends ReactiveNode {
+  final ExternalComponent component;
+  final Map<String, ResolvedDartExpression> expressions;
 
-  List<SubFragment>? fragmentsForWhen;
-  SubFragment? fragmentForOtherwise;
-
-  ReactiveIf(this.conditions, this.whens, this.otherwise);
+  SubComponent(this.component, this.expressions);
 
   @override
-  Iterable<ReactiveNode> get children {
-    // The if block is rendered into subfragments, so it doesn't have any
-    // children from the view of the main component.
-    return [];
-  }
+  Iterable<ReactiveNode> get children => [];
 }
 
 class ConstantText extends ReactiveNode {
@@ -85,7 +110,7 @@ class ConstantText extends ReactiveNode {
 }
 
 class ReactiveText extends ReactiveNode {
-  final Expression expression;
+  final ResolvedDartExpression expression;
   final bool needsToString;
 
   ReactiveText(this.expression, this.needsToString);
@@ -109,7 +134,7 @@ class EventHandler {
   final String event;
   final KnownEventType? knownType;
   final Set<EventModifier> modifier;
-  final Expression listener;
+  final ResolvedDartExpression listener;
   final bool isNoArgsListener;
 
   late ReactiveElement parent;

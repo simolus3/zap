@@ -2,7 +2,7 @@
 /// be recognized by the zap compiler.
 library zap.internal.dsl;
 
-export 'package:zap/zap.dart' show ComponentOrPending;
+export 'package:zap/zap.dart' show ComponentOrPending, ZapSnapshot;
 
 class Property {
   final String? key;

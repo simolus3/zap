@@ -6,6 +6,7 @@ import 'package:analyzer/dart/element/type.dart';
 import 'package:analyzer/dart/element/type_provider.dart';
 import 'package:analyzer/dart/element/type_system.dart';
 import 'package:build/build.dart';
+import 'package:source_span/source_span.dart';
 
 import '../../ast.dart';
 import '../../errors.dart';
@@ -23,6 +24,26 @@ class TypeChecker {
   final ErrorReporter errors;
 
   TypeChecker._(this.typeProvider, this.typeSystem, this.domTypes, this.errors);
+
+  DartType checkFuture(DartType shouldBeFuture, FileSpan? span) {
+    final asFuture = shouldBeFuture.asInstanceOf(typeProvider.futureElement);
+    if (asFuture == null) {
+      errors.reportError(ZapError('This must be a future!', span));
+      return typeProvider.dynamicType;
+    }
+
+    return asFuture.typeArguments.single;
+  }
+
+  DartType checkStream(DartType shouldBeStream, FileSpan? span) {
+    final asStream = shouldBeStream.asInstanceOf(typeProvider.streamElement);
+    if (asStream == null) {
+      errors.reportError(ZapError('This must be a stream!', span));
+      return typeProvider.dynamicType;
+    }
+
+    return asStream.typeArguments.single;
+  }
 
   EventCheckingResult checkEvent(
       Attribute attribute, String eventName, Expression expression) {
