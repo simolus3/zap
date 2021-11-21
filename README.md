@@ -8,7 +8,7 @@ A fast, modern and lightweight Dart web framework, inspired by svelte.
 - Context
 - Advanced templates for lists and async operations
 - Documentation
-- Cleanup in the compiler
+- Support for SCSS/Sass
 - ...
 
 Contributions are welcome!

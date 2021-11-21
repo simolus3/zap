@@ -6,10 +6,18 @@ builders:
     build_to: cache
     applies_builders: ["|zap_cleanup"]
     build_extensions:
-      ".zap": 
+      ".zap":
         - ".zap.dart"
         - ".zap.tmp.dart"
         - ".zap.tmp.css"
+
+  aggregate_styles:
+    import: 'package:zap_dev/builders.dart'
+    builder_factories: ["aggregateCss"]
+    auto_apply: root_package
+    build_to: cache
+    required_inputs: [".css"]
+    build_extensions: {"lib/$lib$": ["web/main.css"]}
 
 post_process_builders:
   zap_cleanup:

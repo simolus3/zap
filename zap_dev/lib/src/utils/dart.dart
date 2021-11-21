@@ -13,10 +13,11 @@ enum ImportRewriteMode {
 }
 
 class ScriptComponents {
+  final List<String> originalImports;
   final String directives;
   final String body;
 
-  ScriptComponents(this.directives, this.body);
+  ScriptComponents(this.originalImports, this.directives, this.body);
 
   factory ScriptComponents.of(String dartSource,
       {ImportRewriteMode rewriteImports = ImportRewriteMode.none}) {
@@ -25,7 +26,7 @@ class ScriptComponents {
 
     final directives = unit.directives;
     if (directives.isEmpty) {
-      return ScriptComponents('', dartSource);
+      return ScriptComponents([], '', dartSource);
     } else {
       final directiveRewriter =
           _ZapToDartImportRewriter(dartSource, rewriteImports);
@@ -34,6 +35,7 @@ class ScriptComponents {
       }
 
       return ScriptComponents(
+        directiveRewriter.originalDirectives,
         directiveRewriter.buffer.toString(),
         dartSource.substring(directiveRewriter.endOffset),
       );
@@ -72,6 +74,7 @@ DartObject? _findDslAnnotation(Element element, String className) {
 class _ZapToDartImportRewriter extends GeneralizingAstVisitor<void> {
   final String source;
   final StringBuffer buffer = StringBuffer();
+  final List<String> originalDirectives = [];
   final ImportRewriteMode mode;
 
   int endOffset = 0;
@@ -83,6 +86,9 @@ class _ZapToDartImportRewriter extends GeneralizingAstVisitor<void> {
     final start = node.offset;
     final end = endOffset = node.end;
     final uri = node.uri.stringValue;
+    if (uri == null) return;
+
+    originalDirectives.add(uri);
     String? newImportString;
 
     switch (mode) {
@@ -91,14 +97,14 @@ class _ZapToDartImportRewriter extends GeneralizingAstVisitor<void> {
         break;
       case ImportRewriteMode.zapToApi:
         // Rewrite *.zap to *.tmp.zap.api.dart
-        if (uri != null && p.extension(uri) == '.zap') {
+        if (p.extension(uri) == '.zap') {
           newImportString = p.setExtension(uri, '.tmp.zap.api.dart');
         }
         break;
       case ImportRewriteMode.apiToGenerated:
         // Rewrite *.tmp.zap.api.dart to *.zap.dart
         const suffix = '.tmp.zap.api.dart';
-        if (uri != null && p.extension(uri, 4) == suffix) {
+        if (p.extension(uri, 4) == suffix) {
           newImportString =
               uri.substring(0, uri.length - suffix.length) + '.zap.dart';
         }

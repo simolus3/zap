@@ -12,11 +12,11 @@ const knownTags = {
   'canvas': KnownElementInfo('CanvasElement'),
   'data': KnownElementInfo('DataElement'),
   'datalist': KnownElementInfo('DataListElement'),
-  'details': KnownElementInfo('details'),
-  'dialog': KnownElementInfo('dialog'),
-  'div': KnownElementInfo('div'),
+  'details': KnownElementInfo('DetailsElement'),
+  'dialog': KnownElementInfo('DialogElement'),
+  'div': KnownElementInfo('DivElement'),
   'dl': KnownElementInfo('DListElement'),
-  'embed': KnownElementInfo('embed'),
+  'embed': KnownElementInfo('EmbedElement'),
   'fieldset': KnownElementInfo('FieldSetElement'),
   'form': KnownElementInfo('FormElement'),
   'h1': KnownElementInfo('HeadingElement', constructorName: 'h1'),
@@ -28,7 +28,8 @@ const knownTags = {
   'hr': KnownElementInfo('HRElement'),
   'iframe': KnownElementInfo('IFrameElement'),
   'image': KnownElementInfo('ImageElement'),
-  'input': KnownElementInfo('input'), // todo: Special case the different kinds?
+  'input': KnownElementInfo(
+      'InputElement'), // todo: Special case the different kinds?
   'li': KnownElementInfo('LIElement'),
   'label': KnownElementInfo('LabelElement'),
   'legend': KnownElementInfo('LegendElement'),

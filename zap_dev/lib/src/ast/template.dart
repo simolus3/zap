@@ -25,7 +25,7 @@ class IfStatement extends Macro {
   void transformChildren<A>(Transformer<A> transformer, A arg) {
     condition = condition.accept(transformer, arg) as DartExpression;
     then = then.accept(transformer, arg) as TemplateComponent;
-    otherwise = otherwise?.accept(transformer, arg) as TemplateComponent;
+    otherwise = otherwise?.accept(transformer, arg) as TemplateComponent?;
   }
 }
 

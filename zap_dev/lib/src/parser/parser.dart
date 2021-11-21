@@ -22,7 +22,7 @@ class Parser {
     final tags = _findMacros();
     var lastOffset = 0;
 
-    final results = <TemplateComponent>[];
+    final results = NodeBuilder();
     final handlerStack = <TagHandler>[];
 
     for (final tag in tags) {
@@ -30,16 +30,14 @@ class Parser {
       // tag.
       final endOfText = tag.offsetOfLeftBrace;
       if (lastOffset < endOfText) {
-        final part =
-            _parseWithoutMacros(lastOffset, tag.offsetOfLeftBrace).toList();
+        final part = _parseWithoutMacros(lastOffset, tag.offsetOfLeftBrace);
 
         if (handlerStack.isEmpty) {
           // No current handler, so just add it to the top-level results
-          results
-              .addAll(_parseWithoutMacros(lastOffset, tag.offsetOfLeftBrace));
+          results.addComponents(part);
         } else if (part.isNotEmpty) {
-          handlerStack.last
-              .text(part.length > 1 ? AdjacentNodes(part) : part.single);
+          handlerStack.last.text(
+              part.length > 1 ? AdjacentNodes(part.toList()) : part.single);
         }
       }
 
@@ -69,7 +67,12 @@ class Parser {
           break;
         case $slash:
           // Closing a tag, e.g. `{/if}`
-          results.add(handlerStack.removeLast().end(this, tag));
+          final end = handlerStack.removeLast().end(this, tag);
+          if (handlerStack.isNotEmpty) {
+            handlerStack.last.text(end);
+          } else {
+            results.addComponent(end);
+          }
           break;
       }
 
@@ -79,16 +82,10 @@ class Parser {
 
     if (lastOffset < _codeUnits.length) {
       // Parse the reminder of the text
-      results.addAll(_parseWithoutMacros(lastOffset, _codeUnits.length));
+      results.addComponents(_parseWithoutMacros(lastOffset, _codeUnits.length));
     }
 
-    if (results.isEmpty) {
-      return Text('');
-    } else if (results.length == 1) {
-      return results.single;
-    } else {
-      return AdjacentNodes(results);
-    }
+    return results.build();
   }
 
   Iterable<TemplateComponent> _parseWithoutMacros(int start, int endExclusive) {
@@ -319,7 +316,7 @@ class _IfTagHandler extends TagHandler {
     if (_else.isEmpty) {
       then = inner;
     } else {
-      _else.last.body = inner;
+      _else.last.builder.addComponent(inner);
     }
   }
 
@@ -357,10 +354,11 @@ class _IfTagHandler extends TagHandler {
       final block = _else.removeLast();
       if (otherwise == null) {
         otherwise = block.condition != null
-            ? IfStatement(block.condition!, block.body!, null)
-            : block.body;
+            ? IfStatement(block.condition!, block.builder.build(), null)
+            : block.builder.build();
       } else {
-        otherwise = IfStatement(block.condition!, block.body!, otherwise);
+        otherwise =
+            IfStatement(block.condition!, block.builder.build(), otherwise);
       }
     }
 
@@ -370,7 +368,7 @@ class _IfTagHandler extends TagHandler {
 
 class _PendingElse {
   final DartExpression? condition;
-  TemplateComponent? body;
+  NodeBuilder builder = NodeBuilder();
 
   _PendingElse(this.condition);
 }
@@ -381,7 +379,7 @@ class _AsyncTagHandler extends TagHandler {
   late DartExpression expression;
   late String variable;
   late bool isStream;
-  late TemplateComponent child;
+  final NodeBuilder child = NodeBuilder();
 
   @override
   void start(Parser parser, _FoundMacroTag tag) {
@@ -404,13 +402,37 @@ class _AsyncTagHandler extends TagHandler {
 
   @override
   void text(TemplateComponent inner) {
-    child = inner;
+    child.addComponent(inner);
   }
 
   @override
   TemplateComponent end(Parser parser, _FoundMacroTag tag) {
     return isStream
-        ? AsyncBlock.stream(variable, expression, child)
-        : AsyncBlock.future(variable, expression, child);
+        ? AsyncBlock.stream(variable, expression, child.build())
+        : AsyncBlock.future(variable, expression, child.build());
+  }
+}
+
+class NodeBuilder {
+  List<TemplateComponent> components = [];
+
+  void addComponent(TemplateComponent c) {
+    if (c is AdjacentNodes) {
+      components.addAll(c.nodes);
+    } else {
+      components.add(c);
+    }
+  }
+
+  void addComponents(Iterable<TemplateComponent> c) {
+    c.forEach(addComponent);
+  }
+
+  TemplateComponent build() {
+    if (components.length == 1) {
+      return components.single;
+    } else {
+      return AdjacentNodes(components);
+    }
   }
 }

@@ -1,6 +1,12 @@
+import 'dart:convert';
+import 'dart:math';
+
+import 'package:crypto/crypto.dart';
+
 import '../ast.dart';
 import '../errors.dart';
 import '../parser/parser.dart';
+import '../utils/base32.dart';
 import '../utils/dart.dart';
 import 'style/add_class.dart';
 
@@ -10,15 +16,19 @@ const componentFunctionWrapper = '${zapPrefix}_component';
 Future<PrepareResult> prepare(
     String source, Uri sourceUri, ErrorReporter reporter) async {
   var component = Parser(source, sourceUri, reporter).parse();
+  component = component.accept(_RewriteMixedDartExpressions(), null)
+      as TemplateComponent;
+
   final checker = _ComponentSanityChecker(reporter);
   component.accept(checker, null);
 
   final fileBuilder = StringBuffer();
   final script = checker.script?.readInnerText(reporter);
   var imports = '';
+  ScriptComponents? splitScript;
 
   if (script != null) {
-    final splitScript =
+    splitScript =
         ScriptComponents.of(script, rewriteImports: ImportRewriteMode.zapToApi);
     imports = splitScript.directives;
 
@@ -40,12 +50,17 @@ Future<PrepareResult> prepare(
     fileBuilder.writeln('}');
   }
 
-  component = component.accept(_ComponentRewriter(), null) as TemplateComponent;
+  component = component.accept(_ExtractDom(), null) as TemplateComponent;
 
   final rawStyle = checker.style?.readInnerText(reporter);
   String? resolvedStyle;
   if (rawStyle != null) {
-    resolvedStyle = rewriteComponentCss(rawStyle, 'zap-test');
+    final hash = utf8.encoder.fuse(sha1).convert(sourceUri.toString());
+    final hashText =
+        zbase32.convert(hash.bytes.sublist(0, min(hash.bytes.length, 16)));
+
+    resolvedStyle = rewriteComponentCss(
+        splitScript?.originalImports ?? [], rawStyle, hashText);
   }
 
   return PrepareResult._(
@@ -234,7 +249,7 @@ class ScopedDartExpression {
   ScopedDartExpression(this.expression, this.scope);
 }
 
-class _ComponentRewriter extends Transformer<void> {
+class _RewriteMixedDartExpressions extends Transformer<void> {
   @override
   AstNode visitAdjacentAttributeStrings(AdjacentAttributeStrings e, void arg) {
     // Rewrite a mixed literal and Dart expression to a single Dart expression.
@@ -257,7 +272,9 @@ class _ComponentRewriter extends Transformer<void> {
   AstNode visitAttributeLiteral(AttributeLiteral e, void arg) {
     return WrappedDartExpression(DartExpression("'${e.value}'"));
   }
+}
 
+class _ExtractDom extends Transformer<void> {
   @override
   AstNode visitAdjacentNodes(AdjacentNodes e, void arg) {
     final newNodes = <TemplateComponent>[];

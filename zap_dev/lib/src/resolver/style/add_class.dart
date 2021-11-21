@@ -1,7 +1,9 @@
 import 'package:csslib/parser.dart' as css;
 import 'package:csslib/visitor.dart' as css;
+import 'package:path/path.dart' show url;
 
-String rewriteComponentCss(String source, String className) {
+String rewriteComponentCss(
+    List<String> imports, String source, String className) {
   final result = css.CssPrinter();
   css.parse(
     source,
@@ -9,6 +11,16 @@ String rewriteComponentCss(String source, String className) {
   )
     ..visit(_AddComponentClass(className))
     ..visit(result);
+
+  final finalCss = StringBuffer();
+  for (final import in imports) {
+    if (url.extension(import) == '.zap') {
+      final cssExtension = url.setExtension(import, '.tmp.zap.css');
+      finalCss.writeln('@import "$cssExtension"');
+    }
+  }
+
+  finalCss.write(result);
 
   return result.toString();
 }

@@ -508,17 +508,19 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
 
       _currentChildren = oldChildren;
 
-      final orElse = e.otherwise;
+      final orElse = currentIf.otherwise;
       if (orElse is zap.IfStatement) {
         currentIf = orElse;
-      } else if (orElse != null) {
-        final oldChildren = _currentChildren;
-        _currentChildren = [];
+      } else {
+        if (orElse != null) {
+          final oldChildren = _currentChildren;
+          _currentChildren = [];
 
-        orElse.accept(this, arg);
-        otherwise = _currentChildren;
+          orElse.accept(this, arg);
+          otherwise = _currentChildren;
 
-        _currentChildren = oldChildren;
+          _currentChildren = oldChildren;
+        }
         currentIf = null;
       }
     }

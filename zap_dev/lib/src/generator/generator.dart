@@ -296,7 +296,7 @@ abstract class _ComponentOrSubcomponentWriter {
           // Just emit node.attributes[key] = value.toString()
           buffer
             ..write(nodeName)
-            ..write("attributes['")
+            ..write(".attributes['")
             ..write(action.name)
             ..write("'] = ");
           writeDartWithPatchedReferences(
@@ -411,9 +411,9 @@ abstract class _ComponentOrSubcomponentWriter {
     if (handler.isNoArgsListener) {
       // The handler does not take any arguments, so we have to wrap it in a
       // function that does.
-      buffer.write('(_) {');
+      buffer.write('(_) {(');
       writeDartWithPatchedReferences(handler.listener.expression);
-      buffer.write('();}');
+      buffer.write(')();}');
     } else {
       // A tear-off will do
       writeDartWithPatchedReferences(handler.listener.expression);

@@ -1,0 +1,18 @@
+platforms:
+  - vm
+  - chrome
+
+tags:
+  browser:
+    timeout: 2x
+    test_on: browser
+
+presets:
+  unit:
+    platforms: [vm]
+
+  integration:
+    on_os:
+      windows:
+        platforms: [vm, edge]
+    platforms: [vm, chrome, firefox]
