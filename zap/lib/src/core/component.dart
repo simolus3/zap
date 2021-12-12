@@ -7,10 +7,10 @@ import 'fragment.dart';
 import 'internal.dart';
 
 abstract class ComponentOrPending {
-  void onMount(Function() callback);
-  void onDestroy(Function() callback);
-  void beforeUpdate(Function() callback);
-  void afterUpdate(Function() callback);
+  void onMount(Object? Function() callback);
+  void onDestroy(void Function() callback);
+  void beforeUpdate(void Function() callback);
+  void afterUpdate(void Function() callback);
 
   /// A future completing after pending state changes have been applied.
   ///
@@ -20,10 +20,10 @@ abstract class ComponentOrPending {
 }
 
 abstract class ZapComponent implements ComponentOrPending, Fragment {
-  final _onMountListeners = <Function>[];
-  final _beforeUpdateListeners = <Function()>[];
-  final _afterUpdateListeners = <Function()>[];
-  final _unmountListeners = <Function()>[];
+  final _onMountListeners = <Object? Function()>[];
+  final _beforeUpdateListeners = <void Function()>[];
+  final _afterUpdateListeners = <void Function()>[];
+  final _unmountListeners = <void Function()>[];
 
   var _isAlive = false;
 
@@ -44,21 +44,21 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
   ComponentOrPending get self => this;
 
   @override
-  void onMount(Function() callback) {
+  void onMount(void Function() callback) {
     throw StateError('onMount() may only be called before a component is '
         'initialized!');
   }
 
   @override
-  void onDestroy(Function() callback) => _unmountListeners.add(callback);
+  void onDestroy(void Function() callback) => _unmountListeners.add(callback);
 
   @override
-  void beforeUpdate(Function() callback) {
+  void beforeUpdate(void Function() callback) {
     _beforeUpdateListeners.add(callback);
   }
 
   @override
-  void afterUpdate(Function() callback) {
+  void afterUpdate(void Function() callback) {
     _afterUpdateListeners.add(callback);
   }
 
@@ -102,7 +102,7 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
   void mount(Element target, [Node? anchor]) {
     for (final listener in _onMountListeners) {
       final result = listener();
-      if (result is Function()) {
+      if (result is Object? Function()) {
         onDestroy(result);
       }
     }
@@ -216,25 +216,25 @@ class PendingComponent extends ComponentOrPending {
   var _wasCreated = false;
 
   @override
-  void afterUpdate(Function() callback) {
+  void afterUpdate(void Function() callback) {
     _checkNotCreated();
     _onAfterUpdate.add(callback);
   }
 
   @override
-  void beforeUpdate(Function() callback) {
+  void beforeUpdate(void Function() callback) {
     _checkNotCreated();
     _onBeforeUpdate.add(callback);
   }
 
   @override
-  void onDestroy(Function() callback) {
+  void onDestroy(void Function() callback) {
     _checkNotCreated();
     _onDestroy.add(callback);
   }
 
   @override
-  void onMount(Function() callback) {
+  void onMount(void Function() callback) {
     _checkNotCreated();
     _onMount.add(callback);
   }

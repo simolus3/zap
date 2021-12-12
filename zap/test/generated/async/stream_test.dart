@@ -7,9 +7,10 @@ import 'package:zap/zap.dart';
 import 'stream.zap.dart';
 
 void main() {
-  test('single stream', () {
+  test('single stream', () async {
     final testbed = Element.div();
     final controller = StreamController<String>();
+    addTearDown(controller.close);
 
     final component = stream(ZapValue(controller.stream));
     expect(controller.hasListener, isFalse,
@@ -17,8 +18,25 @@ void main() {
             'subscription');
 
     component.mountTo(testbed);
+    expect(testbed.innerText, contains('no data / no error'));
+    await pumpEventQueue(times: 1);
     expect(controller.hasListener, isTrue);
+    expect(testbed.innerText, contains('no data / no error'));
 
-    expect(testbed.innerText, '');
+    controller.add('first element');
+    await pumpEventQueue(times: 1);
+    expect(testbed.innerText, contains('data: first element'));
+
+    controller.addError('first error');
+    await pumpEventQueue(times: 1);
+    expect(testbed.innerText, contains('error: first error'));
+
+    controller.add('second element');
+    await pumpEventQueue(times: 1);
+    expect(testbed.innerText, contains('data: second element'));
+
+    component.destroy();
+    await pumpEventQueue(times: 1);
+    expect(controller.hasListener, isFalse);
   });
 }

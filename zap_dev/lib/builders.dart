@@ -14,7 +14,7 @@ Builder api(BuilderOptions options) {
 }
 
 Builder zapBuilder(BuilderOptions options) {
-  return const ZapBuilder();
+  return ZapBuilder(options.config['dev'] as bool);
 }
 
 Builder aggregateCss(BuilderOptions options) {

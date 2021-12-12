@@ -4,8 +4,6 @@ import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:collection/collection.dart';
 
-import 'tree.dart';
-
 import '../resolver/component.dart';
 import '../resolver/dart.dart';
 import '../resolver/flow.dart';
@@ -14,11 +12,15 @@ import '../resolver/reactive_dom.dart';
 import '../resolver/preparation.dart';
 import '../utils/dart.dart';
 
+import 'options.dart';
+import 'tree.dart';
+
 const _prefix = r'_$';
 const _parentField = '${_prefix}parent';
 
 class Generator {
   final GenerationScope libraryScope = GenerationScope();
+  final GenerationOptions options;
 
   final PrepareResult prepareResult;
   final ResolvedComponent component;
@@ -28,7 +30,7 @@ class Generator {
   final Map<FunctionElement, String> _functionNames = {};
   final Map<Object, String> _miscNames = {};
 
-  Generator(this.component, this.prepareResult);
+  Generator(this.component, this.prepareResult, this.options);
 
   String _nameForVar(BaseZapVariable variable) {
     return _varNames.putIfAbsent(variable, () {
@@ -63,8 +65,11 @@ class Generator {
       // We're importing zap with and without a name to use extensions while
       // also avoiding naming conflicts otherwise.
       ..writeln("import 'package:zap/zap.dart';")
-      ..writeln("import 'package:zap/zap.dart' as $_prefix;")
-      ..writeln(imports);
+      ..writeln("import 'package:zap/zap.dart' as $_prefix;");
+    if (options.isForDevelopment) {
+      buffer.writeln("import 'package:zap/internal/debug.dart' as $_prefix;");
+    }
+    buffer.writeln(imports);
 
     _writeComponent(component.component);
   }
@@ -98,10 +103,7 @@ abstract class _ComponentOrSubcomponentWriter {
       : buffer = classScope.leaf();
 
   bool _onlyRendersSubcomponents(ReactiveNode node) =>
-      node is SubComponent ||
-      node is ReactiveIf ||
-      node is ReactiveAsyncBlock ||
-      node is ReactiveFor;
+      node is SubComponent || node is ReactiveBlock;
 
   bool _isInitializedLater(ReactiveNode node) =>
       _onlyRendersSubcomponents(node);
@@ -713,7 +715,7 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
         ..write(';')
         ..writeln(' // ${variable.element.name}');
 
-      if (!variable.isLate) {
+      if (!variable.isLate || variable.isProperty) {
         variablesToInitialize.add(name);
       }
     }
@@ -830,7 +832,7 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
 
     // Write instantiated variables first
     for (final variable in dartVariables) {
-      if (variable.isLate) continue;
+      if (variable.isLate && !variable.isProperty) continue;
 
       // Variables are created for initializer statements that appear in the
       // code we've just written.
@@ -1063,6 +1065,8 @@ extension on ReactiveNode {
       return known != null ? '$_prefix.${known.className}' : '$_prefix.Element';
     } else if ($this is ReactiveText || $this is ConstantText) {
       return '$_prefix.Text';
+    } else if ($this is ReactiveRawHtml) {
+      return '$_prefix.HtmlTag';
     } else if ($this is SubComponent) {
       return $this.component.className;
     } else if ($this is ReactiveIf) {

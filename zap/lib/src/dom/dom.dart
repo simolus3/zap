@@ -51,7 +51,7 @@ extension ZapDomEvents<T extends Event> on ElementStream<T> {
     Element? onlySelf,
     bool onlyTrusted = false,
   }) {
-    var stream = capture ? _CapturingStream(this) : this;
+    final stream = capture ? _CapturingStream(this) : this;
 
     return Stream<T>.eventTransformed(
       stream,

@@ -32,6 +32,7 @@ class IfBlock extends Fragment {
   void reEvaluate(int caseNumber) {
     if (_currentCaseNumber != caseNumber) {
       _current?.destroy();
+      _current = null;
 
       _currentCaseNumber = caseNumber;
       final newBlock = _current = _create(caseNumber);

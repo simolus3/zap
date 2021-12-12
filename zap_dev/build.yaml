@@ -5,6 +5,11 @@ builders:
     auto_apply: dependents
     build_to: cache
     applies_builders: ["|zap_cleanup"]
+    defaults:
+      dev_options:
+        dev: true
+      release_options:
+        dev: false
     build_extensions:
       ".zap":
         - ".zap.dart"

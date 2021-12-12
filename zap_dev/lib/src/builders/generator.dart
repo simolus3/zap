@@ -7,12 +7,15 @@ import 'package:path/path.dart' as p;
 
 import '../errors.dart';
 import '../generator/generator.dart';
+import '../generator/options.dart';
 import '../resolver/preparation.dart';
 import '../resolver/resolver.dart';
 import 'common.dart';
 
 class ZapBuilder implements Builder {
-  const ZapBuilder();
+  final bool isForDevelopment;
+
+  const ZapBuilder(this.isForDevelopment);
 
   @override
   Future<void> build(BuildStep buildStep) async {
@@ -42,7 +45,8 @@ class ZapBuilder implements Builder {
 
     final component = await resolver.resolve(buildStep);
 
-    final generator = Generator(component, prepResult)..write();
+    final options = GenerationOptions(isForDevelopment);
+    final generator = Generator(component, prepResult, options)..write();
 
     var output = generator.libraryScope.render();
     try {

@@ -25,6 +25,10 @@ class TypeChecker {
 
   TypeChecker._(this.typeProvider, this.typeSystem, this.domTypes, this.errors);
 
+  bool isString(DartType type) {
+    return typeSystem.isAssignableTo(type, typeProvider.stringType);
+  }
+
   DartType checkFuture(DartType shouldBeFuture, FileSpan? span) {
     return _extractSingleType(shouldBeFuture, span, typeProvider.futureElement,
         'This must be a future!');

@@ -64,10 +64,16 @@ class ApplyAttribute extends Action {
   ApplyAttribute(this.element, this.name);
 }
 
-/// Update the condition of an if statement, the stream or future listened to by
-/// an async block, the iterable for a for loop or the value of a key block.
+/// An instruction to:
+///
+/// - update the condition of an [ReactiveIf].
+/// - the stream or future listened to by an [ReactiveAsyncBlock].
+/// - the iterable of a [ReactiveFor].
+/// - the value of a [ReactiveKeyBlock].
+/// - the raw HTML expression of a [ReactiveRawHtml] tag.
+
 class UpdateBlockExpression extends Action {
-  final ReactiveBlock block;
+  final ReactiveNode block;
 
   UpdateBlockExpression(this.block);
 }

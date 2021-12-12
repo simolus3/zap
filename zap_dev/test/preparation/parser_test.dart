@@ -143,6 +143,12 @@ class _EqualityEnforcingVisitor extends AstVisitor<void, void> {
   }
 
   @override
+  void visitHtmlTag(HtmlTag e, void a) {
+    _currentAs(e);
+    _checkChildren(e);
+  }
+
+  @override
   void visitIfBlock(IfBlock e, void a) {
     _currentAs(e);
     _checkChildren(e);

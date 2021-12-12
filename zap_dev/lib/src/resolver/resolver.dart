@@ -557,6 +557,16 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
   }
 
   @override
+  void visitHtmlTag(zap.HtmlTag e, void a) {
+    final expression = _resolveExpression(e.expression);
+
+    _currentChildren.add(ReactiveRawHtml(
+      expression: expression,
+      needsToString: !resolver.checker.isString(expression.type),
+    ));
+  }
+
+  @override
   void visitIfBlock(zap.IfBlock e, void arg) {
     final oldScope = preparedScope;
     preparedScope = preparedScope.children
@@ -583,7 +593,7 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
       final oldChildren = _currentChildren;
       _currentChildren = [];
 
-      e.then.accept(this, arg);
+      currentIf.then.accept(this, arg);
       whens.add(_currentChildren);
 
       _currentChildren = oldChildren;
@@ -638,12 +648,10 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
   @override
   void visitDartExpression(zap.DartExpression e, void arg) {
     final expr = resolver.dartAnalysis._resolveExpression(e.code);
-    final staticType = expr.type;
 
     // Tell the generator to add a .toString() call if this expression isn't a
     // string already.
-    final needsToString =
-        !typeSystem.isSubtypeOf(staticType, typeProvider.stringType);
+    final needsToString = !resolver.checker.isString(expr.type);
 
     _currentChildren.add(ReactiveText(expr, needsToString));
   }
@@ -873,6 +881,11 @@ class _FindComponents {
           _FindReferencedVariables.find(node.expression.expression, variables),
           UpdateBlockExpression(node),
         ));
+      } else if (node is ReactiveRawHtml) {
+        flows.add(Flow(
+          _FindReferencedVariables.find(node.expression.expression, variables),
+          UpdateBlockExpression(node),
+        ));
       } else {
         node.children.forEach(processNode);
       }
@@ -896,6 +909,12 @@ class _FindReferencedVariables extends GeneralizingAstVisitor<void> {
     node.accept(visitor);
 
     return visitor.found;
+  }
+
+  @override
+  void visitPrefixedIdentifier(PrefixedIdentifier node) {
+    visitIdentifier(node.prefix);
+    visitIdentifier(node.identifier);
   }
 
   @override

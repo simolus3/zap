@@ -10,9 +10,10 @@ dependencies:
   meta: ^1.7.0
 
 dev_dependencies:
-  lints: ^1.0.0
-  build_test: ^2.1.4
   build_runner: ^2.1.5
+  build_test: ^2.1.4
+  build_web_compilers: ^3.2.1
+  extra_pedantic: ^1.5.0
   test: ^1.16.0
   zap_dev:
 

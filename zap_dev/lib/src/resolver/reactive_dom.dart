@@ -50,6 +50,16 @@ class ReactiveElement extends ReactiveNode {
   }
 }
 
+class ReactiveRawHtml extends ReactiveNode {
+  final ResolvedDartExpression expression;
+  final bool needsToString;
+
+  ReactiveRawHtml({required this.expression, required this.needsToString});
+
+  @override
+  Iterable<ReactiveNode> get children => const Iterable.empty();
+}
+
 abstract class ReactiveBlock extends ReactiveNode {
   @override
   Iterable<ReactiveNode> get children => const Iterable.empty();

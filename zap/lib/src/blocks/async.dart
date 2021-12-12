@@ -111,7 +111,7 @@ abstract class _AsyncBlockBase<T> extends Fragment {
 
   @override
   void create() {
-    _update(_fragment, ZapSnapshot.unresolved());
+    _update(_fragment, const ZapSnapshot.unresolved());
     _fragment.create();
     _connect();
   }
@@ -141,7 +141,7 @@ class FutureBlock<T> extends _AsyncBlockBase<T> {
 
   set future(FutureOr<T> future) {
     if (future is Future<T>) {
-      _update(_fragment, ZapSnapshot.unresolved());
+      _update(_fragment, const ZapSnapshot.unresolved());
 
       future.then(
         (value) => _thenCallback(future, value),
@@ -188,9 +188,11 @@ class StreamBlock<T> extends _AsyncBlockBase<T> {
   set stream(Stream<T> stream) {
     _subscription?.cancel();
 
+    // ignore: cancel_subscriptions
     final sub = _subscription = stream.listen(
       (event) => _report(ZapSnapshot._withData(event)),
-      onError: (e, s) => _report(ZapSnapshot._withError(e, s)),
+      onError: (Object e, StackTrace s) =>
+          _report(ZapSnapshot._withError(e, s)),
       onDone: () => _update(_fragment, _snapshot._finished),
     );
     if (!_isReady) {

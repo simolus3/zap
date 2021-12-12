@@ -24,7 +24,7 @@ class KeyBlock extends Fragment {
   ///
   /// This function should only be called while this fragment is ready (after
   /// [create] and before [destroy]).
-  set value(val) {
+  set value(Object? val) {
     if (_value != val) {
       _value = val;
 
@@ -45,7 +45,7 @@ class KeyBlock extends Fragment {
   @override
   void create() {
     // Don't do anything before the value is set.
-    assert(_value == null);
+    assert(_value == null, 'Set value before create()');
   }
 
   @override
