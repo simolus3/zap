@@ -187,6 +187,12 @@ class Parser {
         block = _PendingForBlock(element.lexeme, indexName,
             RawDartExpression.fromToken(remaining.raw));
         break;
+      case 'key':
+        scanner.skipWhitespaceInTag();
+        final expression = scanner.rawUntilRightBrace();
+
+        block = _PendingKeyBlock(RawDartExpression.fromToken(expression.raw));
+        break;
       default:
         _errorOnToken(first, 'Expected if, async or for here');
         return;
@@ -363,13 +369,13 @@ class _PendingElse {
   _PendingElse(this.condition);
 }
 
-class _PendingAsyncBlock extends _PendingBlock {
-  final bool isStream;
-  final RawDartExpression expression;
-  final String snapshotName;
+abstract class _PendingBlockWithoutParts extends _PendingBlock {
   final _NodeBuilder nodes = _NodeBuilder();
+  final String _endTag;
 
-  _PendingAsyncBlock(this.isStream, this.expression, this.snapshotName);
+  _PendingBlockWithoutParts(this._endTag);
+
+  DomNode create(DomNode children);
 
   @override
   void handleInnerNode(DomNode node) {
@@ -377,45 +383,59 @@ class _PendingAsyncBlock extends _PendingBlock {
   }
 
   @override
-  void handlePart(Parser parser, Token braceColon) {}
-
-  @override
   DomNode finish(Parser parser, Token startOfClosing) {
     parser.scanner
       ..skipWhitespaceInTag()
-      ..expectIdentifier('await')
+      ..expectIdentifier(_endTag)
       ..skipWhitespaceInTag()
       ..rightBrace();
 
-    return AwaitBlock(isStream, snapshotName, expression, nodes.build());
+    return create(nodes.build());
+  }
+
+  @override
+  void handlePart(Parser parser, Token braceColon) {
+    parser._errorOnToken(
+        braceColon, 'Unexpected option for an $_endTag block.');
   }
 }
 
-class _PendingForBlock extends _PendingBlock {
+class _PendingAsyncBlock extends _PendingBlockWithoutParts {
+  final bool isStream;
+  final RawDartExpression expression;
+  final String snapshotName;
+
+  _PendingAsyncBlock(this.isStream, this.expression, this.snapshotName)
+      : super('await');
+
+  @override
+  DomNode create(DomNode children) {
+    return AwaitBlock(isStream, snapshotName, expression, children);
+  }
+}
+
+class _PendingForBlock extends _PendingBlockWithoutParts {
   final String elementName;
   final String? indexName;
   final RawDartExpression expression;
-  final _NodeBuilder nodes = _NodeBuilder();
 
-  _PendingForBlock(this.elementName, this.indexName, this.expression);
+  _PendingForBlock(this.elementName, this.indexName, this.expression)
+      : super('for');
 
   @override
-  void handleInnerNode(DomNode node) {
-    nodes.add(node);
+  DomNode create(DomNode children) {
+    return ForBlock(elementName, indexName, expression, children);
   }
+}
+
+class _PendingKeyBlock extends _PendingBlockWithoutParts {
+  final RawDartExpression expression;
+
+  _PendingKeyBlock(this.expression) : super('key');
 
   @override
-  void handlePart(Parser parser, Token braceColon) {}
-
-  @override
-  DomNode finish(Parser parser, Token startOfClosing) {
-    parser.scanner
-      ..skipWhitespaceInTag()
-      ..expectIdentifier('for')
-      ..skipWhitespaceInTag()
-      ..rightBrace();
-
-    return ForBlock(elementName, indexName, expression, nodes.build());
+  DomNode create(DomNode children) {
+    return KeyBlock(expression, children);
   }
 }
 

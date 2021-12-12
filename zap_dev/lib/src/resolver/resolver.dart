@@ -615,6 +615,22 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
   }
 
   @override
+  void visitKeyBlock(zap.KeyBlock e, void a) {
+    final oldScope = preparedScope;
+    preparedScope = oldScope.children
+        .singleWhere((s) => s is SubFragmentScope && s.introducedFor == e);
+    final oldChildren = _currentChildren;
+    _currentChildren = [];
+
+    e.content.accept(this, a);
+    final expr = _resolveExpression(e.expression);
+    final fragment = _newFragment(_currentChildren);
+
+    _currentChildren = oldChildren..add(ReactiveKeyBlock(expr, fragment));
+    preparedScope = oldScope;
+  }
+
+  @override
   void visitText(zap.Text e, void arg) {
     _currentChildren.add(ConstantText(e.content));
   }
@@ -811,7 +827,7 @@ class _FindComponents {
           condition.expression.accept(finder);
         }
 
-        flows.add(Flow(finder.found, UpdateIf(node)));
+        flows.add(Flow(finder.found, UpdateBlockExpression(node)));
       } else if (node is ReactiveAsyncBlock) {
         final scope = node.fragment.resolvedScope;
         final snapshotVariable =
@@ -828,7 +844,7 @@ class _FindComponents {
 
         flows.add(Flow(
           _FindReferencedVariables.find(node.expression.expression, variables),
-          UpdateAsyncValue(node),
+          UpdateBlockExpression(node),
         ));
       } else if (node is ReactiveFor) {
         final scope = node.fragment.resolvedScope;
@@ -847,7 +863,15 @@ class _FindComponents {
 
         flows.add(Flow(
           _FindReferencedVariables.find(node.expression.expression, variables),
-          UpdateForIterable(node),
+          UpdateBlockExpression(node),
+        ));
+      } else if (node is ReactiveAsyncBlock) {
+        final flow = _findFlowUpdates(variables, node.fragment, []);
+        subComponents.add(ResolvedSubComponent(flow.subComponents,
+            node.fragment.resolvedScope, node.fragment, flow.flow));
+        flows.add(Flow(
+          _FindReferencedVariables.find(node.expression.expression, variables),
+          UpdateBlockExpression(node),
         ));
       } else {
         node.children.forEach(processNode);

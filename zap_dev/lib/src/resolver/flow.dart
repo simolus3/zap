@@ -64,20 +64,10 @@ class ApplyAttribute extends Action {
   ApplyAttribute(this.element, this.name);
 }
 
-class UpdateIf extends Action {
-  final ReactiveIf node;
+/// Update the condition of an if statement, the stream or future listened to by
+/// an async block, the iterable for a for loop or the value of a key block.
+class UpdateBlockExpression extends Action {
+  final ReactiveBlock block;
 
-  UpdateIf(this.node);
-}
-
-class UpdateAsyncValue extends Action {
-  final ReactiveAsyncBlock block;
-
-  UpdateAsyncValue(this.block);
-}
-
-class UpdateForIterable extends Action {
-  final ReactiveFor block;
-
-  UpdateForIterable(this.block);
+  UpdateBlockExpression(this.block);
 }

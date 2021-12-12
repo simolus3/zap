@@ -267,6 +267,27 @@ class ForBlock extends AstNode implements Block {
   }
 }
 
+class KeyBlock extends AstNode implements Block {
+  RawDartExpression expression;
+  DomNode content;
+
+  KeyBlock(this.expression, this.content);
+
+  @override
+  Iterable<AstNode> get children => [expression, content];
+
+  @override
+  Res accept<Arg, Res>(AstVisitor<Arg, Res> visitor, Arg arg) {
+    return visitor.visitKeyBlock(this, arg);
+  }
+
+  @override
+  void transformChildren<Arg>(AstTransformer<Arg> transformer, Arg arg) {
+    expression = transformer.transformChild(expression, this, arg);
+    content = transformer.transformChild(content, this, arg);
+  }
+}
+
 abstract class AstVisitor<Arg, Res> {
   Res visitAttribute(Attribute e, Arg a);
   Res visitStringLiteral(StringLiteral e, Arg a);
@@ -279,6 +300,7 @@ abstract class AstVisitor<Arg, Res> {
   Res visitIfBlock(IfBlock e, Arg a);
   Res visitForBlock(ForBlock e, Arg a);
   Res visitAwaitBlock(AwaitBlock e, Arg a);
+  Res visitKeyBlock(KeyBlock e, Arg a);
 
   Res visitRawDartExpression(RawDartExpression e, Arg a);
   Res visitDartExpression(DartExpression e, Arg a);
@@ -310,6 +332,9 @@ abstract class GeneralizingVisitor<Arg, Res> extends AstVisitor<Arg, Res> {
 
   @override
   Res visitIfBlock(IfBlock e, Arg a) => defaultNode(e, a);
+
+  @override
+  Res visitKeyBlock(KeyBlock e, Arg a) => defaultNode(e, a);
 
   @override
   Res visitRawDartExpression(RawDartExpression e, Arg a) => defaultNode(e, a);

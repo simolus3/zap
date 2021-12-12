@@ -155,6 +155,19 @@ class _ComponentSanityChecker extends RecursiveVisitor<void, void> {
   }
 
   @override
+  void visitKeyBlock(KeyBlock e, void a) {
+    final previous = _scope;
+    final child = SubFragmentScope(e)..parent = previous;
+
+    // The expression is evaluated in the parent scope
+    e.expression.accept(this, a);
+
+    _scope = child;
+    e.content.accept(this, a);
+    _scope = previous..children.add(child);
+  }
+
+  @override
   void visitElement(Element e, void arg) {
     final tagName = e.tagName;
 

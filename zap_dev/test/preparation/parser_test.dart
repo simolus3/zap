@@ -149,6 +149,12 @@ class _EqualityEnforcingVisitor extends AstVisitor<void, void> {
   }
 
   @override
+  void visitKeyBlock(KeyBlock e, void a) {
+    _currentAs(e);
+    _checkChildren(e);
+  }
+
+  @override
   void visitRawDartExpression(RawDartExpression e, void a) {
     _assert(_currentAs<RawDartExpression>(e).code == e.code, e);
   }

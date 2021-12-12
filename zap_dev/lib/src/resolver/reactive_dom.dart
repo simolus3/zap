@@ -50,18 +50,20 @@ class ReactiveElement extends ReactiveNode {
   }
 }
 
-class ReactiveIf extends ReactiveNode {
+abstract class ReactiveBlock extends ReactiveNode {
+  @override
+  Iterable<ReactiveNode> get children => const Iterable.empty();
+}
+
+class ReactiveIf extends ReactiveBlock {
   final List<ResolvedDartExpression> conditions;
   final List<DomFragment> whens;
   final DomFragment? otherwise;
 
   ReactiveIf(this.conditions, this.whens, this.otherwise);
-
-  @override
-  Iterable<ReactiveNode> get children => const Iterable.empty();
 }
 
-class ReactiveFor extends ReactiveNode {
+class ReactiveFor extends ReactiveBlock {
   /// The iterable this for block is iterating over.
   final ResolvedDartExpression expression;
   final DartType elementType;
@@ -69,12 +71,9 @@ class ReactiveFor extends ReactiveNode {
   final DomFragment fragment;
 
   ReactiveFor(this.expression, this.elementType, this.fragment);
-
-  @override
-  Iterable<ReactiveNode> get children => const Iterable.empty();
 }
 
-class ReactiveAsyncBlock extends ReactiveNode {
+class ReactiveAsyncBlock extends ReactiveBlock {
   final bool isStream;
   final DartType type;
   final ResolvedDartExpression expression;
@@ -87,9 +86,13 @@ class ReactiveAsyncBlock extends ReactiveNode {
     required this.expression,
     required this.fragment,
   });
+}
 
-  @override
-  Iterable<ReactiveNode> get children => const Iterable.empty();
+class ReactiveKeyBlock extends ReactiveBlock {
+  final ResolvedDartExpression expression;
+  final DomFragment fragment;
+
+  ReactiveKeyBlock(this.expression, this.fragment);
 }
 
 class ReactiveAttribute {

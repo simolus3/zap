@@ -369,32 +369,38 @@ abstract class _ComponentOrSubcomponentWriter {
           buffer.writeln(');');
           break;
       }
-    } else if (action is UpdateIf) {
-      final nodeName = generator._nameForNode(action.node);
-      final nameOfBranchFunction = generator._nameForMisc(action.node);
-
-      buffer
-        ..write(nodeName)
-        ..write('.reEvaluate($nameOfBranchFunction());');
-    } else if (action is UpdateAsyncValue) {
+    } else if (action is UpdateBlockExpression) {
       final block = action.block;
-      final nodeName = generator._nameForNode(block);
+      final nodeName = generator._nameForNode(action.block);
 
-      final setter = block.isStream ? 'stream' : 'future';
-      final wrapper =
-          block.isStream ? '$_prefix.\$safeStream' : '$_prefix.\$safeFuture';
-      final type = block.type.getDisplayString(withNullability: true);
+      if (block is ReactiveIf) {
+        final nameOfBranchFunction = generator._nameForMisc(block);
 
-      buffer.write('$nodeName.$setter = $wrapper<$type>(() => ');
-      writeDartWithPatchedReferences(block.expression.expression);
-      buffer.write(');');
-    } else if (action is UpdateForIterable) {
-      final block = action.block;
-      final nodeName = generator._nameForNode(block);
+        buffer
+          ..write(nodeName)
+          ..write('.reEvaluate($nameOfBranchFunction());');
+      } else if (block is ReactiveAsyncBlock) {
+        final nodeName = generator._nameForNode(block);
 
-      buffer.write('$nodeName.data = ');
-      writeDartWithPatchedReferences(block.expression.expression);
-      buffer.write(';');
+        final setter = block.isStream ? 'stream' : 'future';
+        final wrapper =
+            block.isStream ? '$_prefix.\$safeStream' : '$_prefix.\$safeFuture';
+        final type = block.type.getDisplayString(withNullability: true);
+
+        buffer.write('$nodeName.$setter = $wrapper<$type>(() => ');
+        writeDartWithPatchedReferences(block.expression.expression);
+        buffer.write(');');
+      } else if (block is ReactiveFor) {
+        final nodeName = generator._nameForNode(block);
+
+        buffer.write('$nodeName.data = ');
+        writeDartWithPatchedReferences(block.expression.expression);
+        buffer.write(';');
+      } else if (block is ReactiveKeyBlock) {
+        buffer.write('$nodeName.value = ');
+        writeDartWithPatchedReferences(block.expression.expression);
+        buffer.write(';');
+      }
     }
   }
 
