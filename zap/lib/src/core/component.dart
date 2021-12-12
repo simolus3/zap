@@ -4,6 +4,7 @@ import 'dart:html';
 import 'package:meta/meta.dart';
 
 import 'fragment.dart';
+import 'internal.dart';
 
 abstract class ComponentOrPending {
   void onMount(Function() callback);
@@ -19,10 +20,6 @@ abstract class ComponentOrPending {
 }
 
 abstract class ZapComponent implements ComponentOrPending, Fragment {
-  static const _updateAll = 0xffffffff;
-
-  final _subscriptions = <StreamSubscription>[];
-
   final _onMountListeners = <Function>[];
   final _beforeUpdateListeners = <Function()>[];
   final _afterUpdateListeners = <Function()>[];
@@ -35,6 +32,13 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
   Completer<void>? _scheduledUpdate;
 
   ZapComponent();
+
+  /// Returns a stream transformer binding streams to the lifecycle of this
+  /// component.
+  ///
+  /// Transformed streams will start emitting items as soon as this component
+  /// is mounted, and they will dispose when this component is destroyed.
+  StreamTransformer<T, T> lifecycle<T>() => _LifecycleTransformer(this);
 
   @protected
   ComponentOrPending get self => this;
@@ -88,7 +92,7 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
   void create() {
     _isAlive = true;
     createInternal();
-    _runUpdate(_updateAll);
+    _runUpdate(updateAll);
   }
 
   @visibleForOverriding
@@ -129,22 +133,11 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
   @override
   void destroy() {
     _isAlive = false;
-    for (final sub in _subscriptions) {
-      sub.cancel();
-    }
     for (final callback in _unmountListeners) {
       callback();
     }
 
     remove();
-  }
-
-  @protected
-  void $manageSubscription(StreamSubscription subscription) {
-    _subscriptions.add(subscription);
-    subscription.onDone(() {
-      if (_isAlive) _subscriptions.remove(subscription);
-    });
   }
 
   @protected
@@ -254,5 +247,43 @@ class PendingComponent extends ComponentOrPending {
       throw StateError('Called a runtime component method on an invalid '
           'pending component instance. Are you storing `self` in a variable?');
     }
+  }
+}
+
+class _LifecycleTransformer<T> extends StreamTransformerBase<T, T> {
+  final ZapComponent component;
+
+  _LifecycleTransformer(this.component);
+
+  @override
+  Stream<T> bind(Stream<T> stream) {
+    return Stream.multi(
+      (listener) {
+        StreamSubscription<T>? subscription;
+
+        void unmountListener() => subscription?.cancel();
+
+        void listenNow() {
+          subscription = stream.listen(
+            listener.addSync,
+            onError: listener.addErrorSync,
+            onDone: () {
+              component._unmountListeners.remove(unmountListener);
+              subscription = null;
+              listener.closeSync();
+            },
+          );
+
+          component._unmountListeners.add(unmountListener);
+        }
+
+        if (component._isAlive) {
+          listenNow();
+        } else {
+          component.onMount(listenNow);
+        }
+      },
+      isBroadcast: stream.isBroadcast,
+    );
   }
 }

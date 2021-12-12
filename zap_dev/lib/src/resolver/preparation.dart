@@ -3,9 +3,10 @@ import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 
-import '../ast.dart';
+import '../preparation/ast.dart';
+import '../preparation/parser.dart';
+import '../preparation/scanner.dart';
 import '../errors.dart';
-import '../parser/parser.dart';
 import '../utils/base32.dart';
 import '../utils/dart.dart';
 import 'style/add_class.dart';
@@ -15,9 +16,10 @@ const componentFunctionWrapper = '${zapPrefix}_component';
 
 Future<PrepareResult> prepare(
     String source, Uri sourceUri, ErrorReporter reporter) async {
-  var component = Parser(source, sourceUri, reporter).parse();
-  component = component.accept(_RewriteMixedDartExpressions(), null)
-      as TemplateComponent;
+  final scanner = Scanner(source, sourceUri, reporter);
+  final parser = Parser(scanner);
+  var component = parser.parse();
+  component.transformChildren(_RewriteMixedDartExpressions(), null);
 
   final checker = _ComponentSanityChecker(reporter);
   component.accept(checker, null);
@@ -50,7 +52,7 @@ Future<PrepareResult> prepare(
     fileBuilder.writeln('}');
   }
 
-  component = component.accept(_ExtractDom(), null) as TemplateComponent;
+  component = component.accept(_ExtractDom(), null) as DomNode;
 
   final rawStyle = checker.style?.readInnerText(reporter);
   String? resolvedStyle;
@@ -79,7 +81,7 @@ class PrepareResult {
   final String temporaryDartFile;
   final String? cssFile;
   final PreparedVariableScope rootScope;
-  final TemplateComponent component;
+  final DomNode component;
 
   final Element? style;
   final Element? script;
@@ -95,7 +97,7 @@ class PrepareResult {
   );
 }
 
-class _ComponentSanityChecker extends RecursiveVisitor<void> {
+class _ComponentSanityChecker extends RecursiveVisitor<void, void> {
   final ErrorReporter errors;
 
   var _isInTag = false;
@@ -107,13 +109,13 @@ class _ComponentSanityChecker extends RecursiveVisitor<void> {
   _ComponentSanityChecker(this.errors);
 
   @override
-  void visitDartExpression(DartExpression e, void arg) {
+  visitRawDartExpression(RawDartExpression e, a) {
     final expr = ScopedDartExpression(e, _scope);
     _scope.dartExpressions.add(expr);
   }
 
   @override
-  void visitAsyncBlock(AsyncBlock e, void arg) {
+  void visitAwaitBlock(AwaitBlock e, void arg) {
     final previous = _scope;
     final child = AsyncBlockVariableScope(e)..parent = previous;
 
@@ -121,12 +123,25 @@ class _ComponentSanityChecker extends RecursiveVisitor<void> {
     e.futureOrStream.accept(this, arg);
 
     _scope = child;
+    e.innerNodes.accept(this, arg);
+    _scope = previous..children.add(child);
+  }
+
+  @override
+  void visitForBlock(ForBlock e, void arg) {
+    final previous = _scope;
+    final child = ForBlockVariableScope(e)..parent = previous;
+
+    // The iterable is evaluated in the parent scope
+    e.iterable.accept(this, arg);
+
+    _scope = child;
     e.body.accept(this, arg);
     _scope = previous..children.add(child);
   }
 
   @override
-  void visitIfStatement(IfStatement e, void arg) {
+  void visitIfBlock(IfBlock e, void arg) {
     final previous = _scope;
     final child = SubFragmentScope(e)..parent = previous;
 
@@ -180,7 +195,7 @@ class _DartExpressionWriter {
   void writeVariable(ScopedDartExpression expr) {
     final variable = '$zapPrefix${_variableCounter++}';
     expr.localVariableName = variable;
-    target.writeln('final $variable = ${expr.expression.dartExpression};');
+    target.writeln('final $variable = ${expr.expression.code};');
   }
 
   void start(PreparedVariableScope root) {
@@ -203,6 +218,13 @@ class _DartExpressionWriter {
 
     if (scope is AsyncBlockVariableScope) {
       target.writeln('$name<T>(ZapSnapshot<T> ${scope.block.variableName}) {');
+    } else if (scope is ForBlockVariableScope) {
+      final indexVar = scope.block.indexVariableName;
+      final elementParam = 'T ${scope.block.elementVariableName}';
+      final params =
+          indexVar == null ? elementParam : '$elementParam, int $indexVar';
+
+      target.writeln('$name<T>($params) {');
     } else if (scope is SubFragmentScope) {
       // Just write a scope without parameters
       target.writeln('$name() {');
@@ -217,7 +239,7 @@ class PreparedVariableScope {
   final Set<ScopedDartExpression> dartExpressions = {};
   final List<PreparedVariableScope> children = [];
 
-  Macro? introducedFor;
+  Block? introducedFor;
   PreparedVariableScope? parent;
 
   /// The name of the function introduced in generated code to lookup this
@@ -226,21 +248,27 @@ class PreparedVariableScope {
 }
 
 class AsyncBlockVariableScope extends PreparedVariableScope {
-  final AsyncBlock block;
+  final AwaitBlock block;
 
   AsyncBlockVariableScope(this.block) {
     introducedFor = block;
   }
 }
 
+class ForBlockVariableScope extends PreparedVariableScope {
+  final ForBlock block;
+
+  ForBlockVariableScope(this.block);
+}
+
 class SubFragmentScope extends PreparedVariableScope {
-  final Macro forNode;
+  final Block forNode;
 
   SubFragmentScope(this.forNode);
 }
 
 class ScopedDartExpression {
-  final DartExpression expression;
+  final RawDartExpression expression;
   final PreparedVariableScope scope;
 
   /// The local variable introduced in generated code to hold this expression.
@@ -250,44 +278,52 @@ class ScopedDartExpression {
 }
 
 class _RewriteMixedDartExpressions extends Transformer<void> {
+  String _dartStringLiteralFor(Text text) {
+    return text.content.replaceAll(r'$', r'\$');
+  }
+
   @override
-  AstNode visitAdjacentAttributeStrings(AdjacentAttributeStrings e, void arg) {
+  AstNode visitText(Text e, void a) {
+    if (e.parent is Attribute) {
+      return DartExpression(RawDartExpression("'${_dartStringLiteralFor(e)}'"));
+    }
+
+    return e;
+  }
+
+  @override
+  AstNode visitStringLiteral(StringLiteral e, void a) {
     // Rewrite a mixed literal and Dart expression to a single Dart expression.
     final buffer = StringBuffer("'");
 
-    for (final component in e.values) {
-      if (component is WrappedDartExpression) {
-        buffer.write('\${${component.expression.dartExpression}}');
-      } else if (component is AttributeLiteral) {
-        buffer.write(component.value.replaceAll(r'$', r'\$'));
+    for (final component in e.children) {
+      if (component is DartExpression) {
+        buffer.write('\${${component.code.code}}');
+      } else if (component is Text) {
+        buffer.write(_dartStringLiteralFor(component));
       }
     }
 
     buffer.write("'");
 
-    return WrappedDartExpression(DartExpression(buffer.toString()));
-  }
-
-  @override
-  AstNode visitAttributeLiteral(AttributeLiteral e, void arg) {
-    return WrappedDartExpression(DartExpression("'${e.value}'"));
+    return DartExpression(RawDartExpression(buffer.toString()));
   }
 }
 
 class _ExtractDom extends Transformer<void> {
   @override
   AstNode visitAdjacentNodes(AdjacentNodes e, void arg) {
-    final newNodes = <TemplateComponent>[];
+    final newNodes = <DomNode>[];
     var didHaveContent = false;
     var lastNonTextIndex = -1;
 
-    for (final node in e.nodes) {
+    for (final node in e.children) {
       if (node is Text) {
         if (didHaveContent) {
-          newNodes.add(Text(node.text));
+          newNodes.add(Text(node.content));
         } else {
           // Remove whitespace on the left
-          final trimmed = node.text.trimLeft();
+          final trimmed = node.content.trimLeft();
           if (trimmed.isEmpty) continue;
 
           newNodes.add(Text(trimmed));
@@ -302,7 +338,7 @@ class _ExtractDom extends Transformer<void> {
         }
 
         lastNonTextIndex = newNodes.length;
-        newNodes.add(node.accept(this, arg) as TemplateComponent);
+        newNodes.add(node.accept(this, arg) as DomNode);
         didHaveContent = true;
       }
     }
@@ -311,7 +347,7 @@ class _ExtractDom extends Transformer<void> {
     for (var i = newNodes.length - 1; i > lastNonTextIndex; i--) {
       final text = newNodes[i] as Text;
 
-      final newText = text.text.trimRight();
+      final newText = text.content.trimRight();
       if (newText.isEmpty) {
         newNodes.removeLast();
       } else {
@@ -320,16 +356,16 @@ class _ExtractDom extends Transformer<void> {
       }
     }
 
-    return e..nodes = newNodes;
+    return e..children = newNodes;
   }
 }
 
 extension on Element {
   String? readInnerText(ErrorReporter reporter) {
-    final child = this.child;
+    final child = innerContent;
 
     if (child is Text) {
-      return child.text;
+      return child.content;
     } else {
       reporter.reportError(ZapError.onNode(child ?? this,
           'Expected a raw text string without Dart expressions or macros!'));

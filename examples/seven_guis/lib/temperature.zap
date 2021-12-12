@@ -1,11 +1,20 @@
 <script>
-  String celsiusString = '';
-  String fahrenheitString = '';
+  num celsius = 5;
+  num fahrenheit = 41;
 
-  // Update fahrenheit when celsius updates
-  $: celsiusString = ((double.parse(fahrenheitString) - 32) * (5 / 9)).toString();
-  // ...and vice-versa
-  $: fahrenheitString = (double.parse(celsiusString) * 9/5 + 32).toString();
+  late InputElement inputCelsius;
+  late InputElement inputFahrenheit;
+
+  void updateInCelsius() {
+    celsius = num.parse(inputCelsius.value!);
+    fahrenheit = celsius * 9 / 5 + 32;
+  }
+
+  void updateInFahrenheit() {
+    fahrenheit = num.parse(inputFahrenheit.value!);
+    celsius = (fahrenheit - 32) * 5 / 9;
+  }
 </script>
 
-<input type="number" />
+<input type="number" bind:this={inputCelsius} value={celsius} on:input={updateInCelsius} /> °C =
+<input type="number" bind:this={inputFahrenheit} value={fahrenheit} on:input={updateInFahrenheit} /> °F

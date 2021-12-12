@@ -75,3 +75,9 @@ class UpdateAsyncValue extends Action {
 
   UpdateAsyncValue(this.block);
 }
+
+class UpdateForIterable extends Action {
+  final ReactiveFor block;
+
+  UpdateForIterable(this.block);
+}

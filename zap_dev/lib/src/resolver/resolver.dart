@@ -8,7 +8,7 @@ import 'package:analyzer/dart/element/type_visitor.dart';
 import 'package:build/build.dart';
 import 'package:collection/collection.dart';
 
-import '../ast.dart' as zap;
+import '../preparation/ast.dart' as zap;
 import '../errors.dart';
 import '../utils/dart.dart';
 import 'component.dart';
@@ -117,8 +117,8 @@ class _ScopeInformation {
   final Map<PreparedVariableScope, ZapVariableScope> scopes = {};
   final Map<LocalElement, BaseZapVariable> variables = {};
 
-  final Map<zap.DartExpression, ScopedDartExpression> expressionToScope = {};
-  final Map<zap.DartExpression, ResolvedDartExpression> resolvedExpressions =
+  final Map<zap.RawDartExpression, ScopedDartExpression> expressionToScope = {};
+  final Map<zap.RawDartExpression, ResolvedDartExpression> resolvedExpressions =
       {};
 
   ZapVariableScope get resolvedRootScope => scopes[root]!;
@@ -170,7 +170,7 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
     }
   }
 
-  ResolvedDartExpression _resolveExpression(zap.DartExpression expr) {
+  ResolvedDartExpression _resolveExpression(zap.RawDartExpression expr) {
     return scopes.resolvedExpressions.putIfAbsent(expr, () {
       final scoped = scopes.expressionToScope[expr]!;
       final scope = scopes.scopes[scoped.scope]!;
@@ -256,6 +256,43 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
           kind: SubcomponentVariableKind.asyncSnapshot,
         )..isMutable = true;
         scopes.addVariable(snapshot);
+      } else if (child is ForBlockVariableScope) {
+        // Extract the variable holding the result of an iteration
+        final block = child.block;
+        final iterable = _resolveExpression(block.iterable);
+        final iterableElement =
+            resolver.checker.checkIterable(iterable.type, block.iterable.span);
+
+        final function = node.functionExpression;
+        final parameters = function.parameters!;
+
+        final typeParam = function.typeParameters!.typeParameters.single;
+        substitution[typeParam.declaredElement!] = iterableElement;
+
+        for (var i = 0; i < parameters.parameters.length; i++) {
+          final parameter = parameters.parameters[i];
+          final element = parameters.parameterElements[i]!;
+
+          final name = element.name;
+          if (name == block.elementVariableName) {
+            scopes.addVariable(SubcomponentVariable(
+              scope: resolvedScope,
+              declaration: parameter,
+              type:
+                  element.type.acceptWithArgument(_substitution, substitution),
+              element: element,
+              kind: SubcomponentVariableKind.forBlockElement,
+            )..isMutable = true);
+          } else if (name == block.indexVariableName) {
+            scopes.addVariable(SubcomponentVariable(
+              scope: resolvedScope,
+              declaration: parameter,
+              type: element.type,
+              element: element,
+              kind: SubcomponentVariableKind.forBlockIndex,
+            )..isMutable = true);
+          }
+        }
       }
 
       super.visitFunctionDeclaration(node);
@@ -348,18 +385,18 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
 
   _DomTranslator(this.resolver) : preparedScope = resolver.scope.root;
 
-  ResolvedDartExpression _resolveExpression(zap.DartExpression expr) {
+  ResolvedDartExpression _resolveExpression(zap.RawDartExpression expr) {
     return resolver.dartAnalysis._resolveExpression(expr);
   }
 
   @override
-  void visitAdjacentAttributeStrings(zap.AdjacentAttributeStrings e, void arg) {
+  void visitStringLiteral(zap.StringLiteral e, void a) {
     throw ArgumentError('Should have been desugared in the preparation step!');
   }
 
   @override
   void visitAdjacentNodes(zap.AdjacentNodes e, void arg) {
-    for (final child in e.nodes) {
+    for (final child in e.children) {
       child.accept(this, arg);
     }
   }
@@ -369,7 +406,7 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
   }
 
   @override
-  void visitAsyncBlock(zap.AsyncBlock e, void arg) {
+  void visitAwaitBlock(zap.AwaitBlock e, void arg) {
     final oldScope = preparedScope;
     preparedScope = preparedScope.children
         .singleWhere((s) => s is AsyncBlockVariableScope && s.block == e);
@@ -385,7 +422,7 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
     final oldChildren = _currentChildren;
     _currentChildren = [];
 
-    e.body.accept(this, arg);
+    e.innerNodes.accept(this, arg);
 
     _currentChildren = oldChildren
       ..add(ReactiveAsyncBlock(
@@ -404,12 +441,12 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
   }
 
   @override
-  void visitAttributeLiteral(zap.AttributeLiteral e, void arg) {
-    throw ArgumentError('Should not be reached');
+  void visitComment(zap.Comment e, void a) {
+    // ignore
   }
 
   @override
-  void visitDartExpression(zap.DartExpression e, void arg) {
+  void visitRawDartExpression(zap.RawDartExpression e, void arg) {
     throw ArgumentError('Should not be reached');
   }
 
@@ -418,19 +455,20 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
     final old = _currentChildren;
 
     _currentChildren = [];
-    e.child?.accept(this, arg);
+    e.innerContent?.accept(this, arg);
     final childrenOfelement = _currentChildren;
 
     _currentChildren = old;
 
+    final binders = <ElementBinder>[];
     final handlers = <EventHandler>[];
     final attributes = <String, ReactiveAttribute>{};
 
     for (final attribute in e.attributes) {
       final key = attribute.key;
       // The pre-process step will replace all attributes with Dart expressions.
-      final value = _resolveExpression(
-          (attribute.value as zap.WrappedDartExpression).expression);
+      final value =
+          _resolveExpression((attribute.value as zap.DartExpression).code);
 
       final eventMatch = _eventRegex.firstMatch(key);
       if (eventMatch != null) {
@@ -446,6 +484,27 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
             resolver.checker.checkEvent(attribute, name, value.expression);
         handlers.add(EventHandler(name, checkResult.known, modifiers, value,
             checkResult.dropParameter));
+      }
+      if (key.startsWith('bind:')) {
+        // Bind an attribute of this element to a variable.
+        final attributeName = key.substring('bind:'.length);
+
+        final target = value.expression;
+        if (target is! SimpleIdentifier || target.staticElement == null) {
+          resolver.errorReporter.reportError(ZapError(
+              'Target for `bind:` must be a local variable',
+              attribute.value?.span));
+          continue;
+        }
+        final zapTarget = resolver.scope.variables[target.staticElement];
+        if (zapTarget is! DartCodeVariable) continue;
+
+        zapTarget.isMutable = true;
+        if (attributeName == 'this') {
+          binders.add(BindThis(zapTarget));
+        } else {
+          binders.add(BindAttribute(attributeName, zapTarget));
+        }
       } else {
         // A regular attribute it is then.
         final type = value.type;
@@ -472,12 +531,33 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
       // Regular HTML component then
       final known = knownTags[e.tagName.toLowerCase()];
       _currentChildren.add(ReactiveElement(
-          e.tagName, known, attributes, handlers, childrenOfelement));
+          e.tagName, known, attributes, handlers, childrenOfelement, binders));
     }
   }
 
   @override
-  void visitIfStatement(zap.IfStatement e, void arg) {
+  void visitForBlock(zap.ForBlock e, void arg) {
+    final oldScope = preparedScope;
+    preparedScope = oldScope.children
+        .whereType<ForBlockVariableScope>()
+        .singleWhere((s) => s.block == e);
+
+    final oldChildren = _currentChildren;
+    final children = _currentChildren = [];
+    e.body.accept(this, arg);
+
+    final expr = _resolveExpression(e.iterable);
+    final innerType =
+        resolver.checker.checkIterable(expr.type, e.iterable.span);
+
+    oldChildren.add(ReactiveFor(expr, innerType, _newFragment(children)));
+
+    _currentChildren = oldChildren;
+    preparedScope = oldScope;
+  }
+
+  @override
+  void visitIfBlock(zap.IfBlock e, void arg) {
     final oldScope = preparedScope;
     preparedScope = preparedScope.children
         .singleWhere((s) => s is SubFragmentScope && s.forNode == e);
@@ -486,7 +566,7 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
     final whens = <List<ReactiveNode>>[];
     List<ReactiveNode>? otherwise;
 
-    ResolvedDartExpression checkBoolean(zap.DartExpression dart) {
+    ResolvedDartExpression checkBoolean(zap.RawDartExpression dart) {
       final condition = _resolveExpression(dart);
       final type = condition.type;
       if (!typeSystem.isSubtypeOf(type, typeProvider.boolType)) {
@@ -496,7 +576,7 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
       return condition;
     }
 
-    zap.IfStatement? currentIf = e;
+    zap.IfBlock? currentIf = e;
     while (currentIf != null) {
       conditions.add(checkBoolean(currentIf.condition));
 
@@ -509,7 +589,7 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
       _currentChildren = oldChildren;
 
       final orElse = currentIf.otherwise;
-      if (orElse is zap.IfStatement) {
+      if (orElse is zap.IfBlock) {
         currentIf = orElse;
       } else {
         if (orElse != null) {
@@ -536,12 +616,12 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
 
   @override
   void visitText(zap.Text e, void arg) {
-    _currentChildren.add(ConstantText(e.text));
+    _currentChildren.add(ConstantText(e.content));
   }
 
   @override
-  void visitWrappedDartExpression(zap.WrappedDartExpression e, void arg) {
-    final expr = resolver.dartAnalysis._resolveExpression(e.expression);
+  void visitDartExpression(zap.DartExpression e, void arg) {
+    final expr = resolver.dartAnalysis._resolveExpression(e.code);
     final staticType = expr.type;
 
     // Tell the generator to add a .toString() call if this expression isn't a
@@ -749,6 +829,25 @@ class _FindComponents {
         flows.add(Flow(
           _FindReferencedVariables.find(node.expression.expression, variables),
           UpdateAsyncValue(node),
+        ));
+      } else if (node is ReactiveFor) {
+        final scope = node.fragment.resolvedScope;
+        final localDeclarations = {
+          for (final variable in scope.declaredVariables)
+            variable.element: variable
+        };
+
+        final flow = _findFlowUpdates(
+          {...variables, ...localDeclarations},
+          node.fragment,
+          [],
+        );
+        subComponents.add(ResolvedSubComponent(
+            flow.subComponents, scope, node.fragment, flow.flow));
+
+        flows.add(Flow(
+          _FindReferencedVariables.find(node.expression.expression, variables),
+          UpdateForIterable(node),
         ));
       } else {
         node.children.forEach(processNode);

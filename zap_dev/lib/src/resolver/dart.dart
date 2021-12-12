@@ -96,6 +96,8 @@ class DartCodeVariable extends BaseZapVariable {
   /// components.
   final bool isProperty;
 
+  bool get isLate => element.isLate;
+
   DartCodeVariable({
     required ZapVariableScope scope,
     required this.declaration,
@@ -150,6 +152,8 @@ class SelfReference extends BaseZapVariable {
 
 enum SubcomponentVariableKind {
   asyncSnapshot,
+  forBlockElement,
+  forBlockIndex,
 }
 
 class ResolvedDartExpression {

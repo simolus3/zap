@@ -1,7 +1,8 @@
 <script>
   import 'counter.zap';
+  import 'temperature.zap';
 
-  int selectedExample = 0;
+  int selectedExample = -1;
 
   void showExample(int i) => selectedExample = i;
 </script>
@@ -22,6 +23,12 @@
   <button on:click="{() => showExample(6)}">Show counter example</button>
 </div>
 
+{#if selectedExample == -1}
+  Select an example by using a button from above.
+{/if}
 {#if selectedExample == 0}
   <counter />
+{/if}
+{#if selectedExample == 1}
+  <temperature />
 {/if}

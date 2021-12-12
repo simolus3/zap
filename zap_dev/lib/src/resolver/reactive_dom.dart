@@ -37,11 +37,13 @@ class ReactiveElement extends ReactiveNode {
   /// Constant attributes are expressed as Dart string literals.
   final Map<String, ReactiveAttribute> attributes;
   final List<EventHandler> eventHandlers;
+  final List<ElementBinder> binders;
+
   @override
   final List<ReactiveNode> children;
 
   ReactiveElement(this.tagName, this.knownElement, this.attributes,
-      this.eventHandlers, this.children) {
+      this.eventHandlers, this.children, this.binders) {
     for (final handler in eventHandlers) {
       handler.parent = this;
     }
@@ -54,6 +56,19 @@ class ReactiveIf extends ReactiveNode {
   final DomFragment? otherwise;
 
   ReactiveIf(this.conditions, this.whens, this.otherwise);
+
+  @override
+  Iterable<ReactiveNode> get children => const Iterable.empty();
+}
+
+class ReactiveFor extends ReactiveNode {
+  /// The iterable this for block is iterating over.
+  final ResolvedDartExpression expression;
+  final DartType elementType;
+
+  final DomFragment fragment;
+
+  ReactiveFor(this.expression, this.elementType, this.fragment);
 
   @override
   Iterable<ReactiveNode> get children => const Iterable.empty();
@@ -166,4 +181,20 @@ EventModifier? parseEventModifier(String s) {
     case 'trusted':
       return EventModifier.trusted;
   }
+}
+
+abstract class ElementBinder {
+  final DartCodeVariable target;
+
+  ElementBinder(this.target);
+}
+
+class BindThis extends ElementBinder {
+  BindThis(DartCodeVariable target) : super(target);
+}
+
+class BindAttribute extends ElementBinder {
+  final String attribute;
+
+  BindAttribute(this.attribute, DartCodeVariable target) : super(target);
 }

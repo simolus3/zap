@@ -8,7 +8,7 @@ import 'package:analyzer/dart/element/type_system.dart';
 import 'package:build/build.dart';
 import 'package:source_span/source_span.dart';
 
-import '../../ast.dart';
+import '../../preparation/ast.dart';
 import '../../errors.dart';
 import 'dom_types.dart';
 
@@ -26,19 +26,25 @@ class TypeChecker {
   TypeChecker._(this.typeProvider, this.typeSystem, this.domTypes, this.errors);
 
   DartType checkFuture(DartType shouldBeFuture, FileSpan? span) {
-    final asFuture = shouldBeFuture.asInstanceOf(typeProvider.futureElement);
-    if (asFuture == null) {
-      errors.reportError(ZapError('This must be a future!', span));
-      return typeProvider.dynamicType;
-    }
-
-    return asFuture.typeArguments.single;
+    return _extractSingleType(shouldBeFuture, span, typeProvider.futureElement,
+        'This must be a future!');
   }
 
   DartType checkStream(DartType shouldBeStream, FileSpan? span) {
-    final asStream = shouldBeStream.asInstanceOf(typeProvider.streamElement);
+    return _extractSingleType(shouldBeStream, span, typeProvider.streamElement,
+        'This must be a stream!');
+  }
+
+  DartType checkIterable(DartType shouldBeIterable, FileSpan? span) {
+    return _extractSingleType(shouldBeIterable, span,
+        typeProvider.iterableElement, 'This must be an iterable!');
+  }
+
+  DartType _extractSingleType(
+      DartType type, FileSpan? span, ClassElement element, String description) {
+    final asStream = type.asInstanceOf(element);
     if (asStream == null) {
-      errors.reportError(ZapError('This must be a stream!', span));
+      errors.reportError(ZapError(description, span));
       return typeProvider.dynamicType;
     }
 
@@ -54,11 +60,11 @@ class TypeChecker {
     if (event == null) {
       errors.reportError(ZapError(
           'Unknown event `$eventName`, this may cause runtime errors',
-          attribute.valueSpan));
+          attribute.keyToken?.span));
     }
 
     if (staticType is! FunctionType) {
-      errors.reportError(ZapError('Not a function!', attribute.valueSpan));
+      errors.reportError(ZapError('Not a function!', attribute.value?.span));
       return EventCheckingResult(true, event);
     }
 
@@ -66,7 +72,7 @@ class TypeChecker {
     if (parameters.length > 1) {
       errors.reportError(ZapError(
           'Event handlers must have at most one parameter!',
-          attribute.valueSpan));
+          attribute.value?.span));
       return EventCheckingResult(true, event);
     }
 
@@ -78,7 +84,7 @@ class TypeChecker {
     if (parameter.isNamed) {
       errors.reportError(
         ZapError('The parameter on the callback must be positional',
-            attribute.valueSpan),
+            attribute.value?.span),
       );
     }
 
@@ -87,7 +93,7 @@ class TypeChecker {
 
       errors.reportError(ZapError(
         'The function must accept a $expectedType from `dart.html`',
-        attribute.valueSpan,
+        attribute.value?.span,
       ));
     }
 

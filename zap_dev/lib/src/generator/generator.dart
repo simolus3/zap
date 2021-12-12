@@ -98,12 +98,25 @@ abstract class _ComponentOrSubcomponentWriter {
       : buffer = classScope.leaf();
 
   bool _onlyRendersSubcomponents(ReactiveNode node) =>
-      node is SubComponent || node is ReactiveIf || node is ReactiveAsyncBlock;
+      node is SubComponent ||
+      node is ReactiveIf ||
+      node is ReactiveAsyncBlock ||
+      node is ReactiveFor;
 
   bool _isInitializedLater(ReactiveNode node) =>
       _onlyRendersSubcomponents(node);
 
   void write();
+
+  String get componentThis {
+    if (component is Component) {
+      // Root component
+      return 'this';
+    } else {
+      return _DartSourceRewriter(generator, component.scope, 0, '')
+          ._prefixFor(generator.component.component.scope, trailingDot: false);
+    }
+  }
 
   void writeNodesAndBlockHelpers() {
     // Write instance fields storing DOM nodes or zap block helpers
@@ -162,6 +175,37 @@ abstract class _ComponentOrSubcomponentWriter {
           ..write(' = ');
         createNode(node);
         buffer.writeln(';');
+      }
+
+      // Implement `bind:this` binders by assigning nodes to their target
+      // variables now.
+      if (node is ReactiveElement) {
+        for (final binder in node.binders) {
+          final target = binder.target;
+          final prefix = _DartSourceRewriter(generator, component.scope, 0, '')
+              ._prefixFor(target.scope);
+          final variableName = generator._nameForVar(target);
+          final nodeName = generator._nameForNode(node);
+
+          if (binder is BindThis) {
+            buffer.write('$prefix$variableName = $nodeName;');
+          } else if (binder is BindAttribute) {
+            final mask = target.updateBitmask;
+
+            buffer
+              ..write(nodeName)
+              ..write('.watchAttribute(')
+              ..write(dartStringLiteral(binder.attribute))
+              ..write(')')
+              ..write('.transform($prefix.lifecycle)')
+              ..writeln('.listen((value) {')
+              ..writeln('  if (value != $prefix$variableName) {')
+              ..writeln('    $prefix\$invalidate($mask);')
+              ..writeln('    $prefix$variableName = value;')
+              ..writeln('  }')
+              ..writeln('});');
+          }
+        }
       }
     }
 
@@ -344,6 +388,13 @@ abstract class _ComponentOrSubcomponentWriter {
       buffer.write('$nodeName.$setter = $wrapper<$type>(() => ');
       writeDartWithPatchedReferences(block.expression.expression);
       buffer.write(');');
+    } else if (action is UpdateForIterable) {
+      final block = action.block;
+      final nodeName = generator._nameForNode(block);
+
+      buffer.write('$nodeName.data = ');
+      writeDartWithPatchedReferences(block.expression.expression);
+      buffer.write(';');
     }
   }
 
@@ -502,6 +553,33 @@ abstract class _ComponentOrSubcomponentWriter {
       final className = node.isStream ? 'StreamBlock' : 'FutureBlock';
       buffer.writeln(
           '$_prefix.$className($childClass(this), $updateFunction)..create()');
+    } else if (node is ReactiveFor) {
+      final childClass = generator._nameForMisc(node.fragment.owningComponent!);
+      final elementVariable = node.fragment.resolvedScope
+          .findForSubcomponent(SubcomponentVariableKind.forBlockElement)!;
+      final indexVariable = node.fragment.resolvedScope
+          .findForSubcomponent(SubcomponentVariableKind.forBlockIndex);
+
+      buffer.writeln('$_prefix.ForBlock(');
+
+      // Write the function creating child nodes
+      buffer.write('(element, index) => ');
+      if (indexVariable != null) {
+        buffer.write('$childClass($componentThis, element, index)');
+      } else {
+        buffer.write('$childClass($componentThis, element)');
+      }
+
+      // Write the function updating child nodes
+      buffer
+        ..write(', (fragment, element, index) => ')
+        ..write('(fragment as $childClass)')
+        ..write('..${elementVariable.element.name} = element');
+
+      if (indexVariable != null) {
+        buffer.write('..${indexVariable.element.name} = index');
+      }
+      buffer.write(')..create()');
     } else {
       throw ArgumentError('Unknown node type: $node');
     }
@@ -515,6 +593,8 @@ abstract class _ComponentOrSubcomponentWriter {
       } else if (variable is SubcomponentVariable) {
         switch (variable.kind) {
           case SubcomponentVariableKind.asyncSnapshot:
+          case SubcomponentVariableKind.forBlockElement:
+          case SubcomponentVariableKind.forBlockIndex:
             return true;
         }
       } else {
@@ -616,6 +696,10 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
       if (!variable.isMutable) buffer.write('final ');
 
       final name = generator._nameForVar(variable);
+      if (variable.isLate) {
+        buffer.write('late ');
+      }
+
       buffer
         ..write(variable.element.type.getDisplayString(withNullability: true))
         ..write(' ')
@@ -623,7 +707,9 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
         ..write(';')
         ..writeln(' // ${variable.element.name}');
 
-      variablesToInitialize.add(name);
+      if (!variable.isLate) {
+        variablesToInitialize.add(name);
+      }
     }
 
     // And DOM nodes
@@ -683,7 +769,7 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
       // Wrap properties in a ZapValue so that we can fallback to the default
       // value otherwise. We can't use optional parameters as the default
       // doesn't have to be a constant.
-      // todo: Don't do that if the parameter is non-nulallable
+      // todo: Don't do that if the parameter is non-nullable
       final element = variable.element;
       final innerType = element.type.getDisplayString(withNullability: true);
       final type = '$_prefix.ZapValue<$innerType>?';
@@ -738,6 +824,8 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
 
     // Write instantiated variables first
     for (final variable in dartVariables) {
+      if (variable.isLate) continue;
+
       // Variables are created for initializer statements that appear in the
       // code we've just written.
       buffer
@@ -767,13 +855,10 @@ class _SubComponentWriter extends _ComponentOrSubcomponentWriter {
         ? generator.component.componentName
         : generator._nameForMisc(parent);
 
-    buffer
-      ..writeln('final $parentType $_parentField;')
-      ..writeln('$name(this.$_parentField);');
+    final needsInitialization = <String>[];
 
     // Inside subfragments, variables are instiated by the parent component
     // before calling create()
-
     for (final variable
         in component.scope.declaredVariables.cast<SubcomponentVariable>()) {
       final type = variable.type.getDisplayString(withNullability: true);
@@ -784,8 +869,22 @@ class _SubComponentWriter extends _ComponentOrSubcomponentWriter {
           buffer.writeln(
               '$type $name = const $_prefix.ZapSnapshot.unresolved(); // ${variable.element.name}');
           break;
+        case SubcomponentVariableKind.forBlockElement:
+        case SubcomponentVariableKind.forBlockIndex:
+          needsInitialization.add(name);
+          buffer.writeln('$type $name; // ${variable.element.name}');
+          break;
       }
     }
+
+    final initializers = [_parentField]
+        .followedBy(needsInitialization)
+        .map((e) => 'this.$e')
+        .join(',');
+
+    buffer
+      ..writeln('final $parentType $_parentField;')
+      ..writeln('$name($initializers);');
 
     writeNodesAndBlockHelpers();
     writeCreateMethod();
@@ -874,7 +973,7 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
       return '\$invalidate($bitmaskCode);';
     } else {
       final prefix = _prefixFor(rootScope);
-      return '$prefix.\$invalidateSubcomponent(this, $bitmaskCode);';
+      return '$prefix\$invalidateSubcomponent(this, $bitmaskCode);';
     }
   }
 
@@ -962,6 +1061,10 @@ extension on ReactiveNode {
       return $this.component.className;
     } else if ($this is ReactiveIf) {
       return '$_prefix.IfBlock';
+    } else if ($this is ReactiveFor) {
+      final innerType =
+          $this.elementType.getDisplayString(withNullability: true);
+      return '$_prefix.ForBlock<$innerType>';
     } else if ($this is ReactiveAsyncBlock) {
       final innerType = $this.type.getDisplayString(withNullability: true);
 

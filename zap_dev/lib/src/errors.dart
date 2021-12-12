@@ -1,6 +1,6 @@
 import 'package:source_span/source_span.dart';
 
-import 'ast.dart';
+import 'preparation/ast.dart';
 
 class ZapError {
   final String message;

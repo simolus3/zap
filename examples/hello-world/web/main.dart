@@ -1,7 +1,7 @@
 import 'dart:html';
-import 'package:hello_world/async.zap.dart';
+import 'package:hello_world/iteration.zap.dart';
 
 void main() {
   final out = querySelector('#output')!;
-  async().mountTo(out);
+  iteration().mountTo(out);
 }
