@@ -49,6 +49,9 @@ const int $equal = 0x3d;
 /// Character `>`.
 const int $gt = 0x3e;
 
+/// Character `@`.
+const int $at = 0x40;
+
 /// Character `A`.
 const int $A = 0x41;
 

@@ -13,6 +13,7 @@ enum TokenType {
   lbraceColon,
   lbraceHash,
   lbraceSlash,
+  lbraceAt,
   rbrace,
   leftAngle,
   leftAngleSlash,

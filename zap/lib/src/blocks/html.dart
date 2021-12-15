@@ -4,7 +4,7 @@ import '../core/fragment.dart';
 
 /// Inserts raw HTML into the document without any sanitization.
 class HtmlTag extends Fragment {
-  String _rawHtml;
+  String _rawHtml = '';
 
   /// An artificial element that we never insert into the document.
   ///
@@ -16,7 +16,7 @@ class HtmlTag extends Fragment {
 
   List<Node>? _children;
 
-  HtmlTag(this._rawHtml);
+  HtmlTag();
 
   set rawHtml(String html) {
     _rawHtml = html;
@@ -38,7 +38,7 @@ class HtmlTag extends Fragment {
 
     // [Element.children] is a view, but we want a fixed snapshot of the current
     // children, so copy.
-    _children = _artificialParent.children.toList();
+    _children = _artificialParent.childNodes.toList();
   }
 
   @override

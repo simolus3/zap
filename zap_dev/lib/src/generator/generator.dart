@@ -105,6 +105,9 @@ abstract class _ComponentOrSubcomponentWriter {
   bool _onlyRendersSubcomponents(ReactiveNode node) =>
       node is SubComponent || node is ReactiveBlock;
 
+  bool _isZapFragment(ReactiveNode node) =>
+      _onlyRendersSubcomponents(node) || node is ReactiveRawHtml;
+
   bool _isInitializedLater(ReactiveNode node) =>
       _onlyRendersSubcomponents(node);
 
@@ -234,7 +237,7 @@ abstract class _ComponentOrSubcomponentWriter {
       for (final node in nodes) {
         final name = generator._nameForNode(node);
 
-        if (_onlyRendersSubcomponents(node)) {
+        if (_isZapFragment(node)) {
           buffer
             ..write(name)
             ..writeln('.mount($target, $anchor);');
@@ -266,7 +269,7 @@ abstract class _ComponentOrSubcomponentWriter {
     for (final rootNode in component.fragment.rootNodes) {
       buffer.write(generator._nameForNode(rootNode));
 
-      if (_onlyRendersSubcomponents(rootNode)) {
+      if (_isZapFragment(rootNode)) {
         // use .destroy() to unmount zap components
         buffer.write('.destroy();');
       } else {
@@ -295,8 +298,7 @@ abstract class _ComponentOrSubcomponentWriter {
     }
 
     // Some nodes manage subcomponents and need to be updated as well
-    for (final node
-        in component.fragment.allNodes.where(_onlyRendersSubcomponents)) {
+    for (final node in component.fragment.allNodes.where(_isZapFragment)) {
       final name = generator._nameForNode(node);
       buffer.writeln('$name.update(delta);');
     }
@@ -402,6 +404,18 @@ abstract class _ComponentOrSubcomponentWriter {
         buffer.write('$nodeName.value = ');
         writeDartWithPatchedReferences(block.expression.expression);
         buffer.write(';');
+      } else if (block is ReactiveRawHtml) {
+        buffer.write('$nodeName.rawHtml = ');
+        if (block.needsToString) {
+          buffer.write('(');
+          writeDartWithPatchedReferences(block.expression.expression);
+          buffer.write(').toString()');
+        } else {
+          writeDartWithPatchedReferences(block.expression.expression);
+        }
+        buffer.write(';');
+      } else {
+        throw ArgumentError('Unknown target for $action: ${action.block}');
       }
     }
   }
@@ -506,6 +520,8 @@ abstract class _ComponentOrSubcomponentWriter {
       buffer.write("$_prefix.Text('')");
     } else if (node is ConstantText) {
       buffer.write("$_prefix.Text(${dartStringLiteral(node.text)})");
+    } else if (node is ReactiveRawHtml) {
+      buffer.write('$_prefix.HtmlTag()');
     } else if (node is SubComponent) {
       buffer
         ..write(node.component.className)

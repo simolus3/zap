@@ -68,6 +68,9 @@ class Parser {
       case TokenType.leftAngleSlash:
         _finishNode(_openedNodes.removeLast().finish(this, token));
         return;
+      case TokenType.lbraceAt:
+        _specialTag();
+        return;
       default:
         throw StateError('Internal error: Unexpected token');
     }
@@ -252,6 +255,22 @@ class Parser {
     }
 
     return StringLiteral(parts);
+  }
+
+  /// Parses an `{@html` or `{@debug` tag.
+  void _specialTag() {
+    scanner.skipWhitespaceInTag();
+    final type = scanner.tagName();
+    scanner.skipWhitespaceInTag();
+
+    switch (type.lexeme) {
+      case 'html':
+        final expression = scanner.rawUntilRightBrace();
+        _finishNode(HtmlTag(RawDartExpression.fromToken(expression.raw)));
+        break;
+      default:
+        _errorOnToken(type, 'Expect @html or @debug here.');
+    }
   }
 }
 

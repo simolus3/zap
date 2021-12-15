@@ -8,9 +8,10 @@ Future<void> main() async {
       'charcode',
       '-o',
       'lib/src/preparation/charcodes.g.dart',
-      ' \t\r\n&;<>{:}/azAZ09="\'#,|_'
+      ' \t\r\n&;<>{:}/azAZ09="\'#,|_@'
     ],
     mode: ProcessStartMode.inheritStdio,
   );
-  await proc.exitCode;
+
+  exitCode = await proc.exitCode;
 }

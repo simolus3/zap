@@ -67,7 +67,7 @@ class Scanner {
   ///
   /// - a [TextToken]
   /// - a left angle
-  /// - `{`, `{:`, `{{` or `{/`.
+  /// - `{`, `{:`, `{{`, `{/` or '{@`
   Token nextForDom() {
     startOfToken = position;
 
@@ -100,6 +100,9 @@ class Scanner {
         case $hash:
           position++;
           return _simpleToken(TokenType.lbraceHash);
+        case $at:
+          position++;
+          return _simpleToken(TokenType.lbraceAt);
         default:
           return _simpleToken(TokenType.lbrace);
       }
