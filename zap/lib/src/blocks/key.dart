@@ -34,22 +34,16 @@ class KeyBlock extends Fragment {
 
   void _recreateFragment() {
     _currentFragment?.destroy();
-    final newFragment = _currentFragment = createInner()..create();
+    final newFragment = _currentFragment = createInner();
 
     if (_target != null) {
       // This fragment is mounted, so let's also mount the content
-      newFragment.mount(_target!, _anchor);
+      newFragment.create(_target!, _anchor);
     }
   }
 
   @override
-  void create() {
-    // Don't do anything before the value is set.
-    assert(_value == null, 'Set value before create()');
-  }
-
-  @override
-  void mount(Element target, [Node? anchor]) {
+  void create(Element target, [Node? anchor]) {
     _target = target;
     _anchor = anchor;
 
@@ -57,7 +51,7 @@ class KeyBlock extends Fragment {
       // Create the initial fragment to show.
       _recreateFragment();
     } else {
-      _currentFragment?.mount(target, anchor);
+      _currentFragment?.create(target, anchor);
     }
   }
 

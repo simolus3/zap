@@ -83,23 +83,10 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
     _unmountListeners.addAll(component._onDestroy);
   }
 
-  void mountTo(Element parent, [Node? anchor]) {
-    create();
-    mount(parent, anchor);
-  }
-
   @override
-  void create() {
+  void create(Element target, [Node? anchor]) {
     _isAlive = true;
-    createInternal();
-    _runUpdate(updateAll);
-  }
 
-  @visibleForOverriding
-  void createInternal();
-
-  @override
-  void mount(Element target, [Node? anchor]) {
     for (final listener in _onMountListeners) {
       final result = listener();
       if (result is Object? Function()) {
@@ -107,11 +94,12 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
       }
     }
 
-    mountInternal(target, anchor);
+    createInternal(target, anchor);
+    _runUpdate(updateAll);
   }
 
   @visibleForOverriding
-  void mountInternal(Element target, [Node? anchor]);
+  void createInternal(Element target, [Node? anchor]);
 
   void _runUpdate(int delta) {
     for (final before in _beforeUpdateListeners) {

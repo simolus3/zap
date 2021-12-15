@@ -45,14 +45,11 @@ class DebugTag extends Fragment {
   }
 
   @override
-  void create() {}
-
-  @override
-  void destroy() {}
-
-  @override
-  void mount(Element target, [Node? anchor]) {}
+  void create(Element target, [Node? anchor]) {}
 
   @override
   void update(int delta) {}
+
+  @override
+  void destroy() {}
 }

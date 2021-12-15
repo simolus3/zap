@@ -9,14 +9,14 @@ import 'raw.zap.dart';
 void main() {
   test('@html works with simple text', () {
     final testbed = Element.div();
-    raw(ZapValue('simple text')).mountTo(testbed);
+    raw(ZapValue('simple text')).create(testbed);
 
     expect(testbed.text, 'simple text');
   });
 
   test('@html can use html tags', () {
     final testbed = Element.div();
-    raw(ZapValue('<a href="https://github.com">GitHub</a>')).mountTo(testbed);
+    raw(ZapValue('<a href="https://github.com">GitHub</a>')).create(testbed);
 
     expect(testbed.text, 'GitHub');
     expect(testbed.children, [

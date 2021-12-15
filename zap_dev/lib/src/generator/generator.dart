@@ -169,7 +169,10 @@ abstract class _ComponentOrSubcomponentWriter {
   void writeCreateMethod() {
     final name = component is Component ? 'createInternal' : 'create';
 
-    buffer.writeln('@override void $name() {');
+    buffer
+      ..writeln('@override')
+      ..writeln(
+          'void $name($_prefix.Element target, [$_prefix.Node? anchor]) {');
 
     // Create subcomponents. They require evaluating Dart expressions, so we
     // can't do this earlier.
@@ -222,17 +225,6 @@ abstract class _ComponentOrSubcomponentWriter {
       }
     }
 
-    buffer.writeln('}');
-  }
-
-  void writeMountMethod() {
-    final name = component is Component ? 'mountInternal' : 'mount';
-
-    buffer
-      ..writeln('@override')
-      ..writeln(
-          'void $name($_prefix.Element target, [$_prefix.Node? anchor]) {');
-
     void writeAdd(Iterable<ReactiveNode> nodes, String target, String? anchor) {
       for (final node in nodes) {
         final name = generator._nameForNode(node);
@@ -240,7 +232,7 @@ abstract class _ComponentOrSubcomponentWriter {
         if (_isZapFragment(node)) {
           buffer
             ..write(name)
-            ..writeln('.mount($target, $anchor);');
+            ..writeln('.create($target, $anchor);');
           continue;
         } else if (anchor == null) {
           // Write an append call
@@ -255,6 +247,7 @@ abstract class _ComponentOrSubcomponentWriter {
       }
     }
 
+    /// Also add nodes into the document now.
     writeAdd(component.fragment.rootNodes, 'target', 'anchor');
     buffer.writeln('}');
   }
@@ -543,7 +536,7 @@ abstract class _ComponentOrSubcomponentWriter {
 
         buffer.write(',');
       }
-      buffer.writeln(')..create()');
+      buffer.writeln(')');
     } else if (node is ReactiveIf) {
       buffer
         ..writeln('$_prefix.IfBlock((caseNum) {')
@@ -564,7 +557,7 @@ abstract class _ComponentOrSubcomponentWriter {
         buffer.writeln('default: return null;');
       }
 
-      buffer.writeln('}})..create()');
+      buffer.writeln('}})');
     } else if (node is ReactiveAsyncBlock) {
       final childClass = generator._nameForMisc(node.fragment.owningComponent!);
       final name = node.fragment.resolvedScope
@@ -575,8 +568,7 @@ abstract class _ComponentOrSubcomponentWriter {
           '(fragment, snapshot) => (fragment as $childClass).$name = snapshot';
 
       final className = node.isStream ? 'StreamBlock' : 'FutureBlock';
-      buffer.writeln(
-          '$_prefix.$className($childClass(this), $updateFunction)..create()');
+      buffer.writeln('$_prefix.$className($childClass(this), $updateFunction)');
     } else if (node is ReactiveFor) {
       final childClass = generator._nameForMisc(node.fragment.owningComponent!);
       final elementVariable = node.fragment.resolvedScope
@@ -603,7 +595,7 @@ abstract class _ComponentOrSubcomponentWriter {
       if (indexVariable != null) {
         buffer.write('..${indexVariable.element.name} = index');
       }
-      buffer.write(')..create()');
+      buffer.write(')');
     } else {
       throw ArgumentError('Unknown node type: $node');
     }
@@ -763,7 +755,6 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
     writeFactory();
 
     writeCreateMethod();
-    writeMountMethod();
     writeRemoveMethod();
     writeUpdateMethod();
     writePropertyAccessors();
@@ -912,7 +903,6 @@ class _SubComponentWriter extends _ComponentOrSubcomponentWriter {
 
     writeNodesAndBlockHelpers();
     writeCreateMethod();
-    writeMountMethod();
     writeUpdateMethod();
     writeRemoveMethod();
     writePropertyAccessors();

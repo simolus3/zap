@@ -17,7 +17,7 @@ void main() {
         reason: 'Instantiating the component should not start a stream '
             'subscription');
 
-    component.mountTo(testbed);
+    component.create(testbed);
     expect(testbed.innerText, contains('no data / no error'));
     await pumpEventQueue(times: 1);
     expect(controller.hasListener, isTrue);

@@ -110,15 +110,11 @@ abstract class _AsyncBlockBase<T> extends Fragment {
   void _cleanUp();
 
   @override
-  void create() {
+  void create(Element target, [Node? anchor]) {
     _update(_fragment, const ZapSnapshot.unresolved());
-    _fragment.create();
     _connect();
-  }
 
-  @override
-  void mount(Element target, [Node? anchor]) {
-    _fragment.mount(target, anchor);
+    _fragment.create(target, anchor);
   }
 
   @override

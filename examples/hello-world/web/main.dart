@@ -3,5 +3,5 @@ import 'package:hello_world/iteration.zap.dart';
 
 void main() {
   final out = querySelector('#output')!;
-  iteration().mountTo(out);
+  iteration().create(out);
 }

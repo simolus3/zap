@@ -47,7 +47,7 @@ class ForBlock<T> extends Fragment {
 
           // Insert fragment at the end.
           _managedFragments.add(fragment);
-          fragment.mount(parent, _end);
+          fragment.create(parent, _end);
           // Trigger the update action writing the values into the DOM tree.
           fragment.update(updateAll);
         }
@@ -64,12 +64,7 @@ class ForBlock<T> extends Fragment {
   }
 
   @override
-  void create() {
-    // We create child fragments as necessary
-  }
-
-  @override
-  void mount(Element target, [Node? anchor]) {
+  void create(Element target, [Node? anchor]) {
     _mountParent = target;
     _end = anchor;
     target.insertBefore(_startAnchor, anchor);

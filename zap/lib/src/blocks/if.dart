@@ -17,7 +17,7 @@ class IfBlock extends Fragment {
   ///
   /// When changing the component rendered by this `if` block, we need to mount
   /// it at the correct location. The easiest way to do this is to insert a
-  /// small text node at the location requested by [mount] and then use that
+  /// small text node at the location requested by [create] and then use that
   /// as an anchor for the child component.
   final Node _anchor = Text('');
 
@@ -38,23 +38,17 @@ class IfBlock extends Fragment {
       final newBlock = _current = _create(caseNumber);
 
       if (newBlock != null) {
-        newBlock.create();
         if (_isMounted) {
-          newBlock.mount(_anchor.parent!, _anchor);
+          newBlock.create(_anchor.parent!, _anchor);
         }
       }
     }
   }
 
   @override
-  void create() {
-    // We can't do anything, we don't know which block will end up being chosen
-  }
-
-  @override
-  void mount(Element target, [Node? anchor]) {
+  void create(Element target, [Node? anchor]) {
     target.insertBefore(_anchor, anchor);
-    _current?.mount(target, _anchor);
+    _current?.create(target, _anchor);
     _isMounted = true;
   }
 

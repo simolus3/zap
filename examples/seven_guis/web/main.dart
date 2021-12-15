@@ -4,5 +4,5 @@ import 'package:seven_guis/selector.zap.dart';
 
 void main() {
   final app = selector();
-  app.mountTo(querySelector('#output')!);
+  app.create(querySelector('#output')!);
 }
