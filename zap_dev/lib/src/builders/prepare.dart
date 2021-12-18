@@ -11,7 +11,8 @@ class PreparingBuilder implements Builder {
   Future<void> build(BuildStep buildStep) async {
     final input = buildStep.inputId;
     final tempDart = input.changeExtension('.tmp.zap.dart');
-    final tempCss = input.changeExtension('.tmp.zap.css');
+    final tempCss = buildStep.allowedOutputs
+        .singleWhere((out) => out.path.endsWith('.scss'));
 
     final errorReporter = ErrorReporter(reportError);
 
@@ -19,14 +20,15 @@ class PreparingBuilder implements Builder {
         await buildStep.readAsString(input), input.uri, errorReporter);
     await buildStep.writeAsString(tempDart, prepResult.temporaryDartFile);
 
-    final css = prepResult.cssFile;
-    if (css != null) {
-      await buildStep.writeAsString(tempCss, css);
-    }
+    final css = prepResult.temporaryScss;
+    await buildStep.writeAsString(tempCss, css);
   }
 
   @override
   Map<String, List<String>> get buildExtensions => {
-        '.zap': ['.tmp.zap.dart', '.tmp.zap.css'],
+        '^{{dir}}/{{file}}.zap': [
+          '{{dir}}/{{file}}.tmp.zap.dart',
+          '{{dir}}/_{{file}}.zap.scss',
+        ],
       };
 }

@@ -13,18 +13,32 @@ builders:
     build_extensions:
       ".zap":
         - ".zap.dart"
-        - ".zap.tmp.dart"
-        - ".zap.tmp.css"
+        - ".tmp.zap.dart"
+        - ".zap.scss"
 
-  aggregate_styles:
+  sass:
     import: 'package:zap_dev/builders.dart'
-    builder_factories: ["aggregateCss"]
-    auto_apply: root_package
+    builder_factories: ["sass"]
+    build_extensions:
+      ".scss": [".css", ".css.map"]
+      ".sass": [".css", ".css.map"]
+    auto_apply: dependents
     build_to: cache
-    required_inputs: [".css"]
-    build_extensions: {"lib/$lib$": ["web/main.css"]}
+    applies_builders: ["|zap_cleanup"]
+    defaults:
+      dev_options:
+        style: expanded
+        source_maps: true
+      release_options:
+        style: compressed
+        source_maps: false
 
 post_process_builders:
   zap_cleanup:
     import: 'package:zap_dev/builders.dart'
     builder_factory: zapCleanup
+    defaults:
+      dev_options:
+        dev: true
+      release_options:
+        dev: false

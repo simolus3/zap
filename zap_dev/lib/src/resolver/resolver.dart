@@ -69,7 +69,7 @@ class Resolver {
     }
 
     _assignUpdateFlags(scope.scopes[scope.root]!);
-    return ResolvedComponent(componentName, component);
+    return ResolvedComponent(componentName, component, prepare.cssClassName);
   }
 
   void _findExternalComponents() {
@@ -484,8 +484,7 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
             resolver.checker.checkEvent(attribute, name, value.expression);
         handlers.add(EventHandler(name, checkResult.known, modifiers, value,
             checkResult.dropParameter));
-      }
-      if (key.startsWith('bind:')) {
+      } else if (key.startsWith('bind:')) {
         // Bind an attribute of this element to a variable.
         final attributeName = key.substring('bind:'.length);
 
@@ -944,7 +943,8 @@ class _FlowAndCategorizedStatements {
 
 class ResolvedComponent {
   final String componentName;
+  final String? cssClassName;
   final Component component;
 
-  ResolvedComponent(this.componentName, this.component);
+  ResolvedComponent(this.componentName, this.component, this.cssClassName);
 }

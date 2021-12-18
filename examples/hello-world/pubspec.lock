@@ -127,6 +127,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "2.0.1"
+  cli_repl:
+    dependency: transitive
+    description:
+      name: cli_repl
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "0.2.2"
   cli_util:
     dependency: transitive
     description:
@@ -211,13 +218,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "2.1.0"
-  html:
+  http:
     dependency: transitive
     description:
-      name: html
+      name: http
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "0.15.0"
+    version: "0.13.4"
   http_multi_server:
     dependency: transitive
     description:
@@ -288,6 +295,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "1.0.0"
+  node_interop:
+    dependency: transitive
+    description:
+      name: node_interop
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "2.1.0"
   package_config:
     dependency: transitive
     description:
@@ -330,6 +344,27 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "1.1.0"
+  quiver:
+    dependency: transitive
+    description:
+      name: quiver
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "3.0.1+1"
+  sass:
+    dependency: transitive
+    description:
+      name: sass
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "1.45.0"
+  sass_api:
+    dependency: transitive
+    description:
+      name: sass_api
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "1.0.0-beta.23"
   scratch_space:
     dependency: transitive
     description:
@@ -407,6 +442,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "1.0.0"
+  tuple:
+    dependency: transitive
+    description:
+      name: tuple
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "2.0.0"
   typed_data:
     dependency: transitive
     description:

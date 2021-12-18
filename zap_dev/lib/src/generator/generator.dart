@@ -509,6 +509,11 @@ abstract class _ComponentOrSubcomponentWriter {
       } else {
         buffer.write("$_prefix.Element.tag('${node.tagName}')");
       }
+
+      final className = generator.component.cssClassName;
+      if (className != null) {
+        buffer.write("..addComponentClass('$className')");
+      }
     } else if (node is ReactiveText) {
       buffer.write("$_prefix.Text('')");
     } else if (node is ConstantText) {
@@ -999,7 +1004,7 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
     // Wrap the assignment in an $invalidateAssign block so that it can still
     // be used as an expression while also scheduling a node update!
     if (notifyUpdate) {
-      final updateCode = variable!.updateBitmask;
+      final updateCode = variable.updateBitmask;
 
       if (scope == rootScope) {
         _replaceRange(node.offset, 0, '\$invalidateAssign($updateCode, ');

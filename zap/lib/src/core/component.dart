@@ -31,8 +31,6 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
   final Map<Fragment, int> _fragmentUpdates = {};
   Completer<void>? _scheduledUpdate;
 
-  ZapComponent();
-
   /// Returns a stream transformer binding streams to the lifecycle of this
   /// component.
   ///

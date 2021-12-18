@@ -9,7 +9,7 @@ import '../preparation/scanner.dart';
 import '../errors.dart';
 import '../utils/base32.dart';
 import '../utils/dart.dart';
-import 'style/add_class.dart';
+import 'style/scoped_css.dart';
 
 const zapPrefix = '__zap__';
 const componentFunctionWrapper = '${zapPrefix}_component';
@@ -54,21 +54,25 @@ Future<PrepareResult> prepare(
 
   component = component.accept(_ExtractDom(), null) as DomNode;
 
+  String? className;
+
   final rawStyle = checker.style?.readInnerText(reporter);
-  String? resolvedStyle;
+  var resolvedStyle = '';
   if (rawStyle != null) {
     final hash = utf8.encoder.fuse(sha1).convert(sourceUri.toString());
     final hashText =
-        zbase32.convert(hash.bytes.sublist(0, min(hash.bytes.length, 16)));
+        zbase32.convert(hash.bytes.sublist(0, min(hash.bytes.length, 8)));
+    className = 'zap-$hashText';
 
-    resolvedStyle = rewriteComponentCss(
-        splitScript?.originalImports ?? [], rawStyle, hashText);
+    resolvedStyle = componentScss(
+        rawStyle, className, splitScript?.originalImports ?? const []);
   }
 
   return PrepareResult._(
     imports,
     fileBuilder.toString(),
     resolvedStyle,
+    className,
     checker._rootScope,
     component,
     checker.style,
@@ -79,7 +83,12 @@ Future<PrepareResult> prepare(
 class PrepareResult {
   final String imports;
   final String temporaryDartFile;
-  final String? cssFile;
+  final String temporaryScss;
+
+  /// The class name for this component, used to implement scoped styles.
+  ///
+  /// This can be null if the component has no styles associated with it.
+  final String? cssClassName;
   final PreparedVariableScope rootScope;
   final DomNode component;
 
@@ -89,7 +98,8 @@ class PrepareResult {
   PrepareResult._(
     this.imports,
     this.temporaryDartFile,
-    this.cssFile,
+    this.temporaryScss,
+    this.cssClassName,
     this.rootScope,
     this.component,
     this.style,

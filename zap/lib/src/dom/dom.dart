@@ -26,6 +26,10 @@ extension ZapElement on Element {
       attributes[key] = value.toString();
     }
   }
+
+  void addComponentClass(String className) {
+    classes.add(className);
+  }
 }
 
 extension ZapDomEvents<T extends Event> on ElementStream<T> {

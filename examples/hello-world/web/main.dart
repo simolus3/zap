@@ -1,7 +1,7 @@
 import 'dart:html';
-import 'package:hello_world/iteration.zap.dart';
+import 'package:hello_world/hello_world.zap.dart';
 
 void main() {
   final out = querySelector('#output')!;
-  iteration().create(out);
+  hello_world().create(out);
 }
