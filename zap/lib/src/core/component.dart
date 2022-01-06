@@ -3,10 +3,15 @@ import 'dart:html';
 
 import 'package:meta/meta.dart';
 
+import 'context.dart';
 import 'fragment.dart';
 import 'internal.dart';
 
+ContextScope? _parentScope;
+
 abstract class ComponentOrPending {
+  Map<Object?, Object?> get context;
+
   void onMount(Object? Function() callback);
   void onDestroy(void Function() callback);
   void beforeUpdate(void Function() callback);
@@ -30,6 +35,20 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
   int _updateBitmask = 0;
   final Map<Fragment, int> _fragmentUpdates = {};
   Completer<void>? _scheduledUpdate;
+
+  final ContextScope _scope;
+
+  @override
+  Map<Object?, Object?> get context => _scope;
+
+  ZapComponent(PendingComponent pendingSelf) : _scope = pendingSelf._context {
+    pendingSelf._wasCreated = true;
+
+    _onMountListeners.addAll(pendingSelf._onMount);
+    _afterUpdateListeners.addAll(pendingSelf._onAfterUpdate);
+    _beforeUpdateListeners.addAll(pendingSelf._onBeforeUpdate);
+    _unmountListeners.addAll(pendingSelf._onDestroy);
+  }
 
   /// Returns a stream transformer binding streams to the lifecycle of this
   /// component.
@@ -69,16 +88,6 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
     } else {
       return Future.microtask(() => null);
     }
-  }
-
-  @protected
-  void takeOverPending(PendingComponent component) {
-    component._wasCreated = true;
-
-    _onMountListeners.addAll(component._onMount);
-    _afterUpdateListeners.addAll(component._onAfterUpdate);
-    _beforeUpdateListeners.addAll(component._onBeforeUpdate);
-    _unmountListeners.addAll(component._onDestroy);
   }
 
   @override
@@ -191,6 +200,15 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
     $invalidateSubcomponent(f, flags);
     return value;
   }
+
+  @protected
+  T $createChildComponent<T extends ZapComponent>(T Function() create) {
+    _parentScope = _scope;
+    final component = create();
+    _parentScope = null;
+
+    return component;
+  }
 }
 
 class PendingComponent extends ComponentOrPending {
@@ -200,6 +218,11 @@ class PendingComponent extends ComponentOrPending {
   final _onDestroy = <void Function()>[];
 
   var _wasCreated = false;
+
+  final _context = ContextScope(_parentScope);
+
+  @override
+  Map<Object?, Object?> get context => _context;
 
   @override
   void afterUpdate(void Function() callback) {

@@ -83,6 +83,15 @@ c
       ),
     );
   });
+
+  test('parses slots', () {
+    _check('''
+<div>
+	<slot name="header">No header was provided</slot>
+	<p>Some content between header and footer</p>
+	<slot name="footer"></slot>
+</div>''', AdjacentNodes([]));
+  });
 }
 
 void _checkEqual(AstNode a, AstNode b) {

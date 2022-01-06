@@ -3,16 +3,12 @@ import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:collection/collection.dart';
 
-import 'component.dart';
-
 class ZapVariableScope {
-  ComponentOrSubcomponent? owningComponent;
-
   final List<BaseZapVariable> declaredVariables = [];
   final List<ZapVariableScope> childScopes = [];
   ZapVariableScope? parent;
 
-  final FunctionDeclaration function;
+  final FunctionDeclaration? function;
   final Map<TypeParameterElement, DartType> instantiation;
 
   ZapVariableScope(this.function, {this.instantiation = const {}});

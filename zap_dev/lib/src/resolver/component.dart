@@ -12,7 +12,6 @@ abstract class ComponentOrSubcomponent {
 
   ComponentOrSubcomponent(
       this.children, this.scope, this.fragment, this.flows) {
-    scope.owningComponent = this;
     fragment.owningComponent = this;
 
     for (final child in children) {
@@ -26,6 +25,7 @@ abstract class ComponentOrSubcomponent {
 class Component extends ComponentOrSubcomponent {
   final List<ComponentInitializer> componentInitializers;
   final List<FunctionDeclarationStatement> instanceFunctions;
+  final List<String?> usedSlots;
 
   Component(
     List<ComponentOrSubcomponent> children,
@@ -34,6 +34,7 @@ class Component extends ComponentOrSubcomponent {
     List<Flow> flows,
     this.componentInitializers,
     this.instanceFunctions,
+    this.usedSlots,
   ) : super(children, scope, fragment, flows);
 }
 

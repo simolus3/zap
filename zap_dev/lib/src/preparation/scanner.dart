@@ -125,8 +125,10 @@ class Scanner {
     final peek = codeUnits[position];
     switch (peek) {
       case $apos:
+        position++;
         return _simpleToken(TokenType.singleQuote);
       case $quot:
+        position++;
         return _simpleToken(TokenType.doubleQuote);
       case $lbrace:
         position++;
@@ -146,11 +148,14 @@ class Scanner {
       _failure(_tokenSpan(), 'Unexpected end in string literal');
     }
 
+    startOfToken = position;
     final peek = codeUnits[position];
     switch (peek) {
       case $apos:
+        position++;
         return _simpleToken(TokenType.singleQuote);
       case $quot:
+        position++;
         return _simpleToken(TokenType.doubleQuote);
       case $lbrace:
         position++;

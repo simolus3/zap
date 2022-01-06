@@ -18,7 +18,8 @@ abstract class Fragment {
   /// updates.
   void update(int delta);
 
-  /// Synchronously removes nodes managed by this component from the document.
+  /// Synchronously removes nodes managed by this component from the document
+  /// and disposes resources potentially held by this fragment.
   ///
   /// This method may only be called once.
   void destroy();

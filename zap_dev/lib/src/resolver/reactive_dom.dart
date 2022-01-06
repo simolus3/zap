@@ -50,6 +50,22 @@ class ReactiveElement extends ReactiveNode {
   }
 }
 
+/// Mount a slot into the DOM of a component.
+///
+/// Slots can be set by parent components.
+class MountSlot extends ReactiveNode {
+  /// If this refers to a named slot, this is that name.
+  ///
+  /// Otherwise, the unnamed slot is mounted here.
+  final String? slotName;
+  final DomFragment defaultContent;
+
+  MountSlot(this.slotName, this.defaultContent);
+
+  @override
+  Iterable<ReactiveNode> get children => const Iterable.empty();
+}
+
 class ReactiveRawHtml extends ReactiveNode {
   final ResolvedDartExpression expression;
   final bool needsToString;
@@ -122,7 +138,15 @@ class SubComponent extends ReactiveNode {
   final ExternalComponent component;
   final Map<String, ResolvedDartExpression> expressions;
 
-  SubComponent(this.component, this.expressions);
+  final DomFragment? defaultSlot;
+  final Map<String, DomFragment> slots;
+
+  SubComponent({
+    required this.component,
+    required this.expressions,
+    this.defaultSlot,
+    this.slots = const {},
+  });
 
   @override
   Iterable<ReactiveNode> get children => [];

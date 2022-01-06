@@ -102,14 +102,13 @@ abstract class _ComponentOrSubcomponentWriter {
   _ComponentOrSubcomponentWriter(this.generator, this.classScope)
       : buffer = classScope.leaf();
 
-  bool _onlyRendersSubcomponents(ReactiveNode node) =>
-      node is SubComponent || node is ReactiveBlock;
+  bool _rendersSubcomponents(ReactiveNode node) =>
+      node is SubComponent || node is ReactiveBlock || node is MountSlot;
 
   bool _isZapFragment(ReactiveNode node) =>
-      _onlyRendersSubcomponents(node) || node is ReactiveRawHtml;
+      _rendersSubcomponents(node) || node is ReactiveRawHtml;
 
-  bool _isInitializedLater(ReactiveNode node) =>
-      _onlyRendersSubcomponents(node);
+  bool _isInitializedLater(ReactiveNode node) => _rendersSubcomponents(node);
 
   void write();
 
@@ -121,6 +120,37 @@ abstract class _ComponentOrSubcomponentWriter {
       return _DartSourceRewriter(generator, component.scope, 0, '')
           ._prefixFor(generator.component.component.scope, trailingDot: false);
     }
+  }
+
+  String? dartTypeName(ReactiveNode node) {
+    if (node is ReactiveElement) {
+      final known = node.knownElement;
+      return known != null ? '$_prefix.${known.className}' : '$_prefix.Element';
+    } else if (node is ReactiveText || node is ConstantText) {
+      return '$_prefix.Text';
+    } else if (node is ReactiveRawHtml) {
+      return '$_prefix.HtmlTag';
+    } else if (node is SubComponent) {
+      return node.component.className;
+    } else if (node is ReactiveIf) {
+      return '$_prefix.IfBlock';
+    } else if (node is ReactiveFor) {
+      final innerType =
+          node.elementType.getDisplayString(withNullability: true);
+      return '$_prefix.ForBlock<$innerType>';
+    } else if (node is ReactiveAsyncBlock) {
+      final innerType = node.type.getDisplayString(withNullability: true);
+
+      return node.isStream
+          ? '$_prefix.StreamBlock<$innerType>'
+          : '$_prefix.FutureBlock<$innerType>';
+    } else if (node is MountSlot) {
+      return '$_prefix.Slot';
+    }
+  }
+
+  String _slotVariable(String? slot) {
+    return '\$slot_${slot ?? ''}';
   }
 
   void writeNodesAndBlockHelpers() {
@@ -135,7 +165,7 @@ abstract class _ComponentOrSubcomponentWriter {
 
       buffer
         ..write('final ')
-        ..write(node.dartTypeName!)
+        ..write(dartTypeName(node))
         ..write(' ')
         ..write(name);
 
@@ -268,6 +298,17 @@ abstract class _ComponentOrSubcomponentWriter {
       } else {
         // and .remove() to unmount `dart:html` elements.
         buffer.write('.remove();');
+      }
+    }
+
+    // We can unmount the root nodes to remove this component from the DOM tree.
+    // However, we should still explicitly destroy() child components so that
+    // they can clean up resources.
+    for (final node in component.fragment.allNodes) {
+      if (_rendersSubcomponents(node)) {
+        buffer.write(generator._nameForNode(node));
+
+        buffer.write('.destroy();');
       }
     }
 
@@ -521,7 +562,10 @@ abstract class _ComponentOrSubcomponentWriter {
     } else if (node is ReactiveRawHtml) {
       buffer.write('$_prefix.HtmlTag()');
     } else if (node is SubComponent) {
+      final className = node.component.className;
+
       buffer
+        ..write('\$createChildComponent<$className>(() => ')
         ..write(node.component.className)
         ..write('(');
 
@@ -541,7 +585,7 @@ abstract class _ComponentOrSubcomponentWriter {
 
         buffer.write(',');
       }
-      buffer.writeln(')');
+      buffer.writeln('))');
     } else if (node is ReactiveIf) {
       buffer
         ..writeln('$_prefix.IfBlock((caseNum) {')
@@ -601,6 +645,14 @@ abstract class _ComponentOrSubcomponentWriter {
         buffer.write('..${indexVariable.element.name} = index');
       }
       buffer.write(')');
+    } else if (node is MountSlot) {
+      final fallbackComponent =
+          generator._nameForMisc(node.defaultContent.owningComponent!);
+
+      final providedSlot = '$componentThis.${_slotVariable(node.slotName)}';
+      final fallback = '() => $fallbackComponent($componentThis)';
+
+      buffer.write('$_prefix.Slot($providedSlot ?? $fallback)');
     } else {
       throw ArgumentError('Unknown node type: $node');
     }
@@ -733,6 +785,13 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
       }
     }
 
+    // Slots are also passed down as variables
+    for (final slot in component.usedSlots) {
+      final name = _slotVariable(slot);
+      buffer.writeln('final $_prefix.Fragment Function()? $name;');
+      variablesToInitialize.add(name);
+    }
+
     // And DOM nodes
     writeNodesAndBlockHelpers();
 
@@ -753,9 +812,9 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
     // Write a private constructor taking all variables and elements
     buffer
       ..write(name)
-      ..write('._(')
+      ..write('._($_prefix.PendingComponent pendingSelf, ')
       ..write(variablesToInitialize.map((e) => 'this.$e').join(', '))
-      ..writeln(');');
+      ..writeln('): super(pendingSelf);');
 
     writeFactory();
 
@@ -800,7 +859,14 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
         ..write(',');
     }
 
+    // Also write slots
+    for (final slot in component.usedSlots) {
+      buffer.write('$_prefix.Fragment Function()? ${_slotVariable(slot)},');
+    }
+
     buffer.writeln(') {');
+
+    buffer.writeln('final self = $_prefix.PendingComponent();');
 
     // Write all statements for the initializer
     for (final initializer in component.componentInitializers) {
@@ -840,7 +906,7 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
     }
 
     // Write call to constructor.
-    buffer.write('return $name._(');
+    buffer.write('return $name._(self,');
 
     // Write instantiated variables first
     for (final variable in dartVariables) {
@@ -851,6 +917,11 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
       buffer
         ..write(variable.element.name)
         ..write(',');
+    }
+
+    // Followed by slots
+    for (final slot in component.usedSlots) {
+      buffer.write('${_slotVariable(slot)},');
     }
 
     buffer.writeln(');}');
@@ -1063,35 +1134,6 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
 
       final replacement = '$prefix$name /* ${node.name} */';
       _replaceNode(node, replacement);
-    }
-  }
-}
-
-extension on ReactiveNode {
-  String? get dartTypeName {
-    final $this = this;
-
-    if ($this is ReactiveElement) {
-      final known = $this.knownElement;
-      return known != null ? '$_prefix.${known.className}' : '$_prefix.Element';
-    } else if ($this is ReactiveText || $this is ConstantText) {
-      return '$_prefix.Text';
-    } else if ($this is ReactiveRawHtml) {
-      return '$_prefix.HtmlTag';
-    } else if ($this is SubComponent) {
-      return $this.component.className;
-    } else if ($this is ReactiveIf) {
-      return '$_prefix.IfBlock';
-    } else if ($this is ReactiveFor) {
-      final innerType =
-          $this.elementType.getDisplayString(withNullability: true);
-      return '$_prefix.ForBlock<$innerType>';
-    } else if ($this is ReactiveAsyncBlock) {
-      final innerType = $this.type.getDisplayString(withNullability: true);
-
-      return $this.isStream
-          ? '$_prefix.StreamBlock<$innerType>'
-          : '$_prefix.FutureBlock<$innerType>';
     }
   }
 }

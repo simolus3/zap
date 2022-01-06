@@ -17,3 +17,9 @@ class _ComponentMarker {
 }
 
 const $$componentMarker = _ComponentMarker();
+
+class Slot {
+  final String? name;
+
+  Slot(this.name);
+}

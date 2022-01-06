@@ -19,6 +19,10 @@ Future<PrepareResult> prepare(
   final scanner = Scanner(source, sourceUri, reporter);
   final parser = Parser(scanner);
   var component = parser.parse();
+
+  final findSlots = _FindSlotTags();
+  component.accept(findSlots, null);
+
   component.transformChildren(_RewriteMixedDartExpressions(), null);
 
   final checker = _ComponentSanityChecker(reporter);
@@ -33,25 +37,32 @@ Future<PrepareResult> prepare(
     splitScript =
         ScriptComponents.of(script, rewriteImports: ImportRewriteMode.zapToApi);
     imports = splitScript.directives;
-
-    // Analyze as script as if it were written in a function to allow
-    // statements.
-    fileBuilder
-      ..writeln("import 'dart:html';")
-      ..writeln("import 'package:zap/internal/dsl.dart';")
-      ..writeln(splitScript.directives)
-      ..writeln('void $componentFunctionWrapper(ComponentOrPending self) {')
-      ..writeln(splitScript.body);
   }
+
+  // Analyze as script as if it were written in a function to allow
+  // statements.
+  fileBuilder
+    ..writeln("import 'dart:html';")
+    ..writeln("import 'package:zap/internal/dsl.dart';")
+    ..writeln(imports)
+    ..writeln('void $componentFunctionWrapper(ComponentOrPending self) {')
+    ..writeln(splitScript?.body ?? '');
 
   // The analyzer does not provide an API to parse and resolve expressions, so
-  // write them as top-level fields which we can then take a look at.
+  // write them as variables which we can then take a look at.
   _DartExpressionWriter(fileBuilder).start(checker._rootScope);
 
-  if (script != null) {
-    fileBuilder.writeln('}');
+  // Also, write and annotate slots so that other build steps can reason about
+  // the slots defined by a component.
+  if (findSlots.definedSlots.isNotEmpty) {
+    for (final slot in findSlots.definedSlots) {
+      fileBuilder
+          .writeln('@Slot(${slot == null ? 'null' : dartStringLiteral(slot)})');
+    }
+    fileBuilder.writeln('dynamic __slots;');
   }
 
+  fileBuilder.writeln('}');
   component = component.accept(_ExtractDom(), null) as DomNode;
 
   String? className;
@@ -119,7 +130,7 @@ class _ComponentSanityChecker extends RecursiveVisitor<void, void> {
   _ComponentSanityChecker(this.errors);
 
   @override
-  visitRawDartExpression(RawDartExpression e, a) {
+  void visitRawDartExpression(RawDartExpression e, a) {
     final expr = ScopedDartExpression(e, _scope);
     _scope.dartExpressions.add(expr);
   }
@@ -255,6 +266,30 @@ class _DartExpressionWriter {
 
     _writeExpressionsAndChildren(scope);
     target.writeln('}');
+  }
+}
+
+class _FindSlotTags extends RecursiveVisitor<void, void> {
+  /// All slots defined by this component. Contains the name of the slot, or
+  /// `null` if it's the default unnamed slot.
+  final Set<String?> definedSlots = {};
+
+  @override
+  void visitElement(Element e, void a) {
+    if (e.tagName == 'slot') {
+      String? name;
+
+      for (final attribute in e.attributes) {
+        if (attribute.key == 'name') {
+          name = ((attribute.value as StringLiteral).children.single as Text)
+              .content;
+        }
+      }
+
+      definedSlots.add(name);
+    }
+
+    super.visitElement(e, a);
   }
 }
 
