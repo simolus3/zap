@@ -4,6 +4,7 @@ import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/dart/constant/value.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
+import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
 
 enum ImportRewriteMode {
@@ -55,20 +56,36 @@ bool isComponent(ClassElement element) {
   return _findDslAnnotation(element, '_ComponentMarker') != null;
 }
 
-DartObject? _findDslAnnotation(Element element, String className) {
-  for (final annotation in element.metadata) {
+Iterable<String?> readSlotAnnotations(Element element) {
+  return _findDslAnnotations(element, 'Slot').map((e) {
+    final name = e.getField('name');
+
+    if (name == null || name.isNull) {
+      return null;
+    } else {
+      return name.toStringValue();
+    }
+  });
+}
+
+Iterable<DartObject> _findDslAnnotations(Element element, String className) {
+  return element.metadata.map((annotation) {
     final value = annotation.computeConstantValue();
-    if (value == null) continue;
+    if (value == null) return null;
 
     final type = value.type;
-    if (type is! InterfaceType) continue;
+    if (type is! InterfaceType) return null;
 
     final backingClass = type.element;
     if (backingClass.name == className &&
         backingClass.library.name == 'zap.internal.dsl') {
       return value;
     }
-  }
+  }).whereType();
+}
+
+DartObject? _findDslAnnotation(Element element, String className) {
+  return _findDslAnnotations(element, className).firstOrNull;
 }
 
 class _ZapToDartImportRewriter extends GeneralizingAstVisitor<void> {

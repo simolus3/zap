@@ -56,11 +56,11 @@ class Resolver {
 
     final translator = _DomTranslator(this);
     prepare.component.accept(translator, null);
-    final rootFragment =
-        DomFragment(translator._currentChildren, scope.resolvedRootScope);
+    final rootFragment = DomFragment(
+        translator._finishChildGroup().children, scope.resolvedRootScope);
 
-    final component = _FindComponents(this, rootFragment, translator.usedSlots)
-        .inferComponent();
+    final component =
+        _FindComponents(this, rootFragment, prepare.slots).inferComponent();
 
     // Mark all variables read in a flow
     for (final flow in component.flows) {
@@ -88,13 +88,23 @@ class Resolver {
 
   ExternalComponent _readComponent(String name, ClassElement element) {
     final parameters = <MapEntry<String, DartType>>[];
+    var slots = <String?>[];
 
     for (final accessor in element.fields) {
-      parameters.add(MapEntry(accessor.name, accessor.type));
+      final getter = accessor.getter;
+      final annotations =
+          getter == null ? null : readSlotAnnotations(getter).toList();
+
+      if (annotations != null && annotations.isNotEmpty) {
+        // This is the getter introduced to represent slots
+        slots = annotations;
+      } else {
+        parameters.add(MapEntry(accessor.name, accessor.type));
+      }
     }
 
     // Note: We're not using element.name since the name may be aliased.
-    return ExternalComponent(name, parameters);
+    return ExternalComponent(name, parameters, slots);
   }
 
   void _assignUpdateFlags(ZapVariableScope scope, [int start = 0]) {
@@ -383,22 +393,60 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
 
   final Resolver resolver;
 
-  PreparedVariableScope preparedScope;
-
   ZapVariableScope get scope => resolver.scope.scopes[preparedScope]!;
 
-  List<ReactiveNode> _currentChildren = [];
+  final List<PreparedVariableScope> _variableScopes;
+  final List<_PendingChildren> _childScopes = [_PendingChildren()];
 
   TypeSystem get typeSystem => resolver.typeSystem;
   TypeProvider get typeProvider => resolver.typeProvider;
   ErrorReporter get errors => resolver.errorReporter;
 
-  final List<String?> usedSlots = [];
+  PreparedVariableScope get preparedScope => _variableScopes.last;
 
-  _DomTranslator(this.resolver) : preparedScope = resolver.scope.root;
+  _DomTranslator(this.resolver) : _variableScopes = [resolver.scope.root];
 
   ResolvedDartExpression _resolveExpression(zap.RawDartExpression expr) {
     return resolver.dartAnalysis._resolveExpression(expr);
+  }
+
+  void _newChildGroup([_PendingChildren? children]) {
+    _childScopes.add(children ?? _PendingChildren());
+  }
+
+  void _addChild(ReactiveNode child, [String? slot]) {
+    final children = _childScopes.last;
+
+    if (!children.assignableSlotNames.contains(slot)) {
+      // todo: report error
+    } else if (slot == null) {
+      children.children.add(child);
+    } else {
+      children.slotChildren.putIfAbsent(slot, () => []).add(child);
+    }
+  }
+
+  _PendingChildren _finishChildGroup() => _childScopes.removeLast();
+
+  void _enterScope(PreparedVariableScope scope) => _variableScopes.add(scope);
+
+  /// Some scopes are necessary when some DOM nodes are treated as a fragment
+  /// and generated into a separate class. In particular, this is true for slots
+  /// which don't have their own scope in the language but generate into a new
+  /// fragment. Having a 1:1 mapping between scopes and fragments simplifies the
+  /// generator, so we sometimes add "fake" scopes to generate fragments for
+  /// these components.
+  ZapVariableScope _virtualChildScope() {
+    final fakeChildScope = ZapVariableScope(null)..parent = scope;
+    scope.childScopes.add(fakeChildScope);
+    return fakeChildScope;
+  }
+
+  void _leaveScope() => _variableScopes.removeLast();
+
+  DomFragment _newFragment(List<ReactiveNode> children,
+      [ZapVariableScope? scope]) {
+    return DomFragment(children, scope ?? this.scope);
   }
 
   @override
@@ -413,16 +461,10 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
     }
   }
 
-  DomFragment _newFragment(List<ReactiveNode> children,
-      [ZapVariableScope? scope]) {
-    return DomFragment(children, scope ?? this.scope);
-  }
-
   @override
   void visitAwaitBlock(zap.AwaitBlock e, void arg) {
-    final oldScope = preparedScope;
-    preparedScope = preparedScope.children
-        .singleWhere((s) => s is AsyncBlockVariableScope && s.block == e);
+    _enterScope(preparedScope.children
+        .singleWhere((s) => s is AsyncBlockVariableScope && s.block == e));
 
     final expr = _resolveExpression(e.futureOrStream);
     DartType inner;
@@ -432,20 +474,17 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
       inner = resolver.checker.checkFuture(expr.type, e.futureOrStream.span);
     }
 
-    final oldChildren = _currentChildren;
-    _currentChildren = [];
-
+    _newChildGroup();
     e.innerNodes.accept(this, arg);
 
-    _currentChildren = oldChildren
-      ..add(ReactiveAsyncBlock(
-        isStream: e.isStream,
-        type: inner,
-        expression: expr,
-        fragment: _newFragment(_currentChildren),
-      ));
-
-    preparedScope = oldScope;
+    final block = ReactiveAsyncBlock(
+      isStream: e.isStream,
+      type: inner,
+      expression: expr,
+      fragment: _newFragment(_finishChildGroup().children),
+    );
+    _addChild(block);
+    _leaveScope();
   }
 
   @override
@@ -466,19 +505,15 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
   @override
   void visitElement(zap.Element e, void arg) {
     List<ReactiveNode> readChildren() {
-      final old = _currentChildren;
-
-      _currentChildren = [];
+      _newChildGroup();
       e.innerContent?.accept(this, arg);
-      final childrenOfElement = _currentChildren;
-
-      _currentChildren = old;
-      return childrenOfElement;
+      return _finishChildGroup().children;
     }
 
     final binders = <ElementBinder>[];
     final handlers = <EventHandler>[];
     final attributes = <String, ReactiveAttribute>{};
+    String? slot;
 
     for (final attribute in e.attributes) {
       final key = attribute.key;
@@ -520,6 +555,8 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
         } else {
           binders.add(BindAttribute(attributeName, zapTarget));
         }
+      } else if (key == 'slot') {
+        slot = (value.expression as SimpleStringLiteral).value;
       } else {
         // A regular attribute it is then.
         final type = value.type;
@@ -541,10 +578,28 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
 
     if (external != null) {
       // Tag references another zap component
-      // todo: Extract applied slots and expressions.
-      _currentChildren.add(SubComponent(component: external, expressions: {}));
+      _newChildGroup(_PendingChildren(assignableSlotNames: external.slotNames));
+      e.innerContent?.accept(this, arg);
+      final result = _finishChildGroup();
+
+      // We're using virtual child scopes here because slots are generated into
+      // fragments, and each fragment needs to have a unique scope.
+      _addChild(
+        SubComponent(
+          component: external,
+          expressions: {},
+          defaultSlot: result.children.isEmpty
+              ? null
+              : _newFragment(result.children, _virtualChildScope()),
+          slots: {
+            for (final entry in result.slotChildren.entries)
+              entry.key: _newFragment(entry.value, _virtualChildScope()),
+          },
+        ),
+        slot,
+      );
     } else if (e.tagName == 'slot') {
-      // Mount a slot then.
+      // Declares a slot mounting a fragment passed through another component.
       String? slotName;
       if (attributes.containsKey('name')) {
         final name = attributes['name']!.backingExpression.expression;
@@ -553,49 +608,45 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
         }
       }
 
-      usedSlots.add(slotName);
-
-      // The default content is rendered as a subcomponent, so it should be
-      // treated as a child scope. We don't generate a proper child scope
-      // because no new variables can be introduced.
-      final fakeChildScope = ZapVariableScope(null)..parent = scope;
-      scope.childScopes.add(fakeChildScope);
-      _currentChildren.add(
-          MountSlot(slotName, _newFragment(readChildren(), fakeChildScope)));
+      // Use a virtual child scope because the default slot contents are
+      // generated as a new fragment class.
+      _addChild(
+          MountSlot(
+              slotName, _newFragment(readChildren(), _virtualChildScope())),
+          slot);
     } else {
       // Regular HTML component then
       final known = knownTags[e.tagName.toLowerCase()];
-      _currentChildren.add(ReactiveElement(
-          e.tagName, known, attributes, handlers, readChildren(), binders));
+      _addChild(
+          ReactiveElement(
+              e.tagName, known, attributes, handlers, readChildren(), binders),
+          slot);
     }
   }
 
   @override
   void visitForBlock(zap.ForBlock e, void arg) {
-    final oldScope = preparedScope;
-    preparedScope = oldScope.children
+    _enterScope(preparedScope.children
         .whereType<ForBlockVariableScope>()
-        .singleWhere((s) => s.block == e);
+        .singleWhere((s) => s.block == e));
 
-    final oldChildren = _currentChildren;
-    final children = _currentChildren = [];
+    _newChildGroup();
     e.body.accept(this, arg);
+    final children = _finishChildGroup().children;
 
     final expr = _resolveExpression(e.iterable);
     final innerType =
         resolver.checker.checkIterable(expr.type, e.iterable.span);
 
-    oldChildren.add(ReactiveFor(expr, innerType, _newFragment(children)));
-
-    _currentChildren = oldChildren;
-    preparedScope = oldScope;
+    _addChild(ReactiveFor(expr, innerType, _newFragment(children)));
+    _leaveScope();
   }
 
   @override
   void visitHtmlTag(zap.HtmlTag e, void a) {
     final expression = _resolveExpression(e.expression);
 
-    _currentChildren.add(ReactiveRawHtml(
+    _addChild(ReactiveRawHtml(
       expression: expression,
       needsToString: !resolver.checker.isString(expression.type),
     ));
@@ -603,9 +654,8 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
 
   @override
   void visitIfBlock(zap.IfBlock e, void arg) {
-    final oldScope = preparedScope;
-    preparedScope = preparedScope.children
-        .singleWhere((s) => s is SubFragmentScope && s.forNode == e);
+    _enterScope(preparedScope.children
+        .singleWhere((s) => s is SubFragmentScope && s.forNode == e));
 
     final conditions = <ResolvedDartExpression>[];
     final whens = <List<ReactiveNode>>[];
@@ -625,26 +675,20 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
     while (currentIf != null) {
       conditions.add(checkBoolean(currentIf.condition));
 
-      final oldChildren = _currentChildren;
-      _currentChildren = [];
+      _newChildGroup();
 
       currentIf.then.accept(this, arg);
-      whens.add(_currentChildren);
-
-      _currentChildren = oldChildren;
+      whens.add(_finishChildGroup().children);
 
       final orElse = currentIf.otherwise;
       if (orElse is zap.IfBlock) {
         currentIf = orElse;
       } else {
         if (orElse != null) {
-          final oldChildren = _currentChildren;
-          _currentChildren = [];
+          _newChildGroup();
 
           orElse.accept(this, arg);
-          otherwise = _currentChildren;
-
-          _currentChildren = oldChildren;
+          otherwise = _finishChildGroup().children;
         }
         currentIf = null;
       }
@@ -654,30 +698,27 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
     final otherwiseFragment =
         otherwise == null ? null : _newFragment(otherwise);
 
-    _currentChildren
-        .add(ReactiveIf(conditions, whenFragments, otherwiseFragment));
-    preparedScope = oldScope;
+    _addChild(ReactiveIf(conditions, whenFragments, otherwiseFragment));
+    _leaveScope();
   }
 
   @override
   void visitKeyBlock(zap.KeyBlock e, void a) {
-    final oldScope = preparedScope;
-    preparedScope = oldScope.children
-        .singleWhere((s) => s is SubFragmentScope && s.introducedFor == e);
-    final oldChildren = _currentChildren;
-    _currentChildren = [];
+    _enterScope(preparedScope.children
+        .singleWhere((s) => s is SubFragmentScope && s.introducedFor == e));
 
+    _newChildGroup();
     e.content.accept(this, a);
     final expr = _resolveExpression(e.expression);
-    final fragment = _newFragment(_currentChildren);
+    final fragment = _newFragment(_finishChildGroup().children);
 
-    _currentChildren = oldChildren..add(ReactiveKeyBlock(expr, fragment));
-    preparedScope = oldScope;
+    _addChild(ReactiveKeyBlock(expr, fragment));
+    _leaveScope();
   }
 
   @override
   void visitText(zap.Text e, void arg) {
-    _currentChildren.add(ConstantText(e.content));
+    _addChild(ConstantText(e.content));
   }
 
   @override
@@ -688,8 +729,21 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
     // string already.
     final needsToString = !resolver.checker.isString(expr.type);
 
-    _currentChildren.add(ReactiveText(expr, needsToString));
+    _addChild(ReactiveText(expr, needsToString));
   }
+}
+
+class _PendingChildren {
+  final List<ReactiveNode> children = [];
+
+  /// All slots that can be assigned in the current context (with the unnamed
+  /// slot being represented as null).
+  ///
+  /// This set will be empty when not immediately below a subcomponent.
+  final List<String?> assignableSlotNames;
+  final Map<String, List<ReactiveNode>> slotChildren = {};
+
+  _PendingChildren({this.assignableSlotNames = const [null]});
 }
 
 class _TypeSubstitution
@@ -823,6 +877,12 @@ class _FindComponents {
       }
     }
 
+    void resolveWithoutOwnStatements(DomFragment fragment) {
+      final flows = _findFlowUpdates(variables, fragment, []);
+      subComponents.add(ResolvedSubComponent(
+          flows.subComponents, fragment.resolvedScope, fragment, flows.flow));
+    }
+
     // And also infer it from the DOM
     void processNode(ReactiveNode node) {
       if (node is ReactiveText) {
@@ -924,9 +984,16 @@ class _FindComponents {
           UpdateBlockExpression(node),
         ));
       } else if (node is MountSlot) {
-        final flow = _findFlowUpdates(variables, node.defaultContent, []);
-        subComponents.add(ResolvedSubComponent(flow.subComponents,
-            node.defaultContent.resolvedScope, node.defaultContent, flow.flow));
+        resolveWithoutOwnStatements(node.defaultContent);
+      } else if (node is SubComponent) {
+        // todo: Recognize flows to update props passed to subcomponents.
+
+        final defaultSlot = node.defaultSlot;
+        if (defaultSlot != null) {
+          resolveWithoutOwnStatements(defaultSlot);
+        }
+
+        node.slots.values.forEach(resolveWithoutOwnStatements);
       } else {
         node.children.forEach(processNode);
       }

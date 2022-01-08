@@ -569,6 +569,7 @@ abstract class _ComponentOrSubcomponentWriter {
         ..write(node.component.className)
         ..write('(');
 
+      // Write properties passed down to the component.
       for (final property in node.component.parameters) {
         final name = property.key;
         final actualValue = node.expressions[name];
@@ -585,6 +586,22 @@ abstract class _ComponentOrSubcomponentWriter {
 
         buffer.write(',');
       }
+
+      // Also write slots passed down.
+      for (final slot in node.component.slotNames) {
+        final child = slot == null ? node.defaultSlot : node.slots[slot];
+
+        if (child == null) {
+          buffer.write('null');
+        } else {
+          final classOfFragment =
+              generator._nameForMisc(child.owningComponent!);
+          buffer.write('() => $classOfFragment(this)');
+        }
+
+        buffer.write(',');
+      }
+
       buffer.writeln('))');
     } else if (node is ReactiveIf) {
       buffer

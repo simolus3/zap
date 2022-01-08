@@ -59,7 +59,7 @@ Future<PrepareResult> prepare(
       fileBuilder
           .writeln('@Slot(${slot == null ? 'null' : dartStringLiteral(slot)})');
     }
-    fileBuilder.writeln('dynamic __slots;');
+    fileBuilder.writeln('dynamic ${zapPrefix}__slots;');
   }
 
   fileBuilder.writeln('}');
@@ -86,6 +86,7 @@ Future<PrepareResult> prepare(
     className,
     checker._rootScope,
     component,
+    findSlots.definedSlots.toList(),
     checker.style,
     checker.script,
   );
@@ -103,6 +104,10 @@ class PrepareResult {
   final PreparedVariableScope rootScope;
   final DomNode component;
 
+  /// All slots defined by this component. The unnamed slot is represented by
+  /// `null`.
+  final List<String?> slots;
+
   final Element? style;
   final Element? script;
 
@@ -113,6 +118,7 @@ class PrepareResult {
     this.cssClassName,
     this.rootScope,
     this.component,
+    this.slots,
     this.style,
     this.script,
   );

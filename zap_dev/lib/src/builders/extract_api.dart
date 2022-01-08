@@ -50,23 +50,36 @@ class _ApiInferrer extends RecursiveAstVisitor<void> {
   @override
   void visitVariableDeclaration(VariableDeclaration declaration) {
     final element = declaration.declaredElement;
-    if (element is LocalVariableElement && isProp(element)) {
-      // This variable denotes a property that can be set by other components.
-      final type = element.type.getDisplayString(withNullability: true);
 
-      output
-        ..write(type)
-        ..write(' get ')
-        ..write(element.name)
-        ..writeln(';');
+    if (element is LocalVariableElement) {
+      if (isProp(element)) {
+        // This variable denotes a property that can be set by other components.
+        final type = element.type.getDisplayString(withNullability: true);
 
-      if (!element.isFinal) {
         output
-          ..write('set ')
-          ..write(element.name)
-          ..write('(')
           ..write(type)
-          ..writeln(' value);');
+          ..write(' get ')
+          ..write(element.name)
+          ..writeln(';');
+
+        if (!element.isFinal) {
+          output
+            ..write('set ')
+            ..write(element.name)
+            ..write('(')
+            ..write(type)
+            ..writeln(' value);');
+        }
+      }
+
+      final slots = readSlotAnnotations(element).toList();
+
+      if (slots.isNotEmpty) {
+        for (final slot in slots) {
+          output.writeln(
+              '@Slot(${slot == null ? 'null' : dartStringLiteral(slot)})');
+        }
+        output.writeln('void get slots;');
       }
     }
   }

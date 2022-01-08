@@ -21,5 +21,5 @@ const $$componentMarker = _ComponentMarker();
 class Slot {
   final String? name;
 
-  Slot(this.name);
+  const Slot(this.name);
 }
