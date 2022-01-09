@@ -204,11 +204,16 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
       });
 
       final dartExpr = declaration.variables.variables.single.initializer!;
-      final type = dartExpr.staticType ?? resolver.typeProvider.dynamicType;
-
-      return ResolvedDartExpression(dartExpr,
-          type.acceptWithArgument(_substitution, scope.instantiation));
+      return _resolveAstExpression(dartExpr, scope);
     });
+  }
+
+  ResolvedDartExpression _resolveAstExpression(
+      Expression expr, ZapVariableScope scope) {
+    final type = expr.staticType ?? resolver.typeProvider.dynamicType;
+
+    return ResolvedDartExpression(
+        expr, type.acceptWithArgument(_substitution, scope.instantiation));
   }
 
   @override
@@ -324,6 +329,8 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
 
   @override
   void visitLabeledStatement(LabeledStatement node) {
+    // If we encounter a `$:` label in the outermost function, that's a
+    // reactive update statement.
     if (scope == scopes.root &&
         node.labels.any((l) => l.label.name == _reactiveUpdatesLabel)) {
       final old = _isInReactiveRead;
@@ -358,6 +365,8 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
         );
         scopes.addVariable(variable);
       }
+
+      super.visitVariableDeclaration(node);
     }
   }
 
@@ -384,6 +393,36 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
     final staticElement = node.staticElement;
     if (_isInReactiveRead && staticElement != null) {
       _variableFor(staticElement)?.isInReactiveRead = true;
+    }
+
+    if (isWatchFunctionFromDslLibrary(node)) {
+      // Usage of the `watch()` macro. It may only be used in a variable
+      // declaration, in which case that variable will be updated to the value
+      // watched.
+      final parent = node.parent;
+      if (parent is! InvocationExpression || node != parent.function) {
+        // Not used as a call (potentially torn off or something). We implement
+        // `watch` as a macro, so this is forbidden.
+        resolver.errorReporter
+            .reportError(ZapError('watch() must be called directly', null));
+        return;
+      }
+
+      final grandparent = parent.parent;
+      if (grandparent is! VariableDeclaration) {
+        resolver.errorReporter.reportError(ZapError(
+            'The result of watch() must directly be stored in a variable.',
+            null));
+        return;
+      }
+
+      final variable = scopes.variables[grandparent.declaredElement];
+      if (variable is DartCodeVariable) {
+        variable
+          ..isMutable = true
+          ..watching = _resolveAstExpression(
+              parent.argumentList.arguments.first, variable.scope);
+      }
     }
   }
 }

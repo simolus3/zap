@@ -2,6 +2,8 @@
 /// be recognized by the zap compiler.
 library zap.internal.dsl;
 
+import '../src/core/watchable.dart';
+
 export 'package:zap/zap.dart' show ComponentOrPending, ZapSnapshot;
 
 class Property {
@@ -22,4 +24,8 @@ class Slot {
   final String? name;
 
   const Slot(this.name);
+}
+
+T watch<T>(Watchable<T> watchable) {
+  return watchable.value;
 }

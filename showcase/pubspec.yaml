@@ -1,0 +1,20 @@
+name: showcase
+publish_to: none
+
+environment:
+  sdk: '>=2.15.1 <3.0.0'
+
+dependencies:
+  js: ^0.6.3
+  zap:
+
+dev_dependencies:
+  zap_dev:
+  build_runner: ^2.1.7
+  build_web_compilers: ^3.0.0
+
+dependency_overrides:
+  zap:
+    path: ../zap
+  zap_dev:
+    path: ../zap_dev

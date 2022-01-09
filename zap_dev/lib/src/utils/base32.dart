@@ -32,10 +32,10 @@ class _ZBase32EncodingSink extends ByteConversionSinkBase {
 
   static const _bitmasks = [
     0x80, // One bit remaining, 1000 0000
-    0xc0, // Two bit remaining, 1100 0000
-    0xe0, // Three bit remaining, 1110 0000
-    0xf0, // Four bit remaining, 1111 0000
-    0xf8, // Five bit remaining, 1111 1000
+    0xc0, // Two bits remaining, 1100 0000
+    0xe0, // Three bits remaining, 1110 0000
+    0xf0, // Four bits remaining, 1111 0000
+    0xf8, // Five bits remaining, 1111 1000
   ];
 
   final StringSink _output;

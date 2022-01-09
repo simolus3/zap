@@ -92,6 +92,10 @@ class DartCodeVariable extends BaseZapVariable {
   /// components.
   final bool isProperty;
 
+  /// If this variable has been declared with a call to `watch()`, this contains
+  /// the expression being watched with this variable.
+  ResolvedDartExpression? watching;
+
   bool get isLate => element.isLate;
 
   DartCodeVariable({

@@ -44,6 +44,8 @@ class ScriptComponents {
   }
 }
 
+const _dslLibrary = 'zap.internal.dsl';
+
 bool isProp(VariableElement element) {
   return _findDslAnnotation(element, 'Property') != null;
 }
@@ -78,7 +80,7 @@ Iterable<DartObject> _findDslAnnotations(Element element, String className) {
 
     final backingClass = type.element;
     if (backingClass.name == className &&
-        backingClass.library.name == 'zap.internal.dsl') {
+        backingClass.library.name == _dslLibrary) {
       return value;
     }
   }).whereType();
@@ -86,6 +88,13 @@ Iterable<DartObject> _findDslAnnotations(Element element, String className) {
 
 DartObject? _findDslAnnotation(Element element, String className) {
   return _findDslAnnotations(element, className).firstOrNull;
+}
+
+bool isWatchFunctionFromDslLibrary(Identifier identifier) {
+  final static = identifier.staticElement;
+  if (static == null) return false;
+
+  return static.library?.name == _dslLibrary && static.name == 'watch';
 }
 
 class _ZapToDartImportRewriter extends GeneralizingAstVisitor<void> {

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:html';
 
 import '../core/fragment.dart';
+import '../core/snapshot.dart';
 
 /// Creates a [Future] based on what the [create] function returns. If [create]
 /// throws, the future will complete with the same exception.
@@ -22,81 +23,6 @@ Stream<T> $safeStream<T>(Stream<T> Function() create) {
     return create();
   } catch (e, s) {
     return Stream.error(e, s);
-  }
-}
-
-enum _SnapshotState { unresolved, data, error }
-
-class ZapSnapshot<T> {
-  final _SnapshotState _state;
-  final bool isDone;
-
-  final T? _data;
-  final Object? _error;
-  final StackTrace? _trace;
-
-  ZapSnapshot._internal(
-      this._state, this.isDone, this._data, this._error, this._trace);
-
-  const ZapSnapshot.unresolved()
-      : _state = _SnapshotState.unresolved,
-        isDone = false,
-        _data = null,
-        _error = null,
-        _trace = null;
-
-  ZapSnapshot._withData(this._data)
-      : _state = _SnapshotState.data,
-        _error = null,
-        _trace = null,
-        isDone = false;
-
-  ZapSnapshot._withError(this._error, this._trace)
-      : _state = _SnapshotState.error,
-        _data = null,
-        isDone = false;
-
-  bool get hasData => _state == _SnapshotState.data;
-  bool get hasError => _state == _SnapshotState.error;
-
-  T get data {
-    if (!hasData) {
-      throw StateError('This snapshot does not have data');
-    }
-
-    return _data as T;
-  }
-
-  Object get error {
-    if (!hasError) {
-      throw StateError('This snapshot does not have an error');
-    }
-
-    return _error!;
-  }
-
-  StackTrace? get trace {
-    if (!hasError) {
-      throw StateError('This snapshot does not have an error');
-    }
-
-    return _trace;
-  }
-
-  ZapSnapshot<T> get _finished {
-    return ZapSnapshot._internal(_state, true, _data, _error, _trace);
-  }
-
-  @override
-  String toString() {
-    switch (_state) {
-      case _SnapshotState.unresolved:
-        return 'ZapSnapshot (unresolved)';
-      case _SnapshotState.data:
-        return 'ZapSnapshot (data = $data)';
-      case _SnapshotState.error:
-        return 'ZapSnapshot (error = $error)';
-    }
   }
 }
 
@@ -146,20 +72,20 @@ class FutureBlock<T> extends _AsyncBlockBase<T> {
       );
       _future = future;
     } else {
-      _update(_fragment, ZapSnapshot._withData(future));
+      _update(_fragment, ZapSnapshot.withData(future));
     }
   }
 
   void _thenCallback(Future<T> future, T result) {
     // Only update if the future is still the current future we're interested in
     if (identical(future, _future)) {
-      _update(_fragment, ZapSnapshot<T>._withData(result)._finished);
+      _update(_fragment, ZapSnapshot<T>.withData(result).finished);
     }
   }
 
   void _onErrorCallback(Future<T> future, Object error, StackTrace trace) {
     if (identical(future, _future)) {
-      _update(_fragment, ZapSnapshot<T>._withError(error, trace)._finished);
+      _update(_fragment, ZapSnapshot<T>.withError(error, trace).finished);
     }
   }
 
@@ -186,10 +112,9 @@ class StreamBlock<T> extends _AsyncBlockBase<T> {
 
     // ignore: cancel_subscriptions
     final sub = _subscription = stream.listen(
-      (event) => _report(ZapSnapshot._withData(event)),
-      onError: (Object e, StackTrace s) =>
-          _report(ZapSnapshot._withError(e, s)),
-      onDone: () => _update(_fragment, _snapshot._finished),
+      (event) => _report(ZapSnapshot.withData(event)),
+      onError: (Object e, StackTrace s) => _report(ZapSnapshot.withError(e, s)),
+      onDone: () => _update(_fragment, _snapshot.finished),
     );
     if (!_isReady) {
       sub.pause();

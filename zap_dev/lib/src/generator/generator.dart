@@ -153,6 +153,21 @@ abstract class _ComponentOrSubcomponentWriter {
     return '\$slot_${slot ?? ''}';
   }
 
+  String _statementsToChangeVariable(
+      BaseZapVariable variable, String expression) {
+    final prefix = _DartSourceRewriter(generator, component.scope, 0, '')
+        ._prefixFor(variable.scope);
+    final variableName = generator._nameForVar(variable);
+
+    final result = StringBuffer();
+    if (variable.needsUpdateTracking) {
+      result.writeln('$prefix\$invalidate(${variable.updateBitmask});');
+    }
+
+    result.writeln('$prefix$variableName = $expression;');
+    return result.toString();
+  }
+
   void writeNodesAndBlockHelpers() {
     // Write instance fields storing DOM nodes or zap block helpers
     for (final node in component.fragment.allNodes) {
@@ -226,10 +241,8 @@ abstract class _ComponentOrSubcomponentWriter {
           final nodeName = generator._nameForNode(node);
 
           if (binder is BindThis) {
-            buffer.write('$prefix$variableName = $nodeName;');
+            buffer.write(_statementsToChangeVariable(target, nodeName));
           } else if (binder is BindAttribute) {
-            final mask = target.updateBitmask;
-
             buffer
               ..write(nodeName)
               ..write('.watchAttribute(')
@@ -238,8 +251,7 @@ abstract class _ComponentOrSubcomponentWriter {
               ..write('.transform($prefix.lifecycle)')
               ..writeln('.listen((value) {')
               ..writeln('  if (value != $prefix$variableName) {')
-              ..writeln('    $prefix\$invalidate($mask);')
-              ..writeln('    $prefix$variableName = value;')
+              ..writeln('    ${_statementsToChangeVariable(target, 'value')}')
               ..writeln('  }')
               ..writeln('});');
           }
@@ -754,14 +766,17 @@ abstract class _ComponentOrSubcomponentWriter {
     buffer.write(source);
   }
 
-  void writeDartWithPatchedReferences(AstNode dartCode) {
+  String patchDartReferences(AstNode dartCode) {
     final originalCode = generator.prepareResult.temporaryDartFile
         .substring(dartCode.offset, dartCode.offset + dartCode.length);
     final rewriter = _DartSourceRewriter(
         generator, component.scope, dartCode.offset, originalCode);
     dartCode.accept(rewriter);
+    return rewriter.content;
+  }
 
-    buffer.write(rewriter.content);
+  void writeDartWithPatchedReferences(AstNode dartCode) {
+    buffer.write(patchDartReferences(dartCode));
   }
 }
 
@@ -831,7 +846,23 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
       ..write(name)
       ..write('._($_prefix.PendingComponent pendingSelf, ')
       ..write(variablesToInitialize.map((e) => 'this.$e').join(', '))
-      ..writeln('): super(pendingSelf);');
+      ..writeln('): super(pendingSelf) {');
+
+    // Create subscriptions variables being `watch()`ed.
+
+    for (final variable in component.scope.declaredVariables) {
+      if (variable is DartCodeVariable && variable.watching != null) {
+        final watching = variable.watching!;
+
+        writeDartWithPatchedReferences(watching.expression);
+        buffer
+          ..writeln('.transform(lifecycle()).listen((value) {')
+          ..writeln(_statementsToChangeVariable(variable, 'value'))
+          ..writeln('});');
+      }
+    }
+
+    buffer.writeln('}'); // End of constructor
 
     writeFactory();
 

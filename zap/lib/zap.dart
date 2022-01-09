@@ -7,7 +7,9 @@ export 'src/blocks/slot.dart';
 
 export 'src/core/component.dart';
 export 'src/core/fragment.dart';
+export 'src/core/snapshot.dart';
 export 'src/core/value.dart';
+export 'src/core/watchable.dart';
 
 export 'src/dom/dom.dart';
 export 'src/dom/mutation_observer.dart';
