@@ -653,6 +653,14 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
           MountSlot(
               slotName, _newFragment(readChildren(), _virtualChildScope())),
           slot);
+    } else if (e.tagName == 'zap:component') {
+      final expr = attributes['this'];
+      if (expr == null) {
+        resolver.errorReporter.reportError(ZapError.onNode(e,
+            'Components need a `this` attribute evaluating to the component'));
+      } else {
+        _addChild(DynamicSubComponent(expr.backingExpression));
+      }
     } else {
       // Regular HTML component then
       final known = knownTags[e.tagName.toLowerCase()];
@@ -881,15 +889,17 @@ class _FindComponents {
     outer:
     for (final stmt in statements) {
       if (stmt is LabeledStatement) {
-        final isReactiveLabel = stmt.labels.any((l) => l.label.name == r'$');
+        final isReactiveLabel =
+            stmt.labels.any((l) => l.label.name == _reactiveUpdatesLabel);
 
         if (isReactiveLabel) {
           final inner = stmt.statement;
           flows.add(
-            Flow(_FindReferencedVariables.find(inner, variables),
-                SideEffect(inner)),
+            Flow(_FindReadVariables.find(inner, variables), SideEffect(inner)),
           );
         }
+
+        initializers.add(InitializeStatement(stmt));
       } else if (stmt is FunctionDeclarationStatement) {
         if (!stmt.functionDeclaration.name.name.startsWith(zapPrefix)) {
           functions.add(stmt);
@@ -925,8 +935,8 @@ class _FindComponents {
     // And also infer it from the DOM
     void processNode(ReactiveNode node) {
       if (node is ReactiveText) {
-        final relevant = _FindReferencedVariables.find(
-            node.expression.expression, variables);
+        final relevant =
+            _FindReadVariables.find(node.expression.expression, variables);
         flows.add(Flow(relevant, ChangeText(node)));
       } else if (node is ReactiveElement) {
         for (final handler in node.eventHandlers) {
@@ -935,13 +945,13 @@ class _FindComponents {
               listener is! FunctionReference && listener is! FunctionExpression;
 
           final relevantVariables = listenerIsMutable
-              ? _FindReferencedVariables.find(listener, variables)
+              ? _FindReadVariables.find(listener, variables)
               : <BaseZapVariable>{};
           flows.add(Flow(relevantVariables, RegisterEventHandler(handler)));
         }
 
         node.attributes.forEach((key, value) {
-          final dependsOn = _FindReferencedVariables.find(
+          final dependsOn = _FindReadVariables.find(
               value.backingExpression.expression, variables);
           flows.add(Flow(dependsOn, ApplyAttribute(node, key)));
         });
@@ -966,7 +976,7 @@ class _FindComponents {
 
         // The if should be updated if any variable referenced in any condition
         // updates.
-        final finder = _FindReferencedVariables(variables);
+        final finder = _FindReadVariables(variables);
         for (final condition in node.conditions) {
           condition.expression.accept(finder);
         }
@@ -987,7 +997,7 @@ class _FindComponents {
             flow.subComponents, scope, node.fragment, flow.flow));
 
         flows.add(Flow(
-          _FindReferencedVariables.find(node.expression.expression, variables),
+          _FindReadVariables.find(node.expression.expression, variables),
           UpdateBlockExpression(node),
         ));
       } else if (node is ReactiveFor) {
@@ -1006,7 +1016,7 @@ class _FindComponents {
             flow.subComponents, scope, node.fragment, flow.flow));
 
         flows.add(Flow(
-          _FindReferencedVariables.find(node.expression.expression, variables),
+          _FindReadVariables.find(node.expression.expression, variables),
           UpdateBlockExpression(node),
         ));
       } else if (node is ReactiveAsyncBlock) {
@@ -1014,12 +1024,12 @@ class _FindComponents {
         subComponents.add(ResolvedSubComponent(flow.subComponents,
             node.fragment.resolvedScope, node.fragment, flow.flow));
         flows.add(Flow(
-          _FindReferencedVariables.find(node.expression.expression, variables),
+          _FindReadVariables.find(node.expression.expression, variables),
           UpdateBlockExpression(node),
         ));
       } else if (node is ReactiveRawHtml) {
         flows.add(Flow(
-          _FindReferencedVariables.find(node.expression.expression, variables),
+          _FindReadVariables.find(node.expression.expression, variables),
           UpdateBlockExpression(node),
         ));
       } else if (node is MountSlot) {
@@ -1033,6 +1043,10 @@ class _FindComponents {
         }
 
         node.slots.values.forEach(resolveWithoutOwnStatements);
+      } else if (node is DynamicSubComponent) {
+        flows.add(Flow(
+            _FindReadVariables.find(node.expression.expression, variables),
+            UpdateBlockExpression(node)));
       } else {
         node.children.forEach(processNode);
       }
@@ -1044,18 +1058,26 @@ class _FindComponents {
   }
 }
 
-class _FindReferencedVariables extends GeneralizingAstVisitor<void> {
+class _FindReadVariables extends GeneralizingAstVisitor<void> {
   final Map<Element, BaseZapVariable> variables;
   final Set<BaseZapVariable> found = {};
 
-  _FindReferencedVariables(this.variables);
+  _FindReadVariables(this.variables);
 
   static Set<BaseZapVariable> find(
       AstNode node, Map<Element, BaseZapVariable> variables) {
-    final visitor = _FindReferencedVariables(variables);
+    final visitor = _FindReadVariables(variables);
     node.accept(visitor);
 
     return visitor.found;
+  }
+
+  @override
+  void visitAssignmentExpression(AssignmentExpression node) {
+    // Only check RHS of assignment because the LHS doesn't _read_ variables.
+    // todo: How should things like `foo.bar = baz` behave - do we count that
+    // as reading `foo`?
+    node.rightHandSide.accept(this);
   }
 
   @override

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 import 'dart:html';
 
 import 'package:meta/meta.dart';
@@ -62,8 +63,12 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
 
   @override
   void onMount(void Function() callback) {
-    throw StateError('onMount() may only be called before a component is '
-        'initialized!');
+    if (_isAlive) {
+      throw StateError('onMount() may only be called before a component is '
+          'initialized!');
+    }
+
+    _onMountListeners.add(callback);
   }
 
   @override
@@ -270,7 +275,9 @@ class _LifecycleTransformer<T> extends StreamTransformerBase<T, T> {
       (listener) {
         StreamSubscription<T>? subscription;
 
-        void unmountListener() => subscription?.cancel();
+        void unmountListener() {
+          subscription?.cancel();
+        }
 
         void listenNow() {
           subscription = stream.listen(

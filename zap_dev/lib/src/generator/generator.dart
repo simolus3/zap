@@ -132,6 +132,8 @@ abstract class _ComponentOrSubcomponentWriter {
       return '$_prefix.HtmlTag';
     } else if (node is SubComponent) {
       return node.component.className;
+    } else if (node is DynamicSubComponent) {
+      return '$_prefix.DynamicComponent';
     } else if (node is ReactiveIf) {
       return '$_prefix.IfBlock';
     } else if (node is ReactiveFor) {
@@ -460,6 +462,10 @@ abstract class _ComponentOrSubcomponentWriter {
           writeDartWithPatchedReferences(block.expression.expression);
         }
         buffer.write(';');
+      } else if (block is DynamicSubComponent) {
+        buffer.write('$nodeName.component = ');
+        writeDartWithPatchedReferences(block.expression.expression);
+        buffer.write(';');
       } else {
         throw ArgumentError('Unknown target for $action: ${action.block}');
       }
@@ -615,6 +621,10 @@ abstract class _ComponentOrSubcomponentWriter {
       }
 
       buffer.writeln('))');
+    } else if (node is DynamicSubComponent) {
+      buffer.write('$_prefix.DynamicComponent(');
+      writeDartWithPatchedReferences(node.expression.expression);
+      buffer.write(')');
     } else if (node is ReactiveIf) {
       buffer
         ..writeln('$_prefix.IfBlock((caseNum) {')
@@ -659,9 +669,9 @@ abstract class _ComponentOrSubcomponentWriter {
       // Write the function creating child nodes
       buffer.write('(element, index) => ');
       if (indexVariable != null) {
-        buffer.write('$childClass($componentThis, element, index)');
+        buffer.write('$childClass(this, element, index)');
       } else {
-        buffer.write('$childClass($componentThis, element)');
+        buffer.write('$childClass(this, element)');
       }
 
       // Write the function updating child nodes

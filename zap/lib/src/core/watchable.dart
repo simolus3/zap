@@ -15,7 +15,7 @@ abstract class Watchable<T> implements Stream<T> {
   T get value;
 
   factory Watchable.stream(Stream<T> stream, T initialValue) {
-    return _StreamWatchable(stream.shareValue(), initialValue);
+    return _StreamWatchable(_ToValueStream(stream), initialValue);
   }
 
   factory Watchable.valueStream(ValueStream<T> stream, [T? initialValue]) {
@@ -29,7 +29,7 @@ abstract class Watchable<T> implements Stream<T> {
   }
 
   static Watchable<ZapSnapshot<T>> snapshots<T>(Stream<T> stream) {
-    return valueSnapsots(stream.shareValue());
+    return valueSnapsots(_ToValueStream(stream));
   }
 
   static Watchable<ZapSnapshot<T>> valueSnapsots<T>(ValueStream<T> stream) {
@@ -135,5 +135,76 @@ class _ToSnapshotTransformer<T> implements EventSink<T> {
     }
 
     _out.close();
+  }
+}
+
+/// A zap variant of `shareValue()` that never closes the underlying behavior
+/// subject, so that it really can be listened to multiple times.
+///
+/// (this is fine, by the way. If there really are no more references, the
+/// subject will just be GCed.)
+class _ToValueStream<T> extends Stream<T> implements ValueStream<T> {
+  // ignore: close_sinks
+  final _subject = BehaviorSubject<T>();
+  var _listeners = 0;
+
+  final Stream<T> _source;
+  late final Stream<T> _refCounting;
+
+  StreamSubscription<T>? _subscription;
+
+  _ToValueStream(this._source) {
+    _refCounting = Stream.multi((listener) {
+      void resumeOrStart() {
+        _listeners++;
+
+        _subscription ??= _source.listen(_subject.add,
+            onError: _subject.addError, onDone: _subject.close);
+      }
+
+      void pauseOrStop() {
+        _listeners--;
+
+        if (_listeners == 0) {
+          _subscription?.cancel();
+          _subscription = null;
+        }
+      }
+
+      listener.addStream(_subject);
+      listener
+        ..onCancel = pauseOrStop
+        ..onPause = pauseOrStop
+        ..onResume = resumeOrStart;
+      resumeOrStart();
+    });
+  }
+
+  @override
+  Object get error => _subject.error;
+
+  @override
+  Object? get errorOrNull => _subject.errorOrNull;
+
+  @override
+  bool get hasError => _subject.hasError;
+
+  @override
+  bool get hasValue => _subject.hasValue;
+
+  @override
+  StackTrace? get stackTrace => _subject.stackTrace;
+
+  @override
+  T get value => _subject.value;
+
+  @override
+  T? get valueOrNull => _subject.valueOrNull;
+
+  @override
+  StreamSubscription<T> listen(void Function(T event)? onData,
+      {Function? onError, void Function()? onDone, bool? cancelOnError}) {
+    return _refCounting.listen(onData,
+        onError: onError, onDone: onDone, cancelOnError: cancelOnError);
   }
 }

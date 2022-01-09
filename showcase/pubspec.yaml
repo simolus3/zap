@@ -6,12 +6,14 @@ environment:
 
 dependencies:
   js: ^0.6.3
+  rxdart:
   zap:
 
 dev_dependencies:
-  zap_dev:
   build_runner: ^2.1.7
   build_web_compilers: ^3.0.0
+  webdev: ^2.7.7
+  zap_dev:
 
 dependency_overrides:
   zap:

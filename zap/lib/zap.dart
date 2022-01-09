@@ -4,6 +4,7 @@ export 'src/blocks/html.dart';
 export 'src/blocks/if.dart';
 export 'src/blocks/key.dart';
 export 'src/blocks/slot.dart';
+export 'src/blocks/subcomponent.dart';
 
 export 'src/core/component.dart';
 export 'src/core/fragment.dart';

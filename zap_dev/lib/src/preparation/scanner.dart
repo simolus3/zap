@@ -165,7 +165,7 @@ class Scanner {
     return _text(() {
       return isAtEnd ||
           codeUnits[position] == quoteChar ||
-          codeUnits[position] == $lbrace && codeUnits[position + 1] == $lbrace;
+          codeUnits[position] == $lbrace;
     });
   }
 
@@ -243,7 +243,8 @@ class Scanner {
   Token tagName() {
     return _identifier(
       canStart: (char) => char.isInLatinAlphabet,
-      canContinue: (char) => char == $_ || char.isAlphaNumeric,
+      canContinue: (char) =>
+          char == $_ || char == $colon || char.isAlphaNumeric,
       errorWhenInvalidStart: 'Expected a letter to start the tag name',
     );
   }

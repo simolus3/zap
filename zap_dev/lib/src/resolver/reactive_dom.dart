@@ -152,6 +152,14 @@ class SubComponent extends ReactiveNode {
   Iterable<ReactiveNode> get children => [];
 }
 
+/// Renders the [expression], which should evaluate to a `ZapComponent`, as a
+/// subcomponent.
+class DynamicSubComponent extends ReactiveBlock {
+  final ResolvedDartExpression expression;
+
+  DynamicSubComponent(this.expression);
+}
+
 class ConstantText extends ReactiveNode {
   final String text;
 
