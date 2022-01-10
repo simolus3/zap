@@ -121,6 +121,7 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
     update(delta);
     _fragmentUpdates.forEach((fragment, flag) => fragment.update(flag));
     _fragmentUpdates.clear();
+    _updateBitmask = 0;
 
     for (final after in _afterUpdateListeners) {
       after();

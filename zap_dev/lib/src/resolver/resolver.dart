@@ -903,6 +903,7 @@ class _FindComponents {
       } else if (stmt is FunctionDeclarationStatement) {
         if (!stmt.functionDeclaration.name.name.startsWith(zapPrefix)) {
           functions.add(stmt);
+          initializers.add(InitializeStatement(stmt));
         }
       } else {
         if (stmt is VariableDeclarationStatement) {

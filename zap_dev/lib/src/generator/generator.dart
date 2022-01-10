@@ -318,7 +318,8 @@ abstract class _ComponentOrSubcomponentWriter {
     // We can unmount the root nodes to remove this component from the DOM tree.
     // However, we should still explicitly destroy() child components so that
     // they can clean up resources.
-    for (final node in component.fragment.allNodes) {
+    for (final node
+        in component.fragment.rootNodes.expand((node) => node.allDescendants)) {
       if (_rendersSubcomponents(node)) {
         buffer.write(generator._nameForNode(node));
 

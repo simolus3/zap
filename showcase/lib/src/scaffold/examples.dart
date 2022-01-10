@@ -4,6 +4,10 @@ import '../examples/introduction/hello_world.zap.dart' as i1;
 import '../examples/introduction/styling.zap.dart' as i2;
 import '../examples/introduction/nested/index.zap.dart' as i3;
 import '../examples/introduction/raw_html.zap.dart' as i4;
+import '../examples/logic/await_blocks.zap.dart' as logic;
+import '../examples/logic/if_blocks.zap.dart' as logic;
+import '../examples/logic/else_if.zap.dart' as logic;
+import '../examples/logic/else_blocks.zap.dart' as logic;
 import '../examples/reactivity/assignments.zap.dart' as rx;
 import '../examples/reactivity/declarations.zap.dart' as rx;
 import '../examples/reactivity/statements.zap.dart' as rx;
@@ -43,6 +47,15 @@ const groups = <ExampleGroup>[
       ExampleComponent('Reactive assignments', 'rx-assign', rx.assignments.new),
       ExampleComponent('Reactive declarations', 'rx-decl', rx.declarations.new),
       ExampleComponent('Reactive statements', 'rx-stmts', rx.statements.new),
+    ],
+  ),
+  ExampleGroup(
+    title: 'Logic',
+    children: [
+      ExampleComponent('If blocks', 'blocks-if', logic.if_blocks.new),
+      ExampleComponent('Else blocks', 'blocks-else', logic.else_blocks.new),
+      ExampleComponent('Else-if blocks', 'blocks-elseif', logic.else_if.new),
+      ExampleComponent('Await blocks', 'blocks-await', logic.await_blocks.new),
     ],
   ),
   ExampleGroup(
