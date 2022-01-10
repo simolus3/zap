@@ -257,21 +257,41 @@ class _DartExpressionWriter {
     scope.blockName = name;
 
     if (scope is AsyncBlockVariableScope) {
-      target.writeln('$name<T>(ZapSnapshot<T> ${scope.block.variableName}) {');
-    } else if (scope is ForBlockVariableScope) {
-      final indexVar = scope.block.indexVariableName;
-      final elementParam = 'T ${scope.block.elementVariableName}';
-      final params =
-          indexVar == null ? elementParam : '$elementParam, int $indexVar';
+      final extractFunction =
+          scope.block.isStream ? 'extractFromStream' : 'extractFromFuture';
+      final stream = scope.parent!
+          .findExpression(scope.block.futureOrStream)
+          .localVariableName;
 
-      target.writeln('$name<T>($params) {');
+      target
+        ..writeln('$name(ZapSnapshot<T> ${scope.block.variableName}) {')
+        ..writeln(
+            'final ${scope.block.variableName} = $extractFunction($stream);');
+
+      _writeExpressionsAndChildren(scope);
+      target.writeln('}');
+    } else if (scope is ForBlockVariableScope) {
+      final iterable =
+          scope.parent!.findExpression(scope.block.iterable).localVariableName;
+      final indexVar = scope.block.indexVariableName;
+
+      target
+        ..writeln('$name() {')
+        ..writeln(
+            'final ${scope.block.elementVariableName} = extractFromIterable($iterable);');
+
+      if (indexVar != null) {
+        target.writeln('final int $indexVar;');
+      }
+
+      _writeExpressionsAndChildren(scope);
+      target.writeln('}');
     } else if (scope is SubFragmentScope) {
       // Just write a scope without parameters
       target.writeln('$name() {');
+      _writeExpressionsAndChildren(scope);
+      target.writeln('}');
     }
-
-    _writeExpressionsAndChildren(scope);
-    target.writeln('}');
   }
 }
 
@@ -309,6 +329,10 @@ class PreparedVariableScope {
   /// The name of the function introduced in generated code to lookup this
   /// expression.
   String? blockName;
+
+  ScopedDartExpression findExpression(RawDartExpression expr) {
+    return dartExpressions.singleWhere((e) => e.expression == expr);
+  }
 }
 
 class AsyncBlockVariableScope extends PreparedVariableScope {

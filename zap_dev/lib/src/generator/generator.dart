@@ -202,7 +202,7 @@ abstract class _ComponentOrSubcomponentWriter {
             buffer.write('else ');
           }
           buffer.write('if(');
-          writeDartWithPatchedReferences(node.conditions[i].expression);
+          writeDartWithPatchedReferences(node.conditions[i]);
           buffer
             ..writeln(') {')
             ..writeln('  return $i;')
@@ -396,8 +396,7 @@ abstract class _ComponentOrSubcomponentWriter {
             ..write(".attributes['")
             ..write(action.name)
             ..write("'] = ");
-          writeDartWithPatchedReferences(
-              attribute.backingExpression.expression);
+          writeDartWithPatchedReferences(attribute.backingExpression);
           buffer.writeln('.toString();');
           break;
         case AttributeMode.addIfTrue:
@@ -407,8 +406,7 @@ abstract class _ComponentOrSubcomponentWriter {
             ..write(".applyBooleanAttribute('")
             ..write(action.name)
             ..write("', ");
-          writeDartWithPatchedReferences(
-              attribute.backingExpression.expression);
+          writeDartWithPatchedReferences(attribute.backingExpression);
           buffer.writeln(');');
           break;
         case AttributeMode.setIfNotNullClearOtherwise:
@@ -417,8 +415,7 @@ abstract class _ComponentOrSubcomponentWriter {
             ..write(".applyAttributeIfNotNull('")
             ..write(action.name)
             ..write("', ");
-          writeDartWithPatchedReferences(
-              attribute.backingExpression.expression);
+          writeDartWithPatchedReferences(attribute.backingExpression);
           buffer.writeln(');');
           break;
       }
@@ -441,31 +438,31 @@ abstract class _ComponentOrSubcomponentWriter {
         final type = block.type.getDisplayString(withNullability: true);
 
         buffer.write('$nodeName.$setter = $wrapper<$type>(() => ');
-        writeDartWithPatchedReferences(block.expression.expression);
+        writeDartWithPatchedReferences(block.expression);
         buffer.write(');');
       } else if (block is ReactiveFor) {
         final nodeName = generator._nameForNode(block);
 
         buffer.write('$nodeName.data = ');
-        writeDartWithPatchedReferences(block.expression.expression);
+        writeDartWithPatchedReferences(block.expression);
         buffer.write(';');
       } else if (block is ReactiveKeyBlock) {
         buffer.write('$nodeName.value = ');
-        writeDartWithPatchedReferences(block.expression.expression);
+        writeDartWithPatchedReferences(block.expression);
         buffer.write(';');
       } else if (block is ReactiveRawHtml) {
         buffer.write('$nodeName.rawHtml = ');
         if (block.needsToString) {
           buffer.write('(');
-          writeDartWithPatchedReferences(block.expression.expression);
+          writeDartWithPatchedReferences(block.expression);
           buffer.write(').toString()');
         } else {
-          writeDartWithPatchedReferences(block.expression.expression);
+          writeDartWithPatchedReferences(block.expression);
         }
         buffer.write(';');
       } else if (block is DynamicSubComponent) {
         buffer.write('$nodeName.component = ');
-        writeDartWithPatchedReferences(block.expression.expression);
+        writeDartWithPatchedReferences(block.expression);
         buffer.write(';');
       } else {
         throw ArgumentError('Unknown target for $action: ${action.block}');
@@ -538,11 +535,11 @@ abstract class _ComponentOrSubcomponentWriter {
       // The handler does not take any arguments, so we have to wrap it in a
       // function that does.
       buffer.write('(_) {(');
-      writeDartWithPatchedReferences(handler.listener.expression);
+      writeDartWithPatchedReferences(handler.listener);
       buffer.write(')();}');
     } else {
       // A tear-off will do
-      writeDartWithPatchedReferences(handler.listener.expression);
+      writeDartWithPatchedReferences(handler.listener);
     }
   }
 
@@ -599,7 +596,7 @@ abstract class _ComponentOrSubcomponentWriter {
           // Wrap values in a ZapBox to distinguish between set and absent
           // parameters.
           buffer.write('$_prefix.ZapValue(');
-          writeDartWithPatchedReferences(actualValue.expression);
+          writeDartWithPatchedReferences(actualValue);
           buffer.write(')');
         }
 
@@ -624,7 +621,7 @@ abstract class _ComponentOrSubcomponentWriter {
       buffer.writeln('))');
     } else if (node is DynamicSubComponent) {
       buffer.write('$_prefix.DynamicComponent(');
-      writeDartWithPatchedReferences(node.expression.expression);
+      writeDartWithPatchedReferences(node.expression);
       buffer.write(')');
     } else if (node is ReactiveIf) {
       buffer
@@ -761,11 +758,11 @@ abstract class _ComponentOrSubcomponentWriter {
     if (target.needsToString) {
       // Call .toString() on the result
       buffer.write('(');
-      writeDartWithPatchedReferences(expression.expression);
+      writeDartWithPatchedReferences(expression);
       buffer.write(').toString()');
     } else {
       // No .toString() call necessary, just embed the expression directly.
-      writeDartWithPatchedReferences(expression.expression);
+      writeDartWithPatchedReferences(expression);
     }
 
     buffer.writeln(';');
@@ -865,7 +862,7 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
       if (variable is DartCodeVariable && variable.watching != null) {
         final watching = variable.watching!;
 
-        writeDartWithPatchedReferences(watching.expression);
+        writeDartWithPatchedReferences(watching);
         buffer
           ..writeln('.transform(lifecycle()).listen((value) {')
           ..writeln(_statementsToChangeVariable(variable, 'value'))

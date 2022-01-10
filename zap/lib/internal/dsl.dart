@@ -2,6 +2,9 @@
 /// be recognized by the zap compiler.
 library zap.internal.dsl;
 
+import 'dart:async';
+
+import '../src/core/snapshot.dart';
 import '../src/core/watchable.dart';
 
 export 'package:zap/zap.dart' show ComponentOrPending, ZapSnapshot;
@@ -28,4 +31,16 @@ class Slot {
 
 T watch<T>(Watchable<T> watchable) {
   return watchable.value;
+}
+
+T extractFromIterable<T>(Iterable<T> iterable) {
+  throw UnsupportedError('Only used statically to mess with the type system.');
+}
+
+ZapSnapshot<T> extractFromFuture<T>(FutureOr<T> future) {
+  throw UnsupportedError('Only used statically to mess with the type system.');
+}
+
+ZapSnapshot<T> extractFromStream<T>(Stream<T> stream) {
+  throw UnsupportedError('Only used statically to mess with the type system.');
 }
