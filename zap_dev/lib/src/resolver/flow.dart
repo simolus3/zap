@@ -64,6 +64,13 @@ class ApplyAttribute extends Action {
   ApplyAttribute(this.element, this.name);
 }
 
+class ChangePropertyOfSubcomponent extends Action {
+  final SubComponent subcomponent;
+  final String property;
+
+  ChangePropertyOfSubcomponent(this.subcomponent, this.property);
+}
+
 /// An instruction to:
 ///
 /// - update the condition of an [ReactiveIf].

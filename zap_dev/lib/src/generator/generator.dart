@@ -419,6 +419,12 @@ abstract class _ComponentOrSubcomponentWriter {
           buffer.writeln(');');
           break;
       }
+    } else if (action is ChangePropertyOfSubcomponent) {
+      final target = generator._nameForNode(action.subcomponent);
+      buffer.write('$target.${action.property} = ');
+      writeDartWithPatchedReferences(
+          action.subcomponent.expressions[action.property]!);
+      buffer.writeln(';');
     } else if (action is UpdateBlockExpression) {
       final block = action.block;
       final nodeName = generator._nameForNode(action.block);

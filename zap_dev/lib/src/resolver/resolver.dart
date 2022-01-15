@@ -581,7 +581,10 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
       _addChild(
         SubComponent(
           component: external,
-          expressions: {},
+          expressions: {
+            for (final attribute in attributes.entries)
+              attribute.key: attribute.value.backingExpression,
+          },
           defaultSlot: result.children.isEmpty
               ? null
               : _newFragment(result.children, _virtualChildScope()),
@@ -940,14 +943,23 @@ class _FindComponents {
       } else if (node is MountSlot) {
         resolveWithoutOwnStatements(node.defaultContent);
       } else if (node is SubComponent) {
-        // todo: Recognize flows to update props passed to subcomponents.
-
         final defaultSlot = node.defaultSlot;
         if (defaultSlot != null) {
           resolveWithoutOwnStatements(defaultSlot);
         }
-
         node.slots.values.forEach(resolveWithoutOwnStatements);
+
+        for (final assignedProperty in node.expressions.entries) {
+          final relevantVariables =
+              _FindReadVariables.find(assignedProperty.value, variables);
+
+          if (relevantVariables.isNotEmpty) {
+            flows.add(Flow(
+              relevantVariables,
+              ChangePropertyOfSubcomponent(node, assignedProperty.key),
+            ));
+          }
+        }
       } else if (node is DynamicSubComponent) {
         flows.add(Flow(_FindReadVariables.find(node.expression, variables),
             UpdateBlockExpression(node)));
