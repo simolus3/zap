@@ -480,20 +480,18 @@ abstract class _ComponentOrSubcomponentWriter {
     final knownEvent = handler.knownType;
     final node = generator._nameForNode(handler.parent);
 
-    buffer
-      ..write(node)
-      ..write('.');
-
+    // Write the EventStreamProvider for this event type
     if (knownEvent != null) {
-      // Use the known Dart getter for the event stream
-      buffer.write(knownEvent.getterName);
+      buffer.write(knownEvent.providerExpression);
     } else {
-      // Use on[name] instead
-      buffer
-        ..write("on['")
-        ..write(handler.event)
-        ..write("']");
+      buffer.write("const EventStreamProvider('${handler.event}')");
     }
+
+    buffer.write('.forElement($node');
+    if (handler.modifier.contains(EventModifier.capture)) {
+      buffer.write(', useCapture = true');
+    }
+    buffer.write(')');
 
     if (handler.modifier.isNotEmpty) {
       // Transform the event stream to account for the modifiers.
@@ -513,9 +511,6 @@ abstract class _ComponentOrSubcomponentWriter {
           case EventModifier.nonpassive:
             buffer.write('passive: false,');
             break;
-          case EventModifier.capture:
-            buffer.write('capture: true');
-            break;
           case EventModifier.once:
             buffer.write('once: true,');
             break;
@@ -525,6 +520,8 @@ abstract class _ComponentOrSubcomponentWriter {
           case EventModifier.trusted:
             buffer.write('onlyTrusted: true,');
             break;
+          case EventModifier.capture:
+          // Handled by useCapture: true above
         }
       }
 

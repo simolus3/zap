@@ -18,6 +18,9 @@ abstract class ComponentOrPending {
   void beforeUpdate(void Function() callback);
   void afterUpdate(void Function() callback);
 
+  /// Emits, or forwards, a custom or DOM event.
+  void emitEvent(Event event);
+
   /// A future completing after pending state changes have been applied.
   ///
   /// If no state changes are scheduled, the returned future returns in a new
@@ -94,6 +97,9 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
       return Future.microtask(() => null);
     }
   }
+
+  @override
+  void emitEvent(Event event) {}
 
   @override
   void create(Element target, [Node? anchor]) {
@@ -252,6 +258,12 @@ class PendingComponent extends ComponentOrPending {
   void onMount(void Function() callback) {
     _checkNotCreated();
     _onMount.add(callback);
+  }
+
+  @override
+  void emitEvent(Event event) {
+    throw UnsupportedError(
+        "Can't emit events before the component is initialized");
   }
 
   @override

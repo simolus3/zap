@@ -11,6 +11,8 @@ import '../examples/logic/if_blocks.zap.dart' as logic;
 import '../examples/logic/else_if.zap.dart' as logic;
 import '../examples/logic/else_blocks.zap.dart' as logic;
 import '../examples/events/dom_events.zap.dart' as events;
+import '../examples/events/inline_handler.zap.dart' as events;
+import '../examples/events/modifiers.zap.dart' as events;
 import '../examples/reactivity/assignments.zap.dart' as rx;
 import '../examples/reactivity/declarations.zap.dart' as rx;
 import '../examples/reactivity/statements.zap.dart' as rx;
@@ -72,6 +74,9 @@ const groups = <ExampleGroup>[
     title: 'Events',
     children: [
       ExampleComponent('DOM events', 'events-dom', events.dom_events.new),
+      ExampleComponent(
+          'Inline handler', 'events-inline', events.inline_handler.new),
+      ExampleComponent('Modifiers', 'events-modifiers', events.modifiers.new),
     ],
   ),
   ExampleGroup(

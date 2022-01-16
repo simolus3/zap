@@ -32,11 +32,9 @@ extension ZapElement on Element {
   }
 }
 
-extension ZapDomEvents<T extends Event> on ElementStream<T> {
+extension ZapDomEvents<T extends Event> on Stream<T> {
   /// Applies modifiers to an event stream:
   ///
-  /// - When [capture] is enabled, the stream emits events from the capturing
-  ///   phase instead of the bubbling phase
   /// - When [preventDefault] is enabled, [Event.preventDefault] is called
   ///   before passing it to listeners.
   /// - When [stopPropagation] is enabled, [Event.stopPropagation] is called
@@ -47,7 +45,6 @@ extension ZapDomEvents<T extends Event> on ElementStream<T> {
   /// - When [onlyTrusted] is enabled, the stream will only emit events for
   ///   which [Event.isTrusted] is `true`.
   Stream<T> withModifiers({
-    bool capture = false,
     bool preventDefault = false,
     bool stopPropagation = false,
     bool passive = false,
@@ -55,10 +52,8 @@ extension ZapDomEvents<T extends Event> on ElementStream<T> {
     Element? onlySelf,
     bool onlyTrusted = false,
   }) {
-    final stream = capture ? _CapturingStream(this) : this;
-
     return Stream<T>.eventTransformed(
-      stream,
+      this,
       (sink) => _ModifierSink(
         sink,
         preventDefault,
@@ -117,23 +112,6 @@ class _ModifierSink<T extends Event> extends EventSink<T> {
   @override
   void close() {
     _downstream.close();
-  }
-}
-
-class _CapturingStream<T extends Event> extends Stream<T> {
-  final ElementStream<T> stream;
-
-  _CapturingStream(this.stream);
-
-  @override
-  bool get isBroadcast => stream.isBroadcast;
-
-  @override
-  StreamSubscription<T> listen(void Function(T event)? onData,
-      {Function? onError, void Function()? onDone, bool? cancelOnError}) {
-    return stream.capture(onData ?? (_) {})
-      ..onError(onError)
-      ..onDone(onDone);
   }
 }
 

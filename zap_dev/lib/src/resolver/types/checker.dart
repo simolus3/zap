@@ -58,7 +58,7 @@ class TypeChecker {
   EventCheckingResult checkEvent(
       Attribute attribute, String eventName, Expression expression) {
     final staticType = expression.staticType ?? typeProvider.dynamicType;
-    final event = knownEvents[eventName];
+    final event = domTypes.knownEvents[eventName];
     final eventType = domTypes.dartTypeForEvent(eventName) ?? domTypes.event;
 
     if (event == null) {
@@ -134,7 +134,7 @@ class TypeChecker {
 
 class EventCheckingResult {
   final bool dropParameter;
-  final KnownEventType? known;
+  final DomEventType? known;
 
   EventCheckingResult(this.dropParameter, this.known);
 }

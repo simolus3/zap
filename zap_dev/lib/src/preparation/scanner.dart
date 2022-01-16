@@ -348,7 +348,18 @@ class Scanner {
   }
 
   RawRange rawUntilRightBrace() {
-    final start = _raw((i) => codeUnits[i] == $rbrace);
+    var openedLeftBraces = 1;
+
+    final start = _raw((i) {
+      if (codeUnits[i] == $lbrace) {
+        openedLeftBraces++;
+        return false;
+      } else if (codeUnits[i] == $rbrace) {
+        return --openedLeftBraces == 0;
+      } else {
+        return false;
+      }
+    });
 
     startOfToken = position;
     if (_check($rbrace)) {

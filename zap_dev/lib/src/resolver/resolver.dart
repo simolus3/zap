@@ -378,7 +378,7 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
 }
 
 class _DomTranslator extends zap.AstVisitor<void, void> {
-  static final _eventRegex = RegExp(r'^on:(\w+)(?:\|(\w+))*$');
+  static final _eventRegex = RegExp(r'^on:(\w+)(?:\|((?:\w|\|)+))?$');
 
   final Resolver resolver;
 
@@ -520,11 +520,13 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
       if (eventMatch != null) {
         // This attribute uses the `on:` syntax to listen for events.
         final name = eventMatch.group(1)!;
-        final modifiers = List.generate(eventMatch.groupCount - 1,
-                (index) => eventMatch.group(index + 1)!)
-            .map(parseEventModifier)
-            .whereType<EventModifier>()
-            .toSet();
+        final modifiers = eventMatch
+                .group(2)
+                ?.split('|')
+                .map(parseEventModifier)
+                .whereType<EventModifier>()
+                .toSet() ??
+            const {};
 
         final checkResult = resolver.checker.checkEvent(attribute, name, value);
         handlers.add(EventHandler(name, checkResult.known, modifiers, value,

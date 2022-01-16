@@ -193,14 +193,14 @@ enum EventModifier {
 
 class EventHandler {
   final String event;
-  final KnownEventType? knownType;
+  final DomEventType? knownType;
   final Set<EventModifier> modifier;
   final Expression listener;
   final bool isNoArgsListener;
 
   late ReactiveElement parent;
 
-  String get effectiveEventType => knownType?.type ?? 'Event';
+  String get effectiveEventType => knownType?.eventType.element.name ?? 'Event';
 
   bool get isCapturing => modifier.contains(EventModifier.capture);
 

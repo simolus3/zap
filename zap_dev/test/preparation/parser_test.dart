@@ -92,6 +92,25 @@ c
 	<slot name="footer"></slot>
 </div>''', AdjacentNodes([]));
   });
+
+  test('parses complex Dart expression', () {
+    _check(
+      '''
+<span on:mousemove={(MouseEvent e) { x = event.client.x; y = event.client.y; }}>
+</span>
+''',
+      Element(
+          'span',
+          [
+            Attribute(
+              'on:mousemove',
+              DartExpression(RawDartExpression(
+                  '(MouseEvent e) { x = event.client.x; y = event.client.y; }')),
+            ),
+          ],
+          null),
+    );
+  });
 }
 
 void _checkEqual(AstNode a, AstNode b) {

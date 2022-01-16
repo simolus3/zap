@@ -1,6 +1,7 @@
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:analyzer/dart/element/type.dart';
+import 'package:analyzer/dart/element/type_system.dart';
 
 const knownTags = {
   // Note: Skipping base, body, content, head, html, link, meta, script, shadow,
@@ -76,107 +77,83 @@ class KnownElementInfo {
       {this.constructorName = '', this.instantiable = true});
 }
 
-const knownEvents = {
-  'abort': KnownEventType('onAbort'),
-  'beforecopy': KnownEventType('onBeforeCopy'),
-  'beforecut': KnownEventType('onBeforeCut'),
-  'beforepaste': KnownEventType('onBeforePaste'),
-  'blur': KnownEventType('onBlur'),
-  'canplay': KnownEventType('onCanPlay'),
-  'canplaythrough': KnownEventType('onCanPlayThrough'),
-  'change': KnownEventType('onChange'),
-  'click': KnownEventType('onClick', 'MouseEvent'),
-  'contextmenu': KnownEventType('onContextMenu', 'MouseEvent'),
-  'copy': KnownEventType('onCopy', 'ClipboardEvent'),
-  'cut': KnownEventType('onCut', 'ClipboardEvent'),
-  'doubleclick': KnownEventType('onDoubleClick'),
-  'drag': KnownEventType('onDrag', 'MouseEvent'),
-  'dragend': KnownEventType('onDragEnd', 'MouseEvent'),
-  'dragenter': KnownEventType('onDragEnter', 'MouseEvent'),
-  'drageeave': KnownEventType('onDragLeave', 'MouseEvent'),
-  'dragover': KnownEventType('onDragOver', 'MouseEvent'),
-  'dragstart': KnownEventType('onDragStart', 'MouseEvent'),
-  'drop': KnownEventType('onDrop', 'MouseEvent'),
-  'durationchange': KnownEventType('onDurationChange'),
-  'emptied': KnownEventType('onEmptied'),
-  'ended': KnownEventType('onEnded'),
-  'error': KnownEventType('onError'),
-  'focus': KnownEventType('onFocus'),
-  'fullscreenchange': KnownEventType('onFullscreenChange'),
-  'fullscreenerror': KnownEventType('onFullscreenError'),
-  'input': KnownEventType('onInput'),
-  'invalid': KnownEventType('onInvalid'),
-  'keydown': KnownEventType('onKeyDown', 'KeyboardEvent'),
-  'keypress': KnownEventType('onKeyPress', 'KeyboardEvent'),
-  'keyup': KnownEventType('onKeyUp', 'KeyboardEvent'),
-  'load': KnownEventType('onLoad'),
-  'loadeddata': KnownEventType('onLoadedData'),
-  'loadedmetadata': KnownEventType('onLoadedMetadata'),
-  'mousedown': KnownEventType('onMouseDown', 'MouseEvent'),
-  'mouseenter': KnownEventType('onMouseEnter', 'MouseEvent'),
-  'mouseleave': KnownEventType('onMouseLeave', 'MouseEvent'),
-  'mousemove': KnownEventType('onMouseMove', 'MouseEvent'),
-  'mouseout': KnownEventType('onMouseOut', 'MouseEvent'),
-  'mouseover': KnownEventType('onMouseOver', 'MouseEvent'),
-  'mouseup': KnownEventType('onMouseUp', 'MouseEvent'),
-  'mousewheel': KnownEventType('onMouseWheel', 'MouseEvent'),
-  'paste': KnownEventType('onPaste', 'ClipboardEvent'),
-  'pause': KnownEventType('onPause'),
-  'play': KnownEventType('onPlay'),
-  'playing': KnownEventType('onPlaying'),
-  'ratechange': KnownEventType('onRateChange'),
-  'reset': KnownEventType('onReset'),
-  'resize': KnownEventType('onResize'),
-  'scroll': KnownEventType('onScroll'),
-  'search': KnownEventType('onSearch'),
-  'seeked': KnownEventType('onSeeked'),
-  'seeking': KnownEventType('onSeeking'),
-  'select': KnownEventType('onSelect'),
-  'selectstart': KnownEventType('onSelectStart'),
-  'stalled': KnownEventType('onStalled'),
-  'submit': KnownEventType('onSubmit'),
-  'suspend': KnownEventType('onSuspend'),
-  'timeupdate': KnownEventType('onTimeUpdate'),
-  'touchcancel': KnownEventType('onTouchCancel', 'TouchEvent'),
-  'touchenter': KnownEventType('onTouchEnter', 'TouchEvent'),
-  'touchleave': KnownEventType('onTouchLeave', 'TouchEvent'),
-  'touchmove': KnownEventType('onTouchMove', 'TouchEvent'),
-  'touchstart': KnownEventType('onTouchStart', 'TouchEvent'),
-  'transitionend': KnownEventType('onTransitionEnd', 'TransitionEvent'),
-  'volumechange': KnownEventType('onVolumeChange'),
-  'waiting': KnownEventType('onWaiting'),
-  'wheel': KnownEventType('onWheel', 'WheelEvent'),
-};
+class DomEventType {
+  final String providerExpression;
+  final InterfaceType eventType;
 
-class KnownEventType {
-  final String getterName;
-  final String type;
-
-  const KnownEventType(this.getterName, [this.type = 'Event']);
+  DomEventType(this.providerExpression, this.eventType);
 }
 
 class ResolvedDomTypes {
   final LibraryElement dartHtml;
 
   final Map<String, InterfaceType> _types = {};
+  final Map<String, DomEventType> knownEvents = {};
 
-  ResolvedDomTypes(this.dartHtml);
+  late final InterfaceType event = _nonNullableWithoutTypeParameters('Event');
+  late final InterfaceType element =
+      _nonNullableWithoutTypeParameters('Element');
+
+  ResolvedDomTypes(this.dartHtml) {
+    _readKnownInformation();
+  }
+
+  /// Extracts known elements and events from the resolved `dart:html` library.
+  void _readKnownInformation() {
+    final typeSystem = dartHtml.typeSystem;
+    final baseEventProvider = typeSystem.instantiateToBounds2(
+      classElement: _class('EventStreamProvider'),
+      nullabilitySuffix: NullabilitySuffix.none,
+    );
+
+    void addEventsFromClass(ClassElement element) {
+      for (final field in element.fields) {
+        final value = field.computeConstantValue();
+        if (value == null) continue;
+
+        final type = value.type;
+        if (type is! InterfaceType ||
+            !typeSystem.isAssignableTo(type, baseEventProvider)) {
+          continue;
+        }
+
+        final String name;
+        // These two are using a dynamic name in the SDK and need to be special
+        // cased.
+        if (field.name == 'mouseWheelEvent') {
+          name = 'wheel';
+        } else if (field.name == 'transitionEndEvent') {
+          name = 'transitionend';
+        } else {
+          name = value.getField('_eventType')!.toStringValue()!;
+        }
+
+        knownEvents[name] = DomEventType(
+          '${element.name}.${field.name}',
+          type.typeArguments.single as InterfaceType? ??
+              event.element.instantiate(
+                  typeArguments: const [],
+                  nullabilitySuffix: NullabilitySuffix.none),
+        );
+      }
+    }
+
+    for (final child in dartHtml.topLevelElements) {
+      if (child.name == 'GlobalEventHandlers' || child.name == 'Element') {
+        addEventsFromClass(child as ClassElement);
+      }
+    }
+  }
+
+  ClassElement _class(String name) {
+    return dartHtml.getType(name)!;
+  }
 
   InterfaceType _nonNullableWithoutTypeParameters(String name) {
     return _types.putIfAbsent(name, () {
-      return dartHtml.getType(name)!.instantiate(
+      return _class(name).instantiate(
           typeArguments: const [], nullabilitySuffix: NullabilitySuffix.none);
     });
-  }
-
-  /// The `Element` type from `dart.html`.
-  InterfaceType get element {
-    return _nonNullableWithoutTypeParameters('Element');
-  }
-
-  /// The `Event` type from `dart:html`.
-  InterfaceType get event {
-    return _nonNullableWithoutTypeParameters('Event');
   }
 
   InterfaceType? dartTypeForElement(String tagName) {
@@ -188,10 +165,6 @@ class ResolvedDomTypes {
   }
 
   InterfaceType? dartTypeForEvent(String eventName) {
-    final known = knownEvents[eventName.toLowerCase()];
-
-    if (known != null) {
-      return _nonNullableWithoutTypeParameters(known.type);
-    }
+    return knownEvents[eventName.toLowerCase()]?.eventType;
   }
 }
