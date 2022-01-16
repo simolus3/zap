@@ -14,6 +14,8 @@ import '../examples/events/dom_events.zap.dart' as events;
 import '../examples/events/inline_handler.zap.dart' as events;
 import '../examples/events/component_events.zap.dart' as events;
 import '../examples/events/modifiers.zap.dart' as events;
+import '../examples/events/forwarding.zap.dart' as events;
+import '../examples/events/dom_forwarding.zap.dart' as events;
 import '../examples/reactivity/assignments.zap.dart' as rx;
 import '../examples/reactivity/declarations.zap.dart' as rx;
 import '../examples/reactivity/statements.zap.dart' as rx;
@@ -80,6 +82,10 @@ const groups = <ExampleGroup>[
       ExampleComponent('Modifiers', 'events-modifiers', events.modifiers.new),
       ExampleComponent(
           'Component events', 'events-components', events.component_events.new),
+      ExampleComponent(
+          'Event forwarding', 'events-forward', events.forwarding.new),
+      ExampleComponent('DOM event forwarding', 'events-forward-dom',
+          events.dom_forwarding.new),
     ],
   ),
   ExampleGroup(

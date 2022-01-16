@@ -481,74 +481,85 @@ abstract class _ComponentOrSubcomponentWriter {
     final parent = handler.parent;
     final node = generator._nameForNode(parent);
 
-    // Write the `Stream` expression for this event handler.
-    if (parent is SubComponent) {
-      buffer.write('$node.componentEvents<${handler.effectiveEventType}>'
-          '(${dartStringLiteral(handler.event)})');
-    } else {
-      if (knownEvent != null) {
-        buffer.write(knownEvent.providerExpression);
+    void writeStreamToListenTo() {
+      // Write the `Stream` expression for this event handler.
+      if (parent is SubComponent) {
+        buffer.write('$node.componentEvents<${handler.effectiveEventType}>'
+            '(${dartStringLiteral(handler.event)})');
       } else {
-        buffer.write("const EventStreamProvider('${handler.event}')");
-      }
-
-      buffer.write('.forElement($node');
-      if (handler.modifier.contains(EventModifier.capture)) {
-        buffer.write(', useCapture = true');
-      }
-      buffer.write(')');
-    }
-
-    if (handler.modifier.isNotEmpty) {
-      // Transform the event stream to account for the modifiers.
-      buffer.write('.withModifiers(');
-
-      for (final modifier in handler.modifier) {
-        switch (modifier) {
-          case EventModifier.preventDefault:
-            buffer.write('preventDefault: true,');
-            break;
-          case EventModifier.stopPropagation:
-            buffer.write('stopPropagation: true,');
-            break;
-          case EventModifier.passive:
-            buffer.write('passive: true,');
-            break;
-          case EventModifier.nonpassive:
-            buffer.write('passive: false,');
-            break;
-          case EventModifier.once:
-            buffer.write('once: true,');
-            break;
-          case EventModifier.self:
-            buffer.write('onlySelf: true,');
-            break;
-          case EventModifier.trusted:
-            buffer.write('onlyTrusted: true,');
-            break;
-          case EventModifier.capture:
-          // Handled by useCapture: true above
+        if (knownEvent != null) {
+          buffer.write(knownEvent.providerExpression);
+        } else {
+          buffer.write("const EventStreamProvider('${handler.event}')");
         }
+
+        buffer.write('.forElement($node');
+        if (handler.isCapturing) {
+          buffer.write(', useCapture = true');
+        }
+        buffer.write(')');
       }
 
-      buffer.write(')');
+      if (handler.modifier.isNotEmpty) {
+        // Transform the event stream to account for the modifiers.
+        buffer.write('.withModifiers(');
+
+        for (final modifier in handler.modifier) {
+          switch (modifier) {
+            case EventModifier.preventDefault:
+              buffer.write('preventDefault: true,');
+              break;
+            case EventModifier.stopPropagation:
+              buffer.write('stopPropagation: true,');
+              break;
+            case EventModifier.passive:
+              buffer.write('passive: true,');
+              break;
+            case EventModifier.nonpassive:
+              buffer.write('passive: false,');
+              break;
+            case EventModifier.once:
+              buffer.write('once: true,');
+              break;
+            case EventModifier.self:
+              buffer.write('onlySelf: true,');
+              break;
+            case EventModifier.trusted:
+              buffer.write('onlyTrusted: true,');
+              break;
+            case EventModifier.capture:
+            // Handled by useCapture: true above
+          }
+        }
+
+        buffer.write(')');
+      }
     }
 
-    buffer.write('.listen(');
-    callbackForEventHandler(handler);
-    buffer.write(');');
+    if (handler.isForwarding) {
+      buffer.write('$componentThis.forwardEvents(');
+      writeStreamToListenTo();
+      buffer.write(');');
+    } else {
+      writeStreamToListenTo();
+      buffer.write('.listen(');
+      callbackForEventHandler(handler);
+      buffer.write(');');
+    }
   }
 
   void callbackForEventHandler(EventHandler handler) {
+    final listener = handler.listener!;
+
     if (handler.isNoArgsListener) {
       // The handler does not take any arguments, so we have to wrap it in a
       // function that does.
       buffer.write('(_) {(');
-      writeDartWithPatchedReferences(handler.listener);
+      writeDartWithPatchedReferences(listener);
       buffer.write(')();}');
     } else {
       // A tear-off will do
-      writeDartWithPatchedReferences(handler.listener);
+      writeDartWithPatchedReferences(listener);
     }
   }
 

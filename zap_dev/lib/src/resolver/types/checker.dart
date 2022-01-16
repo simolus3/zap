@@ -56,13 +56,17 @@ class TypeChecker {
   }
 
   EventCheckingResult checkEvent(
-      Attribute attribute, String eventName, Expression expression,
+      Attribute attribute, String eventName, Expression? expression,
       {bool canBeCustom = false}) {
-    final staticType = expression.staticType ?? typeProvider.dynamicType;
+    final staticType = expression?.staticType ?? typeProvider.dynamicType;
     final event = domTypes.knownEvents[eventName];
 
     final defaultType = canBeCustom ? domTypes.customEvent : domTypes.event;
     final eventType = event?.eventType ?? defaultType;
+
+    if (expression == null) {
+      return EventCheckingResult(false, event, eventType);
+    }
 
     if (event == null && !canBeCustom) {
       errors.reportError(ZapError(

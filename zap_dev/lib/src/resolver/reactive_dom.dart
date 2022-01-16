@@ -203,7 +203,12 @@ class EventHandler {
   final InterfaceType dartEventType;
 
   final Set<EventModifier> modifier;
-  final Expression listener;
+
+  /// The function listening to this event.
+  ///
+  /// This can be null, in which case the event will be forwarded to parent
+  /// components.
+  final Expression? listener;
   final bool isNoArgsListener;
 
   /// The node on which the event handler is applied.
@@ -215,6 +220,8 @@ class EventHandler {
       dartEventType.getDisplayString(withNullability: true);
 
   bool get isCapturing => modifier.contains(EventModifier.capture);
+
+  bool get isForwarding => listener == null;
 
   EventHandler(this.event, this.knownType, this.dartEventType, this.modifier,
       this.listener, this.isNoArgsListener);

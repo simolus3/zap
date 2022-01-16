@@ -516,8 +516,9 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
     for (final attribute in e.attributes) {
       final key = attribute.key;
       // The pre-process step will replace all attributes with Dart expressions.
-      final value =
-          _resolveExpression((attribute.value as zap.DartExpression).code);
+      final value = attribute.value != null
+          ? _resolveExpression((attribute.value as zap.DartExpression).code)
+          : null;
 
       final eventMatch = _eventRegex.firstMatch(key);
       if (eventMatch != null) {
@@ -559,7 +560,7 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
         slot = (value as SimpleStringLiteral).value;
       } else {
         // A regular attribute it is then.
-        final type = _typeOf(value);
+        final type = _typeOf(value!);
         AttributeMode mode;
         if (typeSystem.isPotentiallyNullable(type)) {
           mode = AttributeMode.setIfNotNullClearOtherwise;
@@ -851,7 +852,7 @@ class _FindComponents {
         final listenerIsMutable =
             listener is! FunctionReference && listener is! FunctionExpression;
 
-        final relevantVariables = listenerIsMutable
+        final relevantVariables = listenerIsMutable && listener != null
             ? _FindReadVariables.find(listener, variables)
             : <BaseZapVariable>{};
         flows.add(Flow(relevantVariables, RegisterEventHandler(handler)));

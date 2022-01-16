@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 import 'dart:html';
 
 import 'package:meta/meta.dart';
@@ -40,6 +41,7 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
   final _unmountListeners = <void Function()>[];
 
   var _isAlive = false;
+  var _isRunningUpdate = false;
 
   int _updateBitmask = 0;
   final Map<Fragment, int> _fragmentUpdates = {};
@@ -114,6 +116,13 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
     _eventEmitter.add(event);
   }
 
+  @protected
+  void forwardEvents(Stream<Event> stream) {
+    // Note: Not using `stream.transform(lifecycle())` since we don't know the
+    // exact type of stream we're having here.
+    lifecycle<Event>().bind(stream).listen(emitEvent);
+  }
+
   @override
   void create(Element target, [Node? anchor]) {
     _isAlive = true;
@@ -137,10 +146,9 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
       before();
     }
 
+    debugger();
     update(delta);
     _fragmentUpdates.forEach((fragment, flag) => fragment.update(flag));
-    _fragmentUpdates.clear();
-    _updateBitmask = 0;
 
     for (final after in _afterUpdateListeners) {
       after();
@@ -161,58 +169,60 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
     remove();
   }
 
-  @protected
-  void $invalidate(int flags) {
+  void _invalidate(
+      {required void Function() set, required void Function() add}) {
     if (!_isAlive) return;
+
+    if (_isRunningUpdate) {
+      // Don't schedule an update while another update is running, let's wait
+      // first.
+      tick.then((_) => _invalidate(set: set, add: add));
+      return;
+    }
 
     final scheduled = _scheduledUpdate;
 
     if (scheduled == null) {
       // No update scheduled yet, do that now!
-      _updateBitmask = flags;
+      set();
       final completer = _scheduledUpdate = Completer.sync();
 
       scheduleMicrotask(() {
         _scheduledUpdate = null;
 
         try {
+          _isRunningUpdate = true;
           _runUpdate(_updateBitmask);
         } finally {
+          _isRunningUpdate = false;
+          _updateBitmask = 0;
+          _fragmentUpdates.clear();
+
           completer.complete();
         }
       });
     } else {
       // An update has been scheduled already. Let's just join that one!
-      _updateBitmask |= flags;
+      add();
     }
   }
 
   @protected
+  void $invalidate(int flags) {
+    _invalidate(
+        set: () => _updateBitmask = flags, add: () => _updateBitmask |= flags);
+  }
+
+  @protected
   void $invalidateSubcomponent(Fragment fragment, int delta) {
-    final scheduled = _scheduledUpdate;
-
-    if (scheduled == null) {
-      // No update scheduled yet, do that now!
-      _fragmentUpdates[fragment] = delta;
-      final completer = _scheduledUpdate = Completer.sync();
-
-      scheduleMicrotask(() {
-        _scheduledUpdate = null;
-
-        try {
-          _runUpdate(_updateBitmask);
-        } finally {
-          completer.complete();
-        }
-      });
-    } else {
-      // An update has been scheduled already. Let's just join that one!
-      _fragmentUpdates.update(
+    _invalidate(
+      set: () => _fragmentUpdates[fragment] = delta,
+      add: () => _fragmentUpdates.update(
         fragment,
         (value) => value | delta,
         ifAbsent: () => delta,
-      );
-    }
+      ),
+    );
   }
 
   @protected
