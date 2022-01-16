@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer';
 import 'dart:html';
 
 import 'package:meta/meta.dart';
@@ -28,6 +27,12 @@ abstract class ComponentOrPending {
   Future<void> get tick;
 }
 
+extension EmitCustomEvent on ComponentOrPending {
+  void emitCustom(String type, [Object? detail]) {
+    emitEvent(CustomEvent(type, detail: detail));
+  }
+}
+
 abstract class ZapComponent implements ComponentOrPending, Fragment {
   final _onMountListeners = <Object? Function()>[];
   final _beforeUpdateListeners = <void Function()>[];
@@ -41,6 +46,7 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
   Completer<void>? _scheduledUpdate;
 
   final ContextScope _scope;
+  final StreamController<Event> _eventEmitter = StreamController.broadcast();
 
   @override
   Map<Object?, Object?> get context => _scope;
@@ -63,6 +69,11 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
 
   @protected
   ComponentOrPending get self => this;
+
+  @internal
+  Stream<T> componentEvents<T extends Event>(String type) {
+    return _eventEmitter.stream.where((e) => e is T && e.type == type).cast();
+  }
 
   @override
   void onMount(void Function() callback) {
@@ -99,7 +110,9 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
   }
 
   @override
-  void emitEvent(Event event) {}
+  void emitEvent(Event event) {
+    _eventEmitter.add(event);
+  }
 
   @override
   void create(Element target, [Node? anchor]) {
@@ -143,6 +156,7 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
     for (final callback in _unmountListeners) {
       callback();
     }
+    _eventEmitter.close();
 
     remove();
   }

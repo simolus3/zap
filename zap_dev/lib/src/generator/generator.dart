@@ -478,20 +478,26 @@ abstract class _ComponentOrSubcomponentWriter {
 
   void registerEventHandler(EventHandler handler) {
     final knownEvent = handler.knownType;
-    final node = generator._nameForNode(handler.parent);
+    final parent = handler.parent;
+    final node = generator._nameForNode(parent);
 
-    // Write the EventStreamProvider for this event type
-    if (knownEvent != null) {
-      buffer.write(knownEvent.providerExpression);
+    // Write the `Stream` expression for this event handler.
+    if (parent is SubComponent) {
+      buffer.write('$node.componentEvents<${handler.effectiveEventType}>'
+          '(${dartStringLiteral(handler.event)})');
     } else {
-      buffer.write("const EventStreamProvider('${handler.event}')");
-    }
+      if (knownEvent != null) {
+        buffer.write(knownEvent.providerExpression);
+      } else {
+        buffer.write("const EventStreamProvider('${handler.event}')");
+      }
 
-    buffer.write('.forElement($node');
-    if (handler.modifier.contains(EventModifier.capture)) {
-      buffer.write(', useCapture = true');
+      buffer.write('.forElement($node');
+      if (handler.modifier.contains(EventModifier.capture)) {
+        buffer.write(', useCapture = true');
+      }
+      buffer.write(')');
     }
-    buffer.write(')');
 
     if (handler.modifier.isNotEmpty) {
       // Transform the event stream to account for the modifiers.

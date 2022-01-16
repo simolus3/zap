@@ -138,6 +138,7 @@ enum AttributeMode {
 class SubComponent extends ReactiveNode {
   final ExternalComponent component;
   final Map<String, Expression> expressions;
+  final List<EventHandler> eventHandlers;
 
   final DomFragment? defaultSlot;
   final Map<String, DomFragment> slots;
@@ -145,9 +146,14 @@ class SubComponent extends ReactiveNode {
   SubComponent({
     required this.component,
     required this.expressions,
+    this.eventHandlers = const [],
     this.defaultSlot,
     this.slots = const {},
-  });
+  }) {
+    for (final handler in eventHandlers) {
+      handler.parent = this;
+    }
+  }
 
   @override
   Iterable<ReactiveNode> get children => [];
@@ -194,18 +200,24 @@ enum EventModifier {
 class EventHandler {
   final String event;
   final DomEventType? knownType;
+  final InterfaceType dartEventType;
+
   final Set<EventModifier> modifier;
   final Expression listener;
   final bool isNoArgsListener;
 
-  late ReactiveElement parent;
+  /// The node on which the event handler is applied.
+  ///
+  /// Either a [ReactiveElement] or a [SubComponent].
+  late ReactiveNode parent;
 
-  String get effectiveEventType => knownType?.eventType.element.name ?? 'Event';
+  String get effectiveEventType =>
+      dartEventType.getDisplayString(withNullability: true);
 
   bool get isCapturing => modifier.contains(EventModifier.capture);
 
-  EventHandler(this.event, this.knownType, this.modifier, this.listener,
-      this.isNoArgsListener);
+  EventHandler(this.event, this.knownType, this.dartEventType, this.modifier,
+      this.listener, this.isNoArgsListener);
 }
 
 EventModifier? parseEventModifier(String s) {

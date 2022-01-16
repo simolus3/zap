@@ -505,6 +505,9 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
       return _finishChildGroup().children;
     }
 
+    final external = resolver.components
+        .firstWhereOrNull((component) => component.className == e.tagName);
+
     final binders = <ElementBinder>[];
     final handlers = <EventHandler>[];
     final attributes = <String, ReactiveAttribute>{};
@@ -528,9 +531,10 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
                 .toSet() ??
             const {};
 
-        final checkResult = resolver.checker.checkEvent(attribute, name, value);
-        handlers.add(EventHandler(name, checkResult.known, modifiers, value,
-            checkResult.dropParameter));
+        final checkResult = resolver.checker
+            .checkEvent(attribute, name, value, canBeCustom: external != null);
+        handlers.add(EventHandler(name, checkResult.known, checkResult.dartType,
+            modifiers, value, checkResult.dropParameter));
       } else if (key.startsWith('bind:')) {
         // Bind an attribute of this element to a variable.
         final attributeName = key.substring('bind:'.length);
@@ -569,9 +573,6 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
       }
     }
 
-    final external = resolver.components
-        .firstWhereOrNull((component) => component.className == e.tagName);
-
     if (external != null) {
       // Tag references another zap component
       _newChildGroup(_PendingChildren(assignableSlotNames: external.slotNames));
@@ -594,6 +595,7 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
             for (final entry in result.slotChildren.entries)
               entry.key: _newFragment(entry.value, _virtualChildScope()),
           },
+          eventHandlers: handlers,
         ),
         slot,
       );
@@ -843,23 +845,26 @@ class _FindComponents {
           flows.subComponents, fragment.resolvedScope, fragment, flows.flow));
     }
 
+    void resolveEventHandlers(List<EventHandler> eventHandlers) {
+      for (final handler in eventHandlers) {
+        final listener = handler.listener;
+        final listenerIsMutable =
+            listener is! FunctionReference && listener is! FunctionExpression;
+
+        final relevantVariables = listenerIsMutable
+            ? _FindReadVariables.find(listener, variables)
+            : <BaseZapVariable>{};
+        flows.add(Flow(relevantVariables, RegisterEventHandler(handler)));
+      }
+    }
+
     // And also infer it from the DOM
     void processNode(ReactiveNode node) {
       if (node is ReactiveText) {
         final relevant = _FindReadVariables.find(node.expression, variables);
         flows.add(Flow(relevant, ChangeText(node)));
       } else if (node is ReactiveElement) {
-        for (final handler in node.eventHandlers) {
-          final listener = handler.listener;
-          final listenerIsMutable =
-              listener is! FunctionReference && listener is! FunctionExpression;
-
-          final relevantVariables = listenerIsMutable
-              ? _FindReadVariables.find(listener, variables)
-              : <BaseZapVariable>{};
-          flows.add(Flow(relevantVariables, RegisterEventHandler(handler)));
-        }
-
+        resolveEventHandlers(node.eventHandlers);
         node.attributes.forEach((key, value) {
           final dependsOn =
               _FindReadVariables.find(value.backingExpression, variables);
@@ -962,6 +967,8 @@ class _FindComponents {
             ));
           }
         }
+
+        resolveEventHandlers(node.eventHandlers);
       } else if (node is DynamicSubComponent) {
         flows.add(Flow(_FindReadVariables.find(node.expression, variables),
             UpdateBlockExpression(node)));

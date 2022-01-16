@@ -91,6 +91,8 @@ class ResolvedDomTypes {
   final Map<String, DomEventType> knownEvents = {};
 
   late final InterfaceType event = _nonNullableWithoutTypeParameters('Event');
+  late final InterfaceType customEvent =
+      _nonNullableWithoutTypeParameters('CustomEvent');
   late final InterfaceType element =
       _nonNullableWithoutTypeParameters('Element');
 
@@ -118,7 +120,7 @@ class ResolvedDomTypes {
         }
 
         final String name;
-        // These two are using a dynamic name in the SDK and need to be special
+        // These two are using a dynamic name in the SDK and need to be special-
         // cased.
         if (field.name == 'mouseWheelEvent') {
           name = 'wheel';
@@ -162,9 +164,5 @@ class ResolvedDomTypes {
     if (known != null) {
       return _nonNullableWithoutTypeParameters(known.className);
     }
-  }
-
-  InterfaceType? dartTypeForEvent(String eventName) {
-    return knownEvents[eventName.toLowerCase()]?.eventType;
   }
 }

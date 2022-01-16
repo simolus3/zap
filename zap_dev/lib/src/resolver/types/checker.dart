@@ -56,12 +56,15 @@ class TypeChecker {
   }
 
   EventCheckingResult checkEvent(
-      Attribute attribute, String eventName, Expression expression) {
+      Attribute attribute, String eventName, Expression expression,
+      {bool canBeCustom = false}) {
     final staticType = expression.staticType ?? typeProvider.dynamicType;
     final event = domTypes.knownEvents[eventName];
-    final eventType = domTypes.dartTypeForEvent(eventName) ?? domTypes.event;
 
-    if (event == null) {
+    final defaultType = canBeCustom ? domTypes.customEvent : domTypes.event;
+    final eventType = event?.eventType ?? defaultType;
+
+    if (event == null && !canBeCustom) {
       errors.reportError(ZapError(
           'Unknown event `$eventName`, this may cause runtime errors',
           attribute.keyToken?.span));
@@ -69,7 +72,7 @@ class TypeChecker {
 
     if (staticType is! FunctionType) {
       errors.reportError(ZapError('Not a function!', attribute.value?.span));
-      return EventCheckingResult(true, event);
+      return EventCheckingResult(true, event, eventType);
     }
 
     final parameters = staticType.parameters;
@@ -77,11 +80,11 @@ class TypeChecker {
       errors.reportError(ZapError(
           'Event handlers must have at most one parameter!',
           attribute.value?.span));
-      return EventCheckingResult(true, event);
+      return EventCheckingResult(true, event, eventType);
     }
 
     if (parameters.isEmpty) {
-      return EventCheckingResult(true, event);
+      return EventCheckingResult(true, event, eventType);
     }
 
     final parameter = parameters.single;
@@ -96,12 +99,12 @@ class TypeChecker {
       final expectedType = eventType.getDisplayString(withNullability: true);
 
       errors.reportError(ZapError(
-        'The function must accept a $expectedType from `dart.html`',
+        'The function must accept a `$expectedType` from `dart.html`',
         attribute.value?.span,
       ));
     }
 
-    return EventCheckingResult(false, event);
+    return EventCheckingResult(false, event, eventType);
   }
 
   static Future<TypeChecker> checkerFor(TypeProvider provider, TypeSystem ts,
@@ -135,6 +138,7 @@ class TypeChecker {
 class EventCheckingResult {
   final bool dropParameter;
   final DomEventType? known;
+  final InterfaceType dartType;
 
-  EventCheckingResult(this.dropParameter, this.known);
+  EventCheckingResult(this.dropParameter, this.known, this.dartType);
 }
