@@ -15,7 +15,7 @@ class DynamicComponent implements Fragment {
 
   set component(ZapComponent component) {
     final parent = _parent;
-    if (parent != null) {
+    if (parent != null && _component != component) {
       // This DynamicComponent has been added to the DOM tree, so destroy the
       // old component and re-create the new one in-place
       _component.destroy();
