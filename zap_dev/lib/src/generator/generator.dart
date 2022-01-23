@@ -939,32 +939,57 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
     for (final initializer in component.componentInitializers) {
       if (initializer is InitializeStatement) {
         final initializedVariable = initializer.initializedVariable;
-        if (initializedVariable != null &&
-            initializedVariable.watching != null) {
-          final statement =
-              initializer.dartStatement as VariableDeclarationStatement;
-          final varInit = statement.variables.variables.first.initializer!
-              as MethodInvocation;
+        final statement = initializer.dartStatement;
 
-          final watchableExpr = varInit.argumentList.arguments.single;
+        // Rewrite variable declarations to instead initialize the field on
+        // the component instance.
+        if (statement is VariableDeclarationStatement &&
+            initializedVariable != null) {
+          if (initializedVariable.watching != null) {
+            final varInit = statement.variables.variables.first.initializer!
+                as MethodInvocation;
 
-          // This variable is watching another expression. Store that expression
-          // in a temporary variable, assign and set up watcher.
-          final variableName = generator._nameForMisc(initializer);
-          buffer.write('final $variableName = ');
-          writeDartWithPatchedReferences(watchableExpr, patchSelf: false);
-          buffer.writeln(';');
+            final watchableExpr = varInit.argumentList.arguments.single;
+            // This variable is watching another expression. Store that
+            // expression in a temporary variable, assign and set up watcher.
+            final variableName = generator._nameForMisc(initializer);
+            buffer.write('final $variableName = ');
+            writeDartWithPatchedReferences(watchableExpr, patchSelf: false);
+            buffer.writeln(';');
 
-          // Assign
-          buffer
-            ..write(generator._nameForVar(initializedVariable))
-            ..write(' = $variableName.value;');
+            // Assign
+            buffer
+              ..write(generator._nameForVar(initializedVariable))
+              ..write(' = $variableName.value;');
 
-          // Setup watcher
-          buffer
-            ..writeln('$variableName.transform(lifecycle()).listen((value) {')
-            ..writeln(_statementsToChangeVariable(initializedVariable, 'value'))
-            ..writeln('});');
+            // Setup watcher
+            buffer
+              ..writeln('$variableName.transform(lifecycle()).listen((value) {')
+              ..writeln(
+                  _statementsToChangeVariable(initializedVariable, 'value'))
+              ..writeln('});');
+          } else {
+            for (final variable in statement.variables.variables) {
+              final initializer = variable.initializer;
+              final zapTarget = component.scope.declaredVariables
+                  .firstWhereOrNull(
+                      (zap) => zap.element == variable.declaredElement);
+              if (zapTarget != null) {
+                final field = generator._nameForVar(zapTarget);
+
+                if (initializer != null) {
+                  // Convert to assignment
+                  buffer.write('$field = ');
+                  writeDartWithPatchedReferences(initializer, patchSelf: false);
+                  buffer.writeln(';');
+                } else if (generator.component.typeSystem
+                    .isNullable(zapTarget.type)) {
+                  // Implicitly initialized to null at the declaration
+                  buffer.writeln('$field = null;');
+                }
+              }
+            }
+          }
         } else {
           writeDartWithPatchedReferences(initializer.dartStatement,
               patchSelf: false);
