@@ -11,9 +11,9 @@ extension ZapElement on Element {
   /// Adds an empty attribute [key] if [value] is true, removes it otherwise.
   void applyBooleanAttribute(String key, bool value) {
     if (value) {
-      attributes.remove(key);
-    } else {
       attributes[key] = '';
+    } else {
+      attributes.remove(key);
     }
   }
 
@@ -29,6 +29,10 @@ extension ZapElement on Element {
 
   void addComponentClass(String className) {
     classes.add(className);
+  }
+
+  void setClassAttribute(String scopedCssClass, String otherClasses) {
+    attributes['class'] = '$scopedCssClass $otherClasses';
   }
 }
 

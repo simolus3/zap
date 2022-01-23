@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer';
 import 'dart:html';
 
 import 'package:meta/meta.dart';
@@ -8,7 +7,8 @@ import 'context.dart';
 import 'fragment.dart';
 import 'internal.dart';
 
-ContextScope? _parentScope;
+@internal
+ZapComponent? parentComponent;
 
 abstract class ComponentOrPending {
   Map<Object?, Object?> get context;
@@ -146,7 +146,6 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
       before();
     }
 
-    debugger();
     update(delta);
     _fragmentUpdates.forEach((fragment, flag) => fragment.update(flag));
 
@@ -238,10 +237,10 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
   }
 
   @protected
-  T $createChildComponent<T extends ZapComponent>(T Function() create) {
-    _parentScope = _scope;
+  T $createChildComponent<T extends Fragment>(T Function() create) {
+    parentComponent = this;
     final component = create();
-    _parentScope = null;
+    parentComponent = null;
 
     return component;
   }
@@ -255,7 +254,7 @@ class PendingComponent extends ComponentOrPending {
 
   var _wasCreated = false;
 
-  final _context = ContextScope(_parentScope);
+  final _context = ContextScope(parentComponent?._scope);
 
   @override
   Map<Object?, Object?> get context => _context;

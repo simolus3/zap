@@ -244,7 +244,7 @@ class Scanner {
     return _identifier(
       canStart: (char) => char.isInLatinAlphabet,
       canContinue: (char) =>
-          char == $_ || char == $colon || char.isAlphaNumeric,
+          char == $_ || char == $minus || char == $colon || char.isAlphaNumeric,
       errorWhenInvalidStart: 'Expected a letter to start the tag name',
     );
   }
@@ -299,7 +299,11 @@ class Scanner {
       return _identifier(
         canStart: (char) => char.isInLatinAlphabet,
         canContinue: (char) =>
-            char == $colon || char == $bar || char == $_ || char.isAlphaNumeric,
+            char == $colon ||
+            char == $bar ||
+            char == $_ ||
+            char == $minus ||
+            char.isAlphaNumeric,
         errorWhenInvalidStart: 'Expected a letter to start an attribute',
       );
     }

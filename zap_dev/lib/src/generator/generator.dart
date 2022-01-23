@@ -390,14 +390,28 @@ abstract class _ComponentOrSubcomponentWriter {
 
       switch (attribute.mode) {
         case AttributeMode.setValue:
-          // Just emit node.attributes[key] = value.toString()
-          buffer
-            ..write(nodeName)
-            ..write(".attributes['")
-            ..write(action.name)
-            ..write("'] = ");
-          writeDartWithPatchedReferences(attribute.backingExpression);
-          buffer.writeln('.toString();');
+          buffer.write(nodeName);
+
+          if (action.name == 'class' &&
+              generator.component.cssClassName != null) {
+            // Make sure the scoped css class is still included when setting the
+            // class attribute
+            buffer
+              ..write('.setClassAttribute(')
+              ..write(dartStringLiteral(generator.component.cssClassName!))
+              ..write(', ');
+            writeDartWithPatchedReferences(attribute.backingExpression);
+            buffer.writeln('.toString());');
+          } else {
+            // Just emit node.attributes[key] = value.toString()
+            buffer
+              ..write(".attributes['")
+              ..write(action.name)
+              ..write("'] = ");
+            writeDartWithPatchedReferences(attribute.backingExpression);
+            buffer.writeln('.toString();');
+          }
+
           break;
         case AttributeMode.addIfTrue:
           // Emit node.applyBooleanAttribute(key, value)
@@ -600,45 +614,56 @@ abstract class _ComponentOrSubcomponentWriter {
     } else if (node is SubComponent) {
       final className = node.component.className;
 
-      buffer
-        ..write('\$createChildComponent<$className>(() => ')
-        ..write(node.component.className)
-        ..write('(');
+      void instantiateComponent() {
+        buffer.write('${node.component.className}(');
 
-      // Write properties passed down to the component.
-      for (final property in node.component.parameters) {
-        final name = property.key;
-        final actualValue = node.expressions[name];
+        // Write properties passed down to the component.
+        for (final property in node.component.parameters) {
+          final name = property.key;
+          final actualValue = node.expressions[name];
 
-        if (actualValue == null) {
-          buffer.write('null');
-        } else {
-          // Wrap values in a ZapBox to distinguish between set and absent
-          // parameters.
-          buffer.write('$_prefix.ZapValue(');
-          writeDartWithPatchedReferences(actualValue);
-          buffer.write(')');
+          if (actualValue == null) {
+            buffer.write('null');
+          } else {
+            // Wrap values in a ZapBox to distinguish between set and absent
+            // parameters.
+            buffer.write('$_prefix.ZapValue(');
+            writeDartWithPatchedReferences(actualValue);
+            buffer.write(')');
+          }
+
+          buffer.write(',');
         }
 
-        buffer.write(',');
-      }
+        // Also write slots passed down.
+        for (final slot in node.component.slotNames) {
+          final child = slot == null ? node.defaultSlot : node.slots[slot];
 
-      // Also write slots passed down.
-      for (final slot in node.component.slotNames) {
-        final child = slot == null ? node.defaultSlot : node.slots[slot];
+          if (child == null) {
+            buffer.write('null');
+          } else {
+            final classOfFragment =
+                generator._nameForMisc(child.owningComponent!);
+            buffer.write('() => $classOfFragment(this)');
+          }
 
-        if (child == null) {
-          buffer.write('null');
-        } else {
-          final classOfFragment =
-              generator._nameForMisc(child.owningComponent!);
-          buffer.write('() => $classOfFragment(this)');
+          buffer.write(',');
         }
 
-        buffer.write(',');
+        buffer.writeln(')');
       }
 
-      buffer.writeln('))');
+      final component = this.component;
+      if (component is ResolvedSubComponent && component.isMountedInSlot) {
+        // The slot owner will take care of assigning the right parent context.
+        instantiateComponent();
+      } else {
+        buffer
+          ..write(componentThis)
+          ..write('.\$createChildComponent<$className>(() => ');
+        instantiateComponent();
+        buffer.write(')');
+      }
     } else if (node is DynamicSubComponent) {
       buffer.write('$_prefix.DynamicComponent(');
       writeDartWithPatchedReferences(node.expression);
@@ -709,7 +734,7 @@ abstract class _ComponentOrSubcomponentWriter {
       final providedSlot = '$componentThis.${_slotVariable(node.slotName)}';
       final fallback = '() => $fallbackComponent($componentThis)';
 
-      buffer.write('$_prefix.Slot($providedSlot ?? $fallback)');
+      buffer.write('$_prefix.Slot($providedSlot ?? $fallback, $componentThis)');
     } else {
       throw ArgumentError('Unknown node type: $node');
     }
@@ -826,12 +851,12 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
     // Write variables:
     for (final variable
         in component.scope.declaredVariables.whereType<DartCodeVariable>()) {
-      if (!variable.isMutable) buffer.write('final ');
-
       final name = generator._nameForVar(variable);
       if (variable.isLate) {
         buffer.write('late ');
       }
+
+      if (!variable.isMutable) buffer.write('final ');
 
       buffer
         ..write(variable.element.type.getDisplayString(withNullability: true))
@@ -969,8 +994,13 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
         final declaration = variable.declaration;
         final defaultExpr =
             declaration is VariableDeclaration ? declaration.initializer : null;
+        final isNullable =
+            generator.component.typeSystem.isNullable(variable.type);
+
         if (defaultExpr != null) {
           writeUnchangedDartCode(defaultExpr);
+        } else if (isNullable) {
+          buffer.write('null');
         } else {
           // No initializer and no value set -> error
           buffer.write(

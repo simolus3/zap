@@ -4,7 +4,6 @@ import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:analyzer/dart/element/type_provider.dart';
 import 'package:analyzer/dart/element/type_system.dart';
-import 'package:analyzer/dart/element/type_visitor.dart';
 import 'package:build/build.dart';
 import 'package:collection/collection.dart';
 
@@ -70,23 +69,24 @@ class Resolver {
     }
 
     _assignUpdateFlags(scope.scopes[scope.root]!);
-    return ResolvedComponent(componentName, component, prepare.cssClassName);
+    return ResolvedComponent(
+        componentName, component, prepare.cssClassName, typeSystem);
   }
 
   void _findExternalComponents() {
     preparedLibrary.importedLibraries
         .map((l) => l.exportNamespace)
-        .fold<Map<String, Element>>(
-            <String, Element>{},
-            (names, ns) =>
-                names..addAll(ns.definedNames)).forEach((name, element) {
-      if (element is ClassElement && isComponent(element)) {
-        components.add(_readComponent(name, element));
+        .expand((ns) => ns.definedNames.values)
+        .forEach((element) {
+      final tagName = componentTagName(element);
+
+      if (element is ClassElement && tagName != null) {
+        components.add(_readComponent(tagName, element));
       }
     });
   }
 
-  ExternalComponent _readComponent(String name, ClassElement element) {
+  ExternalComponent _readComponent(String tagName, ClassElement element) {
     final parameters = <MapEntry<String, DartType>>[];
     var slots = <String?>[];
 
@@ -104,7 +104,7 @@ class Resolver {
     }
 
     // Note: We're not using element.name since the name may be aliased.
-    return ExternalComponent(name, parameters, slots);
+    return ExternalComponent(element.name, tagName, parameters, slots);
   }
 
   void _assignUpdateFlags(ZapVariableScope scope, [int start = 0]) {
@@ -506,7 +506,7 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
     }
 
     final external = resolver.components
-        .firstWhereOrNull((component) => component.className == e.tagName);
+        .firstWhereOrNull((component) => component.tagName == e.tagName);
 
     final binders = <ElementBinder>[];
     final handlers = <EventHandler>[];
@@ -840,10 +840,16 @@ class _FindComponents {
       }
     }
 
-    void resolveWithoutOwnStatements(DomFragment fragment) {
+    void resolveWithoutOwnStatements(DomFragment fragment,
+        [bool isForSlot = false]) {
       final flows = _findFlowUpdates(variables, fragment, []);
       subComponents.add(ResolvedSubComponent(
-          flows.subComponents, fragment.resolvedScope, fragment, flows.flow));
+        flows.subComponents,
+        fragment.resolvedScope,
+        fragment,
+        flows.flow,
+        isMountedInSlot: isForSlot,
+      ));
     }
 
     void resolveEventHandlers(List<EventHandler> eventHandlers) {
@@ -877,17 +883,11 @@ class _FindComponents {
         // Blocks in the if statement will be compiled to lightweight components
         // written into separate classes.
         // However, they don't have any initializer statements and user code.
-        for (final when in node.whens) {
-          final flow = _findFlowUpdates(variables, when, []);
-          subComponents.add(ResolvedSubComponent(
-              flow.subComponents, when.resolvedScope, when, flow.flow));
-        }
+        node.whens.forEach(resolveWithoutOwnStatements);
 
         final otherwise = node.otherwise;
         if (otherwise != null) {
-          final flow = _findFlowUpdates(variables, otherwise, []);
-          subComponents.add(ResolvedSubComponent(flow.subComponents,
-              otherwise.resolvedScope, otherwise, flow.flow));
+          resolveWithoutOwnStatements(otherwise);
         }
 
         // The if should be updated if any variable referenced in any condition
@@ -953,9 +953,11 @@ class _FindComponents {
       } else if (node is SubComponent) {
         final defaultSlot = node.defaultSlot;
         if (defaultSlot != null) {
-          resolveWithoutOwnStatements(defaultSlot);
+          resolveWithoutOwnStatements(defaultSlot, true);
         }
-        node.slots.values.forEach(resolveWithoutOwnStatements);
+        for (final namedSlot in node.slots.values) {
+          resolveWithoutOwnStatements(namedSlot, true);
+        }
 
         for (final assignedProperty in node.expressions.entries) {
           final relevantVariables =
@@ -1042,5 +1044,8 @@ class ResolvedComponent {
   final String? cssClassName;
   final Component component;
 
-  ResolvedComponent(this.componentName, this.component, this.cssClassName);
+  final TypeSystem typeSystem;
+
+  ResolvedComponent(
+      this.componentName, this.component, this.cssClassName, this.typeSystem);
 }

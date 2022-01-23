@@ -13,6 +13,7 @@ dependencies:
   csslib: ^0.17.1
   dart_style: ^2.2.0
   path: ^1.8.0
+  recase: ^4.0.0
   # We're importing internal sass code, implement sealed interfaces and do other
   # shady things... We're likely to be broken by something that sass wouldn't
   # consider breaking, so let's pin the version here. Users aren't likely to import

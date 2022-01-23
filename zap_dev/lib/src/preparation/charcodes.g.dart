@@ -25,6 +25,9 @@ const int $apos = 0x27;
 /// Character `,`.
 const int $comma = 0x2c;
 
+/// Character `-`.
+const int $minus = 0x2d;
+
 /// Character `/`.
 const int $slash = 0x2f;
 

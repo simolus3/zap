@@ -67,17 +67,16 @@ Future<PrepareResult> prepare(
 
   String? className;
 
-  final rawStyle = checker.style?.readInnerText(reporter);
+  final rawStyle = checker.style?.readInnerText(reporter) ?? '';
   var resolvedStyle = '';
-  if (rawStyle != null) {
-    final hash = utf8.encoder.fuse(sha1).convert(sourceUri.toString());
-    final hashText =
-        zbase32.convert(hash.bytes.sublist(0, min(hash.bytes.length, 8)));
-    className = 'zap-$hashText';
 
-    resolvedStyle = componentScss(
-        rawStyle, className, splitScript?.originalImports ?? const []);
-  }
+  final hash = utf8.encoder.fuse(sha1).convert(sourceUri.toString());
+  final hashText =
+      zbase32.convert(hash.bytes.sublist(0, min(hash.bytes.length, 8)));
+  className = 'zap-$hashText';
+
+  resolvedStyle = componentScss(
+      rawStyle, className, splitScript?.originalImports ?? const []);
 
   return PrepareResult._(
     imports,

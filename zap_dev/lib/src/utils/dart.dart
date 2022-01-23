@@ -50,12 +50,16 @@ bool isProp(VariableElement element) {
   return _findDslAnnotation(element, 'Property') != null;
 }
 
-/// Returns whether a element has the `$$component` annotation.
+/// Returns whether a element has the `$ComponentMarker` annotation.
 ///
 /// This annotation is generated in the API-extracting builder for components
 /// defined in a zap file.
-bool isComponent(ClassElement element) {
-  return _findDslAnnotation(element, '_ComponentMarker') != null;
+String? componentTagName(Element element) {
+  final annotation = _findDslAnnotation(element, r'$ComponentMarker');
+
+  if (annotation != null) {
+    return annotation.getField('tagName')!.toStringValue();
+  }
 }
 
 Iterable<String?> readSlotAnnotations(Element element) {

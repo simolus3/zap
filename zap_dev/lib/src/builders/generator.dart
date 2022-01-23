@@ -10,6 +10,7 @@ import '../generator/generator.dart';
 import '../generator/options.dart';
 import '../resolver/preparation.dart';
 import '../resolver/resolver.dart';
+import '../utils/zap.dart';
 import 'common.dart';
 
 class ZapBuilder implements Builder {
@@ -33,7 +34,8 @@ class ZapBuilder implements Builder {
     // first.
     final result = await element.session.getResolvedLibraryByElement(element)
         as ResolvedLibraryResult;
-    final componentName = p.url.basenameWithoutExtension(input.path);
+    final componentName =
+        dartComponentName(p.url.basenameWithoutExtension(input.path));
 
     final resolver = Resolver(
       prepResult,

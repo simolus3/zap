@@ -6,7 +6,7 @@ export 'src/blocks/key.dart';
 export 'src/blocks/slot.dart';
 export 'src/blocks/subcomponent.dart';
 
-export 'src/core/component.dart';
+export 'src/core/component.dart' hide parentComponent;
 export 'src/core/fragment.dart';
 export 'src/core/snapshot.dart';
 export 'src/core/value.dart';

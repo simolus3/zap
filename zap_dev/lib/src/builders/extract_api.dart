@@ -5,6 +5,7 @@ import 'package:build/build.dart';
 import 'package:path/path.dart' as p;
 
 import '../utils/dart.dart';
+import '../utils/zap.dart';
 
 class ApiExtractingBuilder implements Builder {
   const ApiExtractingBuilder();
@@ -12,9 +13,9 @@ class ApiExtractingBuilder implements Builder {
   @override
   Future<void> build(BuildStep buildStep) async {
     final inputId = buildStep.inputId;
-    var componentName = p.basename(inputId.path);
-    componentName = componentName.substring(
-        0, componentName.length - '.tmp.zap.dart'.length);
+    var basename = p.basename(inputId.path);
+    basename = basename.substring(0, basename.length - '.tmp.zap.dart'.length);
+    final componentName = dartComponentName(basename);
     final output = buildStep.allowedOutputs.single;
 
     final library = await buildStep.inputLibrary;
@@ -28,7 +29,7 @@ class ApiExtractingBuilder implements Builder {
 
     final buffer = StringBuffer()
       ..writeln(components.directives)
-      ..writeln(r'@$$componentMarker')
+      ..writeln("@\$ComponentMarker(${dartStringLiteral(basename)})")
       ..writeln('abstract class $componentName {');
     functionNode?.accept(_ApiInferrer(buffer));
     buffer.writeln('}');

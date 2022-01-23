@@ -41,12 +41,19 @@ class Component extends ComponentOrSubcomponent {
 class ResolvedSubComponent extends ComponentOrSubcomponent {
   ComponentOrSubcomponent? parent;
 
+  /// Whether this component is created for a fragment mounted as a slot.
+  ///
+  /// This has an impact on how subcomponent of this fragment are created, as
+  /// those are then descendants of the owner of the slot and not of [parent].
+  final bool isMountedInSlot;
+
   ResolvedSubComponent(
     List<ComponentOrSubcomponent> children,
     ZapVariableScope scope,
     DomFragment fragment,
-    List<Flow> flows,
-  ) : super(children, scope, fragment, flows);
+    List<Flow> flows, {
+    this.isMountedInSlot = false,
+  }) : super(children, scope, fragment, flows);
 }
 
 abstract class ComponentInitializer {}

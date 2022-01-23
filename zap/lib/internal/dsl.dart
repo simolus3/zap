@@ -17,11 +17,11 @@ class Property {
 
 const prop = Property();
 
-class _ComponentMarker {
-  const _ComponentMarker();
-}
+class $ComponentMarker {
+  final String tagName;
 
-const $$componentMarker = _ComponentMarker();
+  const $ComponentMarker(this.tagName);
+}
 
 class Slot {
   final String? name;
