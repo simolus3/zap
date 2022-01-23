@@ -117,7 +117,7 @@ abstract class _ComponentOrSubcomponentWriter {
       // Root component
       return 'this';
     } else {
-      return _DartSourceRewriter(generator, component.scope, 0, '')
+      return _DartSourceRewriter(generator, component.scope, 0, '', true)
           ._prefixFor(generator.component.component.scope, trailingDot: false);
     }
   }
@@ -157,7 +157,7 @@ abstract class _ComponentOrSubcomponentWriter {
 
   String _statementsToChangeVariable(
       BaseZapVariable variable, String expression) {
-    final prefix = _DartSourceRewriter(generator, component.scope, 0, '')
+    final prefix = _DartSourceRewriter(generator, component.scope, 0, '', true)
         ._prefixFor(variable.scope);
     final variableName = generator._nameForVar(variable);
 
@@ -237,8 +237,9 @@ abstract class _ComponentOrSubcomponentWriter {
       if (node is ReactiveElement) {
         for (final binder in node.binders) {
           final target = binder.target;
-          final prefix = _DartSourceRewriter(generator, component.scope, 0, '')
-              ._prefixFor(target.scope);
+          final prefix =
+              _DartSourceRewriter(generator, component.scope, 0, '', true)
+                  ._prefixFor(target.scope);
           final variableName = generator._nameForVar(target);
           final nodeName = generator._nameForNode(node);
 
@@ -783,8 +784,9 @@ abstract class _ComponentOrSubcomponentWriter {
           ..writeln('  if (value != $name) {')
           ..writeln('    $name = value;');
         if (variable.needsUpdateTracking) {
-          final update = _DartSourceRewriter(generator, component.scope, 0, '')
-              .invalidateExpression(variable.updateBitmask.toString());
+          final update =
+              _DartSourceRewriter(generator, component.scope, 0, '', true)
+                  .invalidateExpression(variable.updateBitmask.toString());
           buffer.writeln('    $update');
         }
         buffer
@@ -819,17 +821,18 @@ abstract class _ComponentOrSubcomponentWriter {
     buffer.write(source);
   }
 
-  String patchDartReferences(AstNode dartCode) {
+  String patchDartReferences(AstNode dartCode, {bool patchSelf = true}) {
     final originalCode = generator.prepareResult.temporaryDartFile
         .substring(dartCode.offset, dartCode.offset + dartCode.length);
     final rewriter = _DartSourceRewriter(
-        generator, component.scope, dartCode.offset, originalCode);
+        generator, component.scope, dartCode.offset, originalCode, patchSelf);
     dartCode.accept(rewriter);
     return rewriter.content;
   }
 
-  void writeDartWithPatchedReferences(AstNode dartCode) {
-    buffer.write(patchDartReferences(dartCode));
+  void writeDartWithPatchedReferences(AstNode dartCode,
+      {bool patchSelf = true}) {
+    buffer.write(patchDartReferences(dartCode, patchSelf: patchSelf));
   }
 }
 
@@ -846,15 +849,13 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
   void write() {
     buffer.writeln('class $name extends $_prefix.ZapComponent {');
 
-    final variablesToInitialize = [];
-
     // Write variables:
     for (final variable
         in component.scope.declaredVariables.whereType<DartCodeVariable>()) {
       final name = generator._nameForVar(variable);
-      if (variable.isLate) {
-        buffer.write('late ');
-      }
+      // Variables need to be late because we only set them in the constructor's
+      // body.
+      buffer.write('late ');
 
       if (!variable.isMutable) buffer.write('final ');
 
@@ -864,17 +865,12 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
         ..write(name)
         ..write(';')
         ..writeln(' // ${variable.element.name}');
-
-      if (!variable.isLate || variable.isProperty) {
-        variablesToInitialize.add(name);
-      }
     }
 
     // Slots are also passed down as variables
     for (final slot in component.usedSlots) {
       final name = _slotVariable(slot);
       buffer.writeln('final $_prefix.Fragment Function()? $name;');
-      variablesToInitialize.add(name);
     }
 
     // And DOM nodes
@@ -894,30 +890,7 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
       }
     }
 
-    // Write a private constructor taking all variables and elements
-    buffer
-      ..write(name)
-      ..write('._($_prefix.PendingComponent pendingSelf, ')
-      ..write(variablesToInitialize.map((e) => 'this.$e').join(', '))
-      ..writeln('): super(pendingSelf) {');
-
-    // Create subscriptions variables being `watch()`ed.
-
-    for (final variable in component.scope.declaredVariables) {
-      if (variable is DartCodeVariable && variable.watching != null) {
-        final watching = variable.watching!;
-
-        writeDartWithPatchedReferences(watching);
-        buffer
-          ..writeln('.transform(lifecycle()).listen((value) {')
-          ..writeln(_statementsToChangeVariable(variable, 'value'))
-          ..writeln('});');
-      }
-    }
-
-    buffer.writeln('}'); // End of constructor
-
-    writeFactory();
+    writeConstructor();
 
     writeCreateMethod();
     writeRemoveMethod();
@@ -932,14 +905,8 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
     buffer.writeln('}');
   }
 
-  void writeFactory() {
-    // Properties can be used in the initialization code, so we create
-    // constructor properties for them.
-    buffer
-      ..write('factory ')
-      ..write(name)
-      ..write('(');
-
+  void writeConstructor() {
+    buffer.write('$name(');
     final dartVariables =
         component.scope.declaredVariables.whereType<DartCodeVariable>();
 
@@ -962,17 +929,46 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
 
     // Also write slots
     for (final slot in component.usedSlots) {
-      buffer.write('$_prefix.Fragment Function()? ${_slotVariable(slot)},');
+      buffer.write('this.${_slotVariable(slot)},');
     }
 
     buffer.writeln(') {');
 
     buffer.writeln('final self = $_prefix.PendingComponent();');
 
-    // Write all statements for the initializer
     for (final initializer in component.componentInitializers) {
       if (initializer is InitializeStatement) {
-        writeUnchangedDartCode(initializer.dartStatement);
+        final initializedVariable = initializer.initializedVariable;
+        if (initializedVariable != null &&
+            initializedVariable.watching != null) {
+          final statement =
+              initializer.dartStatement as VariableDeclarationStatement;
+          final varInit = statement.variables.variables.first.initializer!
+              as MethodInvocation;
+
+          final watchableExpr = varInit.argumentList.arguments.single;
+
+          // This variable is watching another expression. Store that expression
+          // in a temporary variable, assign and set up watcher.
+          final variableName = generator._nameForMisc(initializer);
+          buffer.write('final $variableName = ');
+          writeDartWithPatchedReferences(watchableExpr, patchSelf: false);
+          buffer.writeln(';');
+
+          // Assign
+          buffer
+            ..write(generator._nameForVar(initializedVariable))
+            ..write(' = $variableName.value;');
+
+          // Setup watcher
+          buffer
+            ..writeln('$variableName.transform(lifecycle()).listen((value) {')
+            ..writeln(_statementsToChangeVariable(initializedVariable, 'value'))
+            ..writeln('});');
+        } else {
+          writeDartWithPatchedReferences(initializer.dartStatement,
+              patchSelf: false);
+        }
       } else if (initializer is InitializeProperty) {
         // We have the property as $property, wrapped in a nullable
         // ZapValue.
@@ -981,9 +977,7 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
         final element = variable.element;
 
         buffer
-          ..write(variable.type.getDisplayString(withNullability: true))
-          ..write(' ')
-          ..write(element.name)
+          ..write(generator._nameForVar(variable))
           ..write(r' = $')
           ..write(element.name)
           ..write(' != null ? ')
@@ -998,7 +992,7 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
             generator.component.typeSystem.isNullable(variable.type);
 
         if (defaultExpr != null) {
-          writeUnchangedDartCode(defaultExpr);
+          writeDartWithPatchedReferences(defaultExpr, patchSelf: false);
         } else if (isNullable) {
           buffer.write('null');
         } else {
@@ -1011,26 +1005,7 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
       }
     }
 
-    // Write call to constructor.
-    buffer.write('return $name._(self,');
-
-    // Write instantiated variables first
-    for (final variable in dartVariables) {
-      if (variable.isLate && !variable.isProperty) continue;
-
-      // Variables are created for initializer statements that appear in the
-      // code we've just written.
-      buffer
-        ..write(variable.element.name)
-        ..write(',');
-    }
-
-    // Followed by slots
-    for (final slot in component.usedSlots) {
-      buffer.write('${_slotVariable(slot)},');
-    }
-
-    buffer.writeln(');}');
+    buffer.writeln('takeOverPending(self);}');
   }
 }
 
@@ -1098,12 +1073,14 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
   final ZapVariableScope scope;
   final ZapVariableScope rootScope;
 
+  final bool patchSelf;
+
   final int startOffsetInDart;
   int skew = 0;
   String content;
 
-  _DartSourceRewriter(
-      this.generator, this.scope, this.startOffsetInDart, this.content)
+  _DartSourceRewriter(this.generator, this.scope, this.startOffsetInDart,
+      this.content, this.patchSelf)
       : rootScope = generator.component.component.scope;
 
   /// Replaces the range from [start] with length [originalLength] in the
@@ -1217,17 +1194,24 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
   @override
   void visitSimpleIdentifier(SimpleIdentifier node) {
     final target = node.staticElement;
+    if (target?.library != generator.component.resolvedTmpLibrary) {
+      // Referencing an element from an import, don't transform
+      return;
+    }
+
     final variable = _variableFor(target);
 
     if (variable is SelfReference) {
       // Inside the main component, we can replace `self` with `this`. In
       // inner components, we have to walk the parent.
 
-      if (rootScope == scope) {
-        _replaceNode(node, 'this');
-      } else {
-        final prefix = _prefixFor(rootScope, trailingDot: false);
-        _replaceNode(node, prefix);
+      if (patchSelf) {
+        if (rootScope == scope) {
+          _replaceNode(node, 'this');
+        } else {
+          final prefix = _prefixFor(rootScope, trailingDot: false);
+          _replaceNode(node, prefix);
+        }
       }
     } else if (target is FunctionElement) {
       final newName = generator._nameForFunction(target);

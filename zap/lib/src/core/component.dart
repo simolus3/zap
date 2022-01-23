@@ -47,14 +47,16 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
   final Map<Fragment, int> _fragmentUpdates = {};
   Completer<void>? _scheduledUpdate;
 
-  final ContextScope _scope;
+  late final ContextScope _scope;
   final StreamController<Event> _eventEmitter = StreamController.broadcast();
 
   @override
   Map<Object?, Object?> get context => _scope;
 
-  ZapComponent(PendingComponent pendingSelf) : _scope = pendingSelf._context {
+  @protected
+  void takeOverPending(PendingComponent pendingSelf) {
     pendingSelf._wasCreated = true;
+    _scope = pendingSelf._context;
 
     _onMountListeners.addAll(pendingSelf._onMount);
     _afterUpdateListeners.addAll(pendingSelf._onAfterUpdate);

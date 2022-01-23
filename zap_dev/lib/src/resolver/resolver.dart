@@ -70,7 +70,7 @@ class Resolver {
 
     _assignUpdateFlags(scope.scopes[scope.root]!);
     return ResolvedComponent(
-        componentName, component, prepare.cssClassName, typeSystem);
+        componentName, component, prepare.cssClassName, preparedLibrary);
   }
 
   void _findExternalComponents() {
@@ -812,13 +812,14 @@ class _FindComponents {
           );
         }
 
-        initializers.add(InitializeStatement(stmt));
+        initializers.add(InitializeStatement(stmt, null));
       } else if (stmt is FunctionDeclarationStatement) {
         if (!stmt.functionDeclaration.name.name.startsWith(zapPrefix)) {
           functions.add(stmt);
-          initializers.add(InitializeStatement(stmt));
         }
       } else {
+        DartCodeVariable? initialized;
+
         if (stmt is VariableDeclarationStatement) {
           // Filter out __zap__var_1 variables that have only been created to
           // analyze expressions used in the DOM.
@@ -827,16 +828,20 @@ class _FindComponents {
               continue outer;
             }
             final zapVariable = variables[variable.declaredElement];
-            if (zapVariable is DartCodeVariable && zapVariable.isProperty) {
-              // We need to generate special code to initialize properties as
-              // they can be set as constructor parameters too.
-              initializers.add(InitializeProperty(zapVariable));
-              continue outer;
+            if (zapVariable is DartCodeVariable) {
+              initialized = zapVariable;
+
+              if (zapVariable.isProperty) {
+                // We need to generate special code to initialize properties as
+                // they can be set as constructor parameters too.
+                initializers.add(InitializeProperty(zapVariable));
+                continue outer;
+              }
             }
           }
         }
 
-        initializers.add(InitializeStatement(stmt));
+        initializers.add(InitializeStatement(stmt, initialized));
       }
     }
 
@@ -1044,8 +1049,10 @@ class ResolvedComponent {
   final String? cssClassName;
   final Component component;
 
-  final TypeSystem typeSystem;
+  final LibraryElement resolvedTmpLibrary;
 
-  ResolvedComponent(
-      this.componentName, this.component, this.cssClassName, this.typeSystem);
+  TypeSystem get typeSystem => resolvedTmpLibrary.typeSystem;
+
+  ResolvedComponent(this.componentName, this.component, this.cssClassName,
+      this.resolvedTmpLibrary);
 }

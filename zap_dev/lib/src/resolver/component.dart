@@ -60,8 +60,9 @@ abstract class ComponentInitializer {}
 
 class InitializeStatement extends ComponentInitializer {
   final Statement dartStatement;
+  final DartCodeVariable? initializedVariable;
 
-  InitializeStatement(this.dartStatement);
+  InitializeStatement(this.dartStatement, this.initializedVariable);
 }
 
 class InitializeProperty extends ComponentInitializer {
