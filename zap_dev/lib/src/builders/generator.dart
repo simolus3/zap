@@ -48,7 +48,7 @@ class ZapBuilder implements Builder {
     final component = await resolver.resolve(buildStep);
 
     final options = GenerationOptions(isForDevelopment);
-    final generator = Generator(component, prepResult, options)..write();
+    final generator = Generator(component, prepResult, options, outId)..write();
 
     var output = generator.libraryScope.render();
     try {

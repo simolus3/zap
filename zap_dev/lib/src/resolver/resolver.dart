@@ -103,8 +103,7 @@ class Resolver {
       }
     }
 
-    // Note: We're not using element.name since the name may be aliased.
-    return ExternalComponent(element.name, tagName, parameters, slots);
+    return ExternalComponent(element, tagName, parameters, slots);
   }
 
   void _assignUpdateFlags(ZapVariableScope scope, [int start = 0]) {

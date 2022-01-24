@@ -9,7 +9,7 @@ import 'multi.zap.dart';
 void main() {
   test('uses default content', () {
     final testbed = Element.div();
-    multi(null, null).create(testbed);
+    Multi(null, null).create(testbed);
 
     expect(
       testbed.innerHtml,
@@ -22,7 +22,7 @@ void main() {
 
   test('can assign slots', () {
     final testbed = Element.div();
-    assign().create(testbed);
+    Assign().create(testbed);
 
     expect(
       testbed.innerHtml,

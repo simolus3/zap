@@ -4,7 +4,7 @@ import 'dart:html';
 import 'package:test/test.dart';
 import 'package:zap/zap.dart';
 
-import 'dynamic_component.zap.dart';
+import 'dynamic_component.zap.dart' as gen;
 
 void main() {
   test('renders subcomponents', () async {
@@ -12,7 +12,7 @@ void main() {
     final originalChild = _FakeComponent();
     final nextChild = _FakeComponent();
 
-    final component = dynamic_component(ZapValue(originalChild));
+    final component = gen.DynamicComponent(ZapValue(originalChild));
     expect(originalChild._isCreated, isFalse);
 
     component.create(testbed);
@@ -36,7 +36,7 @@ class _FakeComponent extends ZapComponent {
 
   final Text _text = Text('_FakeComponent');
 
-  _FakeComponent() : super(PendingComponent());
+  _FakeComponent() : super();
 
   @override
   void createInternal(Element target, [Node? anchor]) {

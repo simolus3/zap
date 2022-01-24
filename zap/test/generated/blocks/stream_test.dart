@@ -4,7 +4,7 @@ import 'dart:html';
 
 import 'package:test/test.dart';
 import 'package:zap/zap.dart';
-import 'stream.zap.dart';
+import 'stream.zap.dart' as gen;
 
 void main() {
   test('single stream', () async {
@@ -12,7 +12,7 @@ void main() {
     final controller = StreamController<String>();
     addTearDown(controller.close);
 
-    final component = stream(ZapValue(controller.stream));
+    final component = gen.Stream(ZapValue(controller.stream));
     expect(controller.hasListener, isFalse,
         reason: 'Instantiating the component should not start a stream '
             'subscription');

@@ -1,11 +1,12 @@
+import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 
 class ExternalComponent {
-  final String className;
+  final ClassElement temporaryApiClass;
   final String tagName;
   final List<MapEntry<String, DartType>> parameters;
   final List<String?> slotNames;
 
   ExternalComponent(
-      this.className, this.tagName, this.parameters, this.slotNames);
+      this.temporaryApiClass, this.tagName, this.parameters, this.slotNames);
 }
