@@ -8,10 +8,21 @@ import '../utils/dart.dart';
 class ImportsTracker {
   final StringBuffer imports;
   final AssetId expectedOutput;
+
   final Map<Uri, String> _importPrefixes = {};
+  final Map<Uri, Set<String>> _unaliasedImports = {};
 
   ImportsTracker(GenerationScope scope, this.expectedOutput)
       : imports = scope.leaf();
+
+  void ensureImportsAreWritten() {
+    _unaliasedImports.forEach((import, shown) {
+      final showCombinator = shown.join(', ');
+
+      imports.writeln(
+          'import ${dartStringLiteral(import.toString())} show $showCombinator;');
+    });
+  }
 
   String get dartHtmlImport => importForUri(Uri.parse('dart:html'));
 
@@ -32,6 +43,18 @@ class ImportsTracker {
     return uri;
   }
 
+  /// Imports [show] from a library without an alias.
+  ///
+  /// This is used to import extension members with reasonable safety, as
+  /// rewriting them to explicitly refer to the extension used is hard to do for
+  /// cascade expressions.
+  void importWithoutAlias(LibraryElement element, String show) {
+    final uri = _normalizeUri(_uriFor(element));
+
+    final shownElements = _unaliasedImports.putIfAbsent(uri, () => {});
+    shownElements.add(show);
+  }
+
   String importForUri(Uri uri) {
     uri = _normalizeUri(uri);
 
@@ -43,13 +66,17 @@ class ImportsTracker {
     });
   }
 
-  String importForLibrary(LibraryElement element) {
+  Uri _uriFor(LibraryElement element) {
     if (element.isInSdk) {
       final name = element.name.split('.').last;
-      return importForUri(Uri.parse('dart:$name'));
+      return Uri.parse('dart:$name');
     }
 
-    return importForUri(element.source.uri);
+    return element.source.uri;
+  }
+
+  String importForLibrary(LibraryElement element) {
+    return importForUri(_uriFor(element));
   }
 
   /// The import for an element in a `.tmp.zap.api.dart` file.
