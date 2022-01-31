@@ -216,9 +216,6 @@ class EventHandler {
   /// Either a [ReactiveElement] or a [SubComponent].
   late ReactiveNode parent;
 
-  String get effectiveEventType =>
-      dartEventType.getDisplayString(withNullability: true);
-
   bool get isCapturing => modifier.contains(EventModifier.capture);
 
   bool get isForwarding => listener == null;

@@ -106,6 +106,9 @@ abstract class _ComponentOrSubcomponentWriter {
   bool _isZapFragment(ReactiveNode node) =>
       _rendersSubcomponents(node) || node is ReactiveRawHtml;
 
+  bool _passDownUpdates(ReactiveNode node) =>
+      _isZapFragment(node) && node is! SubComponent;
+
   bool _isInitializedLater(ReactiveNode node) => _rendersSubcomponents(node);
 
   void write();
@@ -367,7 +370,7 @@ abstract class _ComponentOrSubcomponentWriter {
     }
 
     // Some nodes manage subcomponents and need to be updated as well
-    for (final node in component.fragment.allNodes.where(_isZapFragment)) {
+    for (final node in component.fragment.allNodes.where(_passDownUpdates)) {
       final name = generator._nameForNode(node);
       buffer.writeln('$name.update(delta);');
     }
@@ -519,7 +522,8 @@ abstract class _ComponentOrSubcomponentWriter {
     void writeStreamToListenTo() {
       // Write the `Stream` expression for this event handler.
       if (parent is SubComponent) {
-        buffer.write('$node.componentEvents<${handler.effectiveEventType}>'
+        final type = dartTypeToString(handler.dartEventType);
+        buffer.write('$node.componentEvents<$type>'
             '(${dartStringLiteral(handler.event)})');
       } else {
         buffer.write('${generator.imports.dartHtmlImport}.');
@@ -909,10 +913,12 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
       final action = flow.action;
       if (!flow.isOneOffAction && action is RegisterEventHandler) {
         final htmlPrefix = generator.imports.dartHtmlImport;
+        final type = dartTypeToString(action.handler.dartEventType);
+
         buffer
           ..write('late ')
           ..write('StreamSubscription<$htmlPrefix.')
-          ..write(action.handler.effectiveEventType)
+          ..write(type)
           ..write('> ')
           ..write(generator._nameForMisc(action.handler))
           ..writeln(';');
@@ -1387,6 +1393,20 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
   @override
   void visitPrefixExpression(PrefixExpression node) {
     _visitCompoundAssignmentExpression(node);
+  }
+
+  @override
+  void visitPrefixedIdentifier(PrefixedIdentifier node) {
+    final targetOfPrefix = node.prefix.staticElement;
+    if (targetOfPrefix is PrefixElement) {
+      // Pointing towards a named import. We're rewriting imports either way, so
+      // just write the rest
+      _replaceNode(node.prefix, '');
+      _replaceNode(node.period, '');
+      visitSimpleIdentifier(node.identifier);
+    } else {
+      super.visitPrefixedIdentifier(node);
+    }
   }
 
   @override

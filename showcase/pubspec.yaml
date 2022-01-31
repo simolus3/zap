@@ -6,7 +6,6 @@ environment:
 
 dependencies:
   js: ^0.6.3
-  rxdart:
   zap:
 
 dev_dependencies:

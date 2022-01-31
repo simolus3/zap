@@ -43,56 +43,56 @@ const groups = <ExampleGroup>[
   ExampleGroup(
     title: 'Introduction',
     children: [
-      ExampleComponent('Hello world', 'hello-world', i1.hello_world.new),
-      ExampleComponent('Styling', 'simple-styling', i2.styling.new),
-      ExampleComponent('Nested components', 'simple-nested', i3.index.new),
-      ExampleComponent('HTML tags', 'raw-html', i4.raw_html.new),
+      ExampleComponent('Hello world', 'hello-world', i1.HelloWorld.new),
+      ExampleComponent('Styling', 'simple-styling', i2.Styling.new),
+      ExampleComponent('Nested components', 'simple-nested', i3.Index.new),
+      ExampleComponent('HTML tags', 'raw-html', i4.RawHtml.new),
     ],
   ),
   ExampleGroup(
     title: 'Reactivity',
     children: [
-      ExampleComponent('Reactive assignments', 'rx-assign', rx.assignments.new),
-      ExampleComponent('Reactive declarations', 'rx-decl', rx.declarations.new),
-      ExampleComponent('Reactive statements', 'rx-stmts', rx.statements.new),
+      ExampleComponent('Reactive assignments', 'rx-assign', rx.Assignments.new),
+      ExampleComponent('Reactive declarations', 'rx-decl', rx.Declarations.new),
+      ExampleComponent('Reactive statements', 'rx-stmts', rx.Statements.new),
     ],
   ),
   ExampleGroup(
     title: 'Props',
     children: [
-      ExampleComponent('Declaring props', 'props-decl', props.props_1.new),
-      ExampleComponent('Default values', 'props-default', props.props_2.new),
+      ExampleComponent('Declaring props', 'props-decl', props.Props1.new),
+      ExampleComponent('Default values', 'props-default', props.Props2.new),
     ],
   ),
   ExampleGroup(
     title: 'Logic',
     children: [
-      ExampleComponent('If blocks', 'blocks-if', logic.if_blocks.new),
-      ExampleComponent('Else blocks', 'blocks-else', logic.else_blocks.new),
-      ExampleComponent('Else-if blocks', 'blocks-elseif', logic.else_if.new),
-      ExampleComponent('Await blocks', 'blocks-await', logic.await_blocks.new),
+      ExampleComponent('If blocks', 'blocks-if', logic.IfBlocks.new),
+      ExampleComponent('Else blocks', 'blocks-else', logic.ElseBlocks.new),
+      ExampleComponent('Else-if blocks', 'blocks-elseif', logic.ElseIf.new),
+      ExampleComponent('Await blocks', 'blocks-await', logic.AwaitBlocks.new),
     ],
   ),
   ExampleGroup(
     title: 'Events',
     children: [
-      ExampleComponent('DOM events', 'events-dom', events.dom_events.new),
+      ExampleComponent('DOM events', 'events-dom', events.DomEvents.new),
       ExampleComponent(
-          'Inline handler', 'events-inline', events.inline_handler.new),
-      ExampleComponent('Modifiers', 'events-modifiers', events.modifiers.new),
+          'Inline handler', 'events-inline', events.InlineHandler.new),
+      ExampleComponent('Modifiers', 'events-modifiers', events.Modifiers.new),
       ExampleComponent(
-          'Component events', 'events-components', events.component_events.new),
+          'Component events', 'events-components', events.ComponentEvents.new),
       ExampleComponent(
-          'Event forwarding', 'events-forward', events.forwarding.new),
+          'Event forwarding', 'events-forward', events.Forwarding.new),
       ExampleComponent('DOM event forwarding', 'events-forward-dom',
-          events.dom_forwarding.new),
+          events.DomForwarding.new),
     ],
   ),
   ExampleGroup(
     title: 'Watchables',
     children: [
-      ExampleComponent('Readable', 'watch-read', watch.time.new),
-      ExampleComponent('Writable', 'watch-write', watch.counter.new),
+      ExampleComponent('Readable', 'watch-read', watch.Time.new),
+      ExampleComponent('Writable', 'watch-write', watch.Counter.new),
     ],
   ),
 ];

@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:html';
 
+import 'package:js/js_util.dart' as js;
+
 extension ZapText on Text {
   set zapText(String value) {
     if (wholeText != value) data = value;
@@ -10,11 +12,7 @@ extension ZapText on Text {
 extension ZapElement on Element {
   /// Adds an empty attribute [key] if [value] is true, removes it otherwise.
   void applyBooleanAttribute(String key, bool value) {
-    if (value) {
-      attributes[key] = '';
-    } else {
-      attributes.remove(key);
-    }
+    js.setProperty(this, key, value);
   }
 
   /// Sets the attribute [key] to the stringified [value] if it's not null,

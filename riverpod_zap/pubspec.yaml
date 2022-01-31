@@ -7,7 +7,6 @@ environment:
 
 dependencies:
   riverpod: ^2.0.0-dev.0
-  rxdart: ^0.27.0
   zap:
   # Note: Even when the root build is happening from another package, zap_dev
   # should be applied to this one.

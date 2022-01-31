@@ -67,6 +67,7 @@ Future<PrepareResult> prepare(
 
   String? className;
 
+  final hasStyle = checker.style != null;
   final rawStyle = checker.style?.readInnerText(reporter) ?? '';
   var resolvedStyle = '';
 
@@ -82,7 +83,7 @@ Future<PrepareResult> prepare(
     imports,
     fileBuilder.toString(),
     resolvedStyle,
-    className,
+    hasStyle ? className : null,
     checker._rootScope,
     component,
     findSlots.definedSlots.toList(),

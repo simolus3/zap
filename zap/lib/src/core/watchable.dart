@@ -1,7 +1,5 @@
 import 'dart:async';
 
-import 'package:rxdart/rxdart.dart';
-
 import '../core/snapshot.dart';
 
 /// A specialized stream that
@@ -15,59 +13,76 @@ abstract class Watchable<T> implements Stream<T> {
   T get value;
 
   factory Watchable.stream(Stream<T> stream, T initialValue) {
-    return _StreamWatchable(_ToValueStream(stream), initialValue);
-  }
-
-  factory Watchable.valueStream(ValueStream<T> stream, [T? initialValue]) {
-    if (!stream.hasValue && initialValue is! T) {
-      throw ArgumentError(
-          'The provided value stream did not have a value right away and no'
-          'fallback value has been set.');
-    }
-
-    return _StreamWatchable(stream, initialValue);
+    return _StreamWatchable(_ValueWrappingStream(stream), initialValue);
   }
 
   static Watchable<ZapSnapshot<T>> snapshots<T>(Stream<T> stream) {
-    return valueSnapsots(_ToValueStream(stream));
-  }
+    final snapshots = Stream<ZapSnapshot<T>>.eventTransformed(
+        stream, _ToSnapshotTransformer.new);
 
-  static Watchable<ZapSnapshot<T>> valueSnapsots<T>(ValueStream<T> stream) {
-    return _SnapshotStreamWatchable(stream);
+    return _StreamWatchable(
+        _ValueWrappingStream(snapshots), const ZapSnapshot<Never>.unresolved());
   }
 }
 
 class WritableWatchable<T> extends Stream<T> implements Watchable<T> {
-  final BehaviorSubject<T> _subject;
+  final List<MultiStreamController<T>> _controllers = [];
 
-  WritableWatchable(T initial) : _subject = BehaviorSubject.seeded(initial);
+  late final Stream<T> _stream;
+  T _lastValue;
+
+  WritableWatchable(this._lastValue) {
+    _stream = Stream.multi((controller) {
+      controller.add(_lastValue);
+
+      void pauseOrStop() {
+        _controllers.remove(controller);
+      }
+
+      void resume() {
+        _controllers.add(controller);
+      }
+
+      resume();
+      controller
+        ..onPause = pauseOrStop
+        ..onCancel = pauseOrStop
+        ..onResume = resume;
+    });
+  }
 
   @override
-  T get value => _subject.value;
+  T get value => _lastValue;
 
-  set value(T value) => _subject.value = value;
+  set value(T value) {
+    _lastValue = value;
+
+    for (final listener in _controllers) {
+      listener.add(value);
+    }
+  }
 
   @override
-  bool get isBroadcast => _subject.isBroadcast;
+  bool get isBroadcast => true;
 
   @override
   StreamSubscription<T> listen(void Function(T event)? onData,
       {Function? onError, void Function()? onDone, bool? cancelOnError}) {
-    return _subject.listen(onData, onDone: onDone);
+    return _stream.listen(onData, onDone: onDone);
   }
 }
 
 class _StreamWatchable<T> extends Stream<T> implements Watchable<T> {
-  final ValueStream<T> _source;
+  final _ValueWrappingStream<T> _source;
   final T? _initialValue;
 
   _StreamWatchable(this._source, this._initialValue);
 
   @override
-  bool get isBroadcast => _source.isBroadcast;
+  bool get isBroadcast => true;
 
   @override
-  T get value => _source.hasValue ? _source.value : _initialValue as T;
+  T get value => (_source._hasValue ? _source._lastValue : _initialValue) as T;
 
   @override
   StreamSubscription<T> listen(void Function(T event)? onData,
@@ -75,41 +90,6 @@ class _StreamWatchable<T> extends Stream<T> implements Watchable<T> {
     // Skipping onError because the source stream isn't supposed to emit errors
     // ever. We want this to be an unhandled error.
     return _source.listen(onData, cancelOnError: cancelOnError, onDone: onDone);
-  }
-}
-
-class _SnapshotStreamWatchable<T> extends Stream<ZapSnapshot<T>>
-    implements Watchable<ZapSnapshot<T>> {
-  final ValueStream<T> _source;
-  final Stream<ZapSnapshot<T>> _asSnapshots;
-
-  _SnapshotStreamWatchable(this._source)
-      : _asSnapshots = Stream.eventTransformed(
-            _source, (sink) => _ToSnapshotTransformer<T>(sink));
-
-  @override
-  bool get isBroadcast => _asSnapshots.isBroadcast;
-
-  @override
-  ZapSnapshot<T> get value {
-    if (_source.hasValue) {
-      return ZapSnapshot.withData(_source.value);
-    } else if (_source.hasError) {
-      return ZapSnapshot.withError(_source.error, _source.stackTrace);
-    } else {
-      return const ZapSnapshot.unresolved();
-    }
-  }
-
-  @override
-  StreamSubscription<ZapSnapshot<T>> listen(
-      void Function(ZapSnapshot<T> event)? onData,
-      {Function? onError,
-      void Function()? onDone,
-      bool? cancelOnError}) {
-    // We can ignore onError and cancelOnError here since this stream won't
-    // emit errors.
-    return _asSnapshots.listen(onData, onDone: onDone);
   }
 }
 
@@ -138,28 +118,28 @@ class _ToSnapshotTransformer<T> implements EventSink<T> {
   }
 }
 
-/// A zap variant of `shareValue()` that never closes the underlying behavior
-/// subject, so that it really can be listened to multiple times.
-///
-/// (this is fine, by the way. If there really are no more references, the
-/// subject will just be GCed.)
-class _ToValueStream<T> extends Stream<T> implements ValueStream<T> {
+class _ValueWrappingStream<T> extends Stream<T> {
   // ignore: close_sinks
-  final _subject = BehaviorSubject<T>();
+  final _controller = StreamController<T>.broadcast();
   var _listeners = 0;
 
   final Stream<T> _source;
   late final Stream<T> _refCounting;
 
   StreamSubscription<T>? _subscription;
+  T? _lastValue;
+  bool _hasValue = false;
 
-  _ToValueStream(this._source) {
+  _ValueWrappingStream(this._source) {
     _refCounting = Stream.multi((listener) {
       void resumeOrStart() {
         _listeners++;
 
-        _subscription ??= _source.listen(_subject.add,
-            onError: _subject.addError, onDone: _subject.close);
+        _subscription ??= _source.listen((event) {
+          _hasValue = true;
+          _lastValue = event;
+          _controller.add(event);
+        }, onError: _controller.addError, onDone: _controller.close);
       }
 
       void pauseOrStop() {
@@ -171,7 +151,10 @@ class _ToValueStream<T> extends Stream<T> implements ValueStream<T> {
         }
       }
 
-      listener.addStream(_subject);
+      if (_hasValue) {
+        listener.add(_lastValue as T);
+      }
+      listener.addStream(_controller.stream);
       listener
         ..onCancel = pauseOrStop
         ..onPause = pauseOrStop
@@ -179,27 +162,6 @@ class _ToValueStream<T> extends Stream<T> implements ValueStream<T> {
       resumeOrStart();
     });
   }
-
-  @override
-  Object get error => _subject.error;
-
-  @override
-  Object? get errorOrNull => _subject.errorOrNull;
-
-  @override
-  bool get hasError => _subject.hasError;
-
-  @override
-  bool get hasValue => _subject.hasValue;
-
-  @override
-  StackTrace? get stackTrace => _subject.stackTrace;
-
-  @override
-  T get value => _subject.value;
-
-  @override
-  T? get valueOrNull => _subject.valueOrNull;
 
   @override
   StreamSubscription<T> listen(void Function(T event)? onData,
