@@ -16,14 +16,29 @@ class ExampleComponent {
       {required this.title, required this.id, required this.files});
 }
 
-const helloWorld =
-    ExampleComponent(title: 'Hello world', id: 'hello-world', files: []);
-const styling =
-    ExampleComponent(title: 'Styling', id: 'simple-styling', files: []);
+const helloWorld = ExampleComponent(
+  title: 'Hello world',
+  id: 'hello-world',
+  files: ['introduction/hello_world.zap'],
+);
+const styling = ExampleComponent(
+  title: 'Styling',
+  id: 'simple-styling',
+  files: ['introduction/styling.zap'],
+);
 const nested = ExampleComponent(
-    title: 'Nested components', id: 'simple-nested', files: []);
-const rawHtml =
-    ExampleComponent(title: '@html tags', id: 'raw-html', files: []);
+  title: 'Nested components',
+  id: 'simple-nested',
+  files: [
+    'introduction/nested/index.zap',
+    'introduction/nested/nested.zap',
+  ],
+);
+const rawHtml = ExampleComponent(
+  title: '@html tags',
+  id: 'raw-html',
+  files: ['introduction/raw_html.zap'],
+);
 
 const reactiveAssignments =
     ExampleComponent(title: 'Reactive assignments', id: 'rx-assign', files: []);

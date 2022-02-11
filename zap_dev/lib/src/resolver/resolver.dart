@@ -70,7 +70,7 @@ class Resolver {
 
     _assignUpdateFlags(scope.scopes[scope.root]!);
     return ResolvedComponent(componentName, component, prepare.cssClassName,
-        preparedLibrary, preparedUnit);
+        preparedLibrary, preparedUnit, dartAnalysis.userDefinedFunctions);
   }
 
   Future<void> _findExternalComponents(BuildStep buildStep) async {
@@ -192,7 +192,7 @@ class _ScopeInformation {
 
 class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
   var _isInReactiveRead = false;
-  var _hasSeenRootFunction = false;
+  var _isInRootZapFunction = false;
 
   PreparedVariableScope scope;
 
@@ -200,6 +200,7 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
 
   final _ScopeInformation scopes;
   final List<ExecutableElement> definedFunctions = [];
+  final List<FunctionElement> userDefinedFunctions = [];
 
   _AnalyzeVariablesAndScopes(this.resolver)
       : scopes = resolver.scope,
@@ -247,37 +248,42 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
   void visitFunctionDeclaration(FunctionDeclaration node) {
     final element = node.declaredElement;
 
-    if (!_hasSeenRootFunction) {
-      scopes.scopes[scope] = ZapVariableScope(node);
+    if (node.name.name.startsWith(zapPrefix)) {
+      if (!_isInRootZapFunction) {
+        scopes.scopes[scope] = ZapVariableScope(node);
 
-      // We're analyzing the function for the root scope. Read the element for
-      // the "ComponentOrPending" parameter added to the helper code.
-      final selfDecl = node.functionExpression.parameters?.parameters.single;
-      final selfElement =
-          node.functionExpression.parameters?.parameterElements.single;
+        // We're analyzing the function for the root scope. Read the element for
+        // the "ComponentOrPending" parameter added to the helper code.
+        final selfDecl = node.functionExpression.parameters?.parameters.single;
+        final selfElement =
+            node.functionExpression.parameters?.parameterElements.single;
 
-      scopes.addVariable(SelfReference(zapScope, selfDecl!, selfElement!));
-      _hasSeenRootFunction = true;
+        scopes.addVariable(SelfReference(zapScope, selfDecl!, selfElement!));
+        _isInRootZapFunction = true;
 
-      super.visitFunctionDeclaration(node);
-    } else if (element != null && element.name.startsWith(zapPrefix)) {
-      final currentScope = scope;
-      final currentResolvedScope = zapScope;
+        super.visitFunctionDeclaration(node);
+        _isInRootZapFunction = false;
+      } else {
+        final currentScope = scope;
+        final currentResolvedScope = zapScope;
 
-      // This function introduces a new scope for a nested block.
-      final child =
-          scope.children.singleWhere((e) => e.blockName == node.name.name);
+        // This function introduces a new scope for a nested block.
+        final child =
+            scope.children.singleWhere((e) => e.blockName == node.name.name);
 
-      scope = child;
-      final substitution = Map.of(currentResolvedScope.instantiation);
-      final resolvedScope = scopes.scopes[scope] =
-          ZapVariableScope(node, instantiation: substitution);
-      resolvedScope.parent = currentResolvedScope;
-      currentResolvedScope.childScopes.add(resolvedScope);
+        scope = child;
 
-      super.visitFunctionDeclaration(node);
-      scope = currentScope;
-    } else {
+        final resolvedScope = scopes.scopes[scope] = ZapVariableScope(node);
+        resolvedScope.parent = currentResolvedScope;
+        currentResolvedScope.childScopes.add(resolvedScope);
+
+        super.visitFunctionDeclaration(node);
+        scope = currentScope;
+      }
+    } else if (_isInRootZapFunction) {
+      // Don't visit functions from library-level scripts, we only care about
+      // what's in the function created for zap analysis.
+      userDefinedFunctions.add(element as FunctionElement);
       return super.visitFunctionDeclaration(node);
     }
   }
@@ -1087,14 +1093,21 @@ class ResolvedComponent {
   final String componentName;
   final String? cssClassName;
   final Component component;
+  final List<FunctionElement> userDefinedFunctions;
 
   final LibraryElement resolvedTmpLibrary;
   final CompilationUnit _resolvedTmpUnit;
 
   TypeSystem get typeSystem => resolvedTmpLibrary.typeSystem;
 
-  ResolvedComponent(this.componentName, this.component, this.cssClassName,
-      this.resolvedTmpLibrary, this._resolvedTmpUnit);
+  ResolvedComponent(
+    this.componentName,
+    this.component,
+    this.cssClassName,
+    this.resolvedTmpLibrary,
+    this._resolvedTmpUnit,
+    this.userDefinedFunctions,
+  );
 
   /// Returns all declared members that should be copied into the final output.
   ///

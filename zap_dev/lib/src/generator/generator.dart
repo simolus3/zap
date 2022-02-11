@@ -1158,7 +1158,7 @@ class _DartTypeWriter extends TypeVisitor<void> {
 
   void _writeElement(Element element, String name) {
     final library = element.library;
-    if (library != null) {
+    if (library != null && library != generator.component.resolvedTmpLibrary) {
       final import = generator.imports.importForLibrary(library);
       buffer.write('$import.');
     }
@@ -1479,7 +1479,8 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
           _replaceNode(node, prefix);
         }
       }
-    } else if (target is FunctionElement) {
+    } else if (target is FunctionElement &&
+        generator.component.userDefinedFunctions.contains(target)) {
       final newName = generator._nameForFunction(target);
       final prefix = _prefixFor(rootScope);
 

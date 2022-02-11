@@ -11,6 +11,7 @@ dependencies:
   zap:
 
 dev_dependencies:
+  build: ^2.2.1
   build_runner: ^2.1.7
   build_web_compilers: ^3.2.2
   webdev: ^2.7.8

@@ -1,7 +1,9 @@
 <script>
   import '../component.dart';
   import '../examples.dart';
+
   import 'navbar.zap';
+  import 'sources.zap';
 
   var currentSelection = watch(selectedComponent);
 
@@ -37,7 +39,7 @@
 <div>
   <navbar />
   <main>
-
+    <sources />
   </main>
   <aside>
     <zap:component this={instantiate(currentSelection)} />

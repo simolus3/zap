@@ -9,9 +9,8 @@ class ZapVariableScope {
   ZapVariableScope? parent;
 
   final FunctionDeclaration? function;
-  final Map<TypeParameterElement, DartType> instantiation;
 
-  ZapVariableScope(this.function, {this.instantiation = const {}});
+  ZapVariableScope(this.function);
 
   SubcomponentVariable? findForSubcomponent(SubcomponentVariableKind kind) {
     return declaredVariables

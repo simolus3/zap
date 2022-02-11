@@ -1,3 +1,10 @@
+builders:
+  index_samples:
+    build_to: cache
+    import: 'tool/index_examples.dart'
+    builder_factories: ["IndexExamples.new"]
+    build_extensions: {'.dart': ['json']}
+
 targets:
   $default:
     sources:
@@ -5,6 +12,7 @@ targets:
       - "pages/**"
       - "templates/**"
       - "web/**"
+      - "tool/**"
       - "$package$"
       - "pubspec.yaml"
       - "theme.yaml"
@@ -13,3 +21,5 @@ targets:
       # Use the sass builder that comes with zap_dev, it's more efficient.
       built_site|sass_builder:
         enabled: false
+      "|index_samples":
+        enabled: true

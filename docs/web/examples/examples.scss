@@ -1,1 +1,6 @@
 @use "package:zap_docs/src/examples/scaffold/_app.zap.scss";
+
+// Normally zap would add these imports, but we're using dynamic
+// components for the examples.
+@use "package:zap_docs/src/examples/introduction/_styling.zap.scss";
+@use "package:zap_docs/src/examples/introduction/nested/_index.zap.scss";
