@@ -69,8 +69,8 @@ class Resolver {
     }
 
     _assignUpdateFlags(scope.scopes[scope.root]!);
-    return ResolvedComponent(
-        componentName, component, prepare.cssClassName, preparedLibrary);
+    return ResolvedComponent(componentName, component, prepare.cssClassName,
+        preparedLibrary, preparedUnit);
   }
 
   void _findExternalComponents() {
@@ -1049,9 +1049,26 @@ class ResolvedComponent {
   final Component component;
 
   final LibraryElement resolvedTmpLibrary;
+  final CompilationUnit _resolvedTmpUnit;
 
   TypeSystem get typeSystem => resolvedTmpLibrary.typeSystem;
 
   ResolvedComponent(this.componentName, this.component, this.cssClassName,
-      this.resolvedTmpLibrary);
+      this.resolvedTmpLibrary, this._resolvedTmpUnit);
+
+  /// Returns all declared members that should be copied into the final output.
+  ///
+  /// This includes members declared in a `<script context="module">` script.
+  /// We can't copy them verbatim because we need to add explicit prefixes for
+  /// imports.
+  Iterable<CompilationUnitMember> get declarationsFromModuleScope {
+    return _resolvedTmpUnit.declarations.where((e) {
+      // Exclude synthetic nodes we only use for static analysis.
+      if (e is NamedCompilationUnitMember) {
+        return !e.name.name.startsWith(zapPrefix);
+      }
+
+      return true;
+    });
+  }
 }

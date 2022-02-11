@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 
 import '../preparation/ast.dart';
@@ -30,6 +31,7 @@ Future<PrepareResult> prepare(
 
   final fileBuilder = StringBuffer();
   final script = checker.script?.readInnerText(reporter);
+
   var imports = '';
   ScriptComponents? splitScript;
 
@@ -63,6 +65,12 @@ Future<PrepareResult> prepare(
   }
 
   fileBuilder.writeln('}');
+
+  final moduleScript = checker.moduleScript?.readInnerText(reporter);
+  if (moduleScript != null) {
+    fileBuilder.write(moduleScript);
+  }
+
   component = component.accept(_ExtractDom(), null) as DomNode;
 
   String? className;
@@ -129,6 +137,7 @@ class _ComponentSanityChecker extends RecursiveVisitor<void, void> {
 
   var _isInTag = false;
   Element? script;
+  Element? moduleScript;
   Element? style;
   final PreparedVariableScope _rootScope = PreparedVariableScope();
   late PreparedVariableScope _scope = _rootScope;
@@ -209,8 +218,17 @@ class _ComponentSanityChecker extends RecursiveVisitor<void, void> {
     }
 
     if (e.tagName == 'script') {
-      handleSpecial(script);
-      script = e;
+      final isModule =
+          e.attributes.firstWhereOrNull((attr) => attr.key == 'context') !=
+              null;
+
+      if (isModule) {
+        handleSpecial(moduleScript);
+        moduleScript = e;
+      } else {
+        handleSpecial(script);
+        script = e;
+      }
     }
     if (e.tagName == 'style') {
       handleSpecial(style);
@@ -457,6 +475,7 @@ extension on Element {
     } else {
       reporter.reportError(ZapError.onNode(child ?? this,
           'Expected a raw text string without Dart expressions or macros!'));
+      return null;
     }
   }
 }
