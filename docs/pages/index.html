@@ -1,0 +1,79 @@
+---
+template: layouts/main
+path: ""
+
+data:
+  script: "index.dart.js"
+---
+
+<h1>zap</h1>
+
+<p>
+Zap is a Dart-powered web framework. Heavily inspired by <a href="https://svelte.dev">Svelte</a>, zap makes it
+easy to write modular and reactive components:
+</p>
+
+<div class="grid">
+  <div>
+    {% block "blocks/markdown" %}
+```html
+{{ 'package:zap_docs/src/examples/counter.zap' | readString }}
+```
+    {% endblock %}
+  </div>
+  <div>
+    <h3>Preview</h3>
+    <div id="index-example-1">
+      <em>Loading example</em>
+    </div>
+  </div>
+</div>
+
+Zap's compiler uses the powerful Dart analyzer to generate efficient components updating their
+state without a virtual DOM.
+Updates to <code>counter</code> will automatically rebuild parts of the component referring to it.
+
+{% block "blocks/markdown" %}
+## Why zap?
+
+Dart is an amazing language for building modern web applications.
+Its sound type system helps you catch errors quickly, a well-designed standard library
+is so much nicer to use than all the quirks in old web APIs and the powerful `dart2js`
+compiler translates your entire app into efficient JavaScript.
+
+Unfortunately, there aren't many frameworks making good use of Dart for small to medium-sized
+webapps:
+__Flutter Web__ is more suited for full-blown webapps and __AngularDart__ has
+effectively been discontinued for public use.
+Zap attempts to be a reasonably lightweight framework making it easy to write modular
+webapps in Dart.
+Zap also works well for websites with just a bit of interactivity, like this static
+page embedding some zap components.
+
+Zap embraces Dart at every step and fits perfectly into the ecosystem:
+Futures and Streams replace the callback mess you know from JavaScript.
+It uses Dart's build system for compilation, so you can easily use it together
+with other builders like `freezed`.
+Of course, it has builtin support for scoped CSS and Sass.
+State management is easy thanks to first-class support for [riverpod](https://riverpod.dev/).
+
+Similar to Svelte, zap uses a smart compiler to make your live easier. Instead
+of relying on complex boilerplate or state management techniques, zap makes your Dart
+code reactive!
+
+## First steps
+
+## Contributions welcome!
+
+Zap is at a very early stage of development, and I would love for you to play around with it!
+At the time, I'm adapting it to my own needs as necessary.
+
+Some things on my todo list are:
+
+- An animation framework, potentially similar to the one from Svelte.
+- Support for server-side rendering and hydration.
+- Tricks in the compiler to emit much less code.
+
+All kinds of feedback, help or other contributions with these or other features are most welcome!
+
+{% endblock %}

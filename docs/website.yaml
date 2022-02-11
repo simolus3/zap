@@ -1,0 +1,10 @@
+site:
+  copyright_year: 2022
+
+environments:
+  dev:
+    minify: false
+    base_url: "http://localhost:8080/"
+  prod:
+    minify: true
+    base_url: "https://simonbinder.eu/zap/"

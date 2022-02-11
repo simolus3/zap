@@ -1,0 +1,15 @@
+targets:
+  $default:
+    sources:
+      - "lib/**"
+      - "pages/**"
+      - "templates/**"
+      - "web/**"
+      - "$package$"
+      - "pubspec.yaml"
+      - "theme.yaml"
+      - "website.yaml"
+    builders:
+      # Use the sass builder that comes with zap_dev, it's more efficient.
+      built_site|sass_builder:
+        enabled: false

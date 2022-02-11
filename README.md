@@ -4,11 +4,8 @@ A fast, modern and lightweight Dart web framework, inspired by svelte.
 
 ## todos
 
-- Stores
-- Context
-- Advanced templates for lists and async operations
-- Documentation
-- Support for SCSS/Sass
+- Support for transitions and animations
+- Server-side rendering and hydration
 - ...
 
 Contributions are welcome!
