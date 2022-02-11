@@ -1,0 +1,13 @@
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="{{ 'main.css' | absUrl }}">
+    {% if page.additional_style != null %}
+        <link rel="stylesheet" href="{{ page.additional_style | absUrl }}">
+    {% endif %}
+    <title>{{ page.title | default: 'Zap' }}</title>
+
+    {% if page.script != null %}
+        <script src="{{ page.script | absUrl }}" async></script>
+    {% endif %}
+</head>

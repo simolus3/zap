@@ -1,6 +1,5 @@
 <script>
   import 'package:riverpod_zap/riverpod.dart';
-  import 'package:riverpod_zap/riverpod-scope.zap';
 
   import 'entry-list.zap';
   import 'toolbar.zap';

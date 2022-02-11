@@ -362,5 +362,6 @@ It provides the following extensions for components:
 - `Watchable<State> use<T>(ProviderListenable<T> provider)`: Obtains the updating value of a provider as a `Watchable`.
   It can be used together with [watch](#watchables) to automatically listen for the latest value of a provider.
 
-To register a new riverpod scope, import `package:riverpod_zap/riverpod-scope.zap`
-and use the `<riverpod-scope>` tag in a component.
+To register a new riverpod scope, use the `<riverpod-scope>` tag in a component.
+Child elements will use that scope then. You can add provider overrides with the `overrides` property to
+that tag.

@@ -4,6 +4,7 @@ import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/dart/constant/value.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
+import 'package:build/build.dart';
 import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
 
@@ -60,6 +61,7 @@ String? componentTagName(Element element) {
   if (annotation != null) {
     return annotation.getField('tagName')!.toStringValue();
   }
+  return null;
 }
 
 Iterable<String?> readSlotAnnotations(Element element) {
@@ -72,6 +74,29 @@ Iterable<String?> readSlotAnnotations(Element element) {
       return name.toStringValue();
     }
   });
+}
+
+Iterable<AssetId> additionalZapExports(
+    AssetId libraryId, LibraryElement library) sync* {
+  for (final meta in library.metadata) {
+    final value = meta.computeConstantValue();
+    if (value == null) continue;
+
+    final type = value.type;
+    if (type is! InterfaceType || type.element.name != 'pragma') {
+      continue;
+    }
+
+    final name = value.getField('name')!.toStringValue();
+    if (name != 'zap:additional_export') continue;
+
+    for (final export in value.getField('options')!.toListValue()!) {
+      yield AssetId.resolve(
+        Uri.parse(export.toStringValue()!),
+        from: libraryId,
+      );
+    }
+  }
 }
 
 Iterable<DartObject> _findDslAnnotations(Element element, String className) {
@@ -119,28 +144,9 @@ class _ZapToDartImportRewriter extends GeneralizingAstVisitor<void> {
     if (uri == null) return;
 
     originalDirectives.add(uri);
-    String? newImportString;
+    final newImportString = rewriteUri(uri, mode);
 
-    switch (mode) {
-      case ImportRewriteMode.none:
-        // Just keep the import as is
-        break;
-      case ImportRewriteMode.zapToApi:
-        // Rewrite *.zap to *.tmp.zap.api.dart
-        if (p.extension(uri) == '.zap') {
-          newImportString = p.setExtension(uri, '.tmp.zap.api.dart');
-        }
-        break;
-      case ImportRewriteMode.apiToGenerated:
-        // Rewrite *.tmp.zap.api.dart to *.zap.dart
-        const suffix = '.tmp.zap.api.dart';
-        if (p.extension(uri, 4) == suffix) {
-          newImportString =
-              uri.substring(0, uri.length - suffix.length) + '.zap.dart';
-        }
-    }
-
-    if (newImportString == null) {
+    if (newImportString == uri) {
       // Just write the original import
       buffer.write(source.substring(start, end));
     } else {
@@ -152,6 +158,28 @@ class _ZapToDartImportRewriter extends GeneralizingAstVisitor<void> {
         ..write(source.substring(stringEnd, end));
     }
   }
+}
+
+String rewriteUri(String uri, ImportRewriteMode rewriteMode) {
+  switch (rewriteMode) {
+    case ImportRewriteMode.none:
+      // Just keep the import as is
+      break;
+    case ImportRewriteMode.zapToApi:
+      // Rewrite *.zap to *.tmp.zap.api.dart
+      if (p.extension(uri) == '.zap') {
+        return p.setExtension(uri, '.tmp.zap.api.dart');
+      }
+      break;
+    case ImportRewriteMode.apiToGenerated:
+      // Rewrite *.tmp.zap.api.dart to *.zap.dart
+      const suffix = '.tmp.zap.api.dart';
+      if (p.extension(uri, 4) == suffix) {
+        return uri.substring(0, uri.length - suffix.length) + '.zap.dart';
+      }
+  }
+
+  return uri;
 }
 
 String dartStringLiteral(String value) {

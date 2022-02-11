@@ -47,7 +47,7 @@ class Resolver {
   Future<ResolvedComponent> resolve(BuildStep buildStep) async {
     checker = await TypeChecker.checkerFor(
         typeProvider, typeSystem, errorReporter, buildStep);
-    _findExternalComponents();
+    await _findExternalComponents(buildStep);
     dartAnalysis = _AnalyzeVariablesAndScopes(this);
 
     // Create resolved scopes and variables
@@ -73,17 +73,57 @@ class Resolver {
         preparedLibrary, preparedUnit);
   }
 
-  void _findExternalComponents() {
-    preparedLibrary.importedLibraries
-        .map((l) => l.exportNamespace)
-        .expand((ns) => ns.definedNames.values)
-        .forEach((element) {
-      final tagName = componentTagName(element);
+  Future<void> _findExternalComponents(BuildStep buildStep) async {
+    void scanNamespace(LibraryElement lib) {
+      for (final element in lib.exportNamespace.definedNames.values) {
+        final tagName = componentTagName(element);
 
-      if (element is ClassElement && tagName != null) {
-        components.add(_readComponent(tagName, element));
+        if (element is ClassElement && tagName != null) {
+          components.add(_readComponent(tagName, element));
+        }
       }
-    });
+    }
+
+    for (final imported in preparedLibrary.importedLibraries) {
+      scanNamespace(imported);
+
+      // Also consider libraries added with the `zap:additional_export` pragma.
+      // It exists so that zap components can be exported without breaking
+      // the compilation flow because the component files don't exist during
+      // all stages of the build.
+      AssetId id;
+
+      try {
+        id = await buildStep.resolver.assetIdForElement(imported);
+      } catch (e, s) {
+        // It's expected that we can't recover the asset id of SDK libraries,
+        // so don't log that.
+        if (!imported.name.startsWith('dart.')) {
+          log.fine('Could not recover asset id of ${imported.source.fullName}',
+              e, s);
+        }
+
+        continue;
+      }
+
+      for (final additional in additionalZapExports(id, imported)) {
+        final import = AssetId.resolve(Uri.parse(
+            rewriteUri(additional.uri.toString(), ImportRewriteMode.zapToApi)));
+        LibraryElement included;
+        try {
+          included = await buildStep.resolver.libraryFor(import);
+        } catch (e, s) {
+          log.fine(
+            'Additional export $import of $id does not appear to be a library',
+            e,
+            s,
+          );
+          continue;
+        }
+
+        scanNamespace(included);
+      }
+    }
   }
 
   ExternalComponent _readComponent(String tagName, ClassElement element) {

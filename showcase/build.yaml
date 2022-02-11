@@ -1,8 +1,0 @@
-builders:
-  aggregate_styles:
-    required_inputs: ['.scss']
-    import: 'tool/aggregate_styles.dart'
-    build_extensions: {"lib/$lib$": ["web/style.scss"]}
-    builder_factories: ["AggregateStyles.new"]
-    build_to: cache
-    auto_apply: root_package

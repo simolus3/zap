@@ -1,6 +1,6 @@
 import 'dart:html';
 
-import 'package:zap_docs/src/examples/counter.zap.dart';
+import 'package:zap_docs/src/demo/counter.zap.dart';
 
 void main() {
   final target = document.getElementById('index-example-1')!;

@@ -1,7 +1,7 @@
 <script>
   import 'package:riverpod/riverpod.dart';
 
-  import 'src/context.dart';
+  import 'context.dart';
 
   @prop
   List<Override> overrides = const [];
