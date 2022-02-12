@@ -2,16 +2,19 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:build/build.dart';
-import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p show url;
 import 'package:sass_api/sass_api.dart' as sass;
 // ignore: implementation_imports
 import 'package:sass/src/async_compile.dart' as sassc;
 import 'package:source_span/source_span.dart';
 import 'package:stack_trace/stack_trace.dart';
-import 'package:tuple/tuple.dart';
 
-final _cache = Resource(() => _CachedStylesheets());
+final _cache = Resource(
+  () => sass.AsyncImportCache(
+    importers: [_BuildImporter()],
+    logger: const _BuildSassLogger(),
+  ),
+);
 
 /// A builder compiling `.sass` and `.scss` files to `.css` files.
 ///
@@ -40,21 +43,19 @@ class SassBuilder extends Builder {
     }
 
     final cache = await buildStep.fetchResource(_cache);
-    final logger = _LoggerAsSassLogger(log);
+    final contents = await buildStep.readAsString(buildStep.inputId);
 
-    final result = await sassc.compileStringAsync(
-      await buildStep.readAsString(buildStep.inputId),
-      url: buildStep.inputId.uri,
-      syntax: sass.Syntax.forPath(buildStep.inputId.path),
-      importCache: _BuildAwareImportCache(
-        cache: cache,
-        importer: _BuildImporter(buildStep),
-        logger: logger,
-      ),
-      logger: logger,
-      style: output,
-      sourceMap: true,
-    );
+    final result = await _BuildImporter.withReader(() {
+      return sassc.compileStringAsync(
+        contents,
+        url: buildStep.inputId.uri,
+        syntax: sass.Syntax.forPath(buildStep.inputId.path),
+        importCache: cache,
+        logger: const _BuildSassLogger(),
+        style: output,
+        sourceMap: generateSourceMaps,
+      );
+    }, buildStep);
 
     // Some sources may have been read from cache. Make sure we dispatch them
     // to the build system for deterministic builds!
@@ -74,112 +75,23 @@ class SassBuilder extends Builder {
     await Future.wait([
       buildStep.writeAsString(cssOut, cssContent.toString()),
       if (generateSourceMaps)
-        buildStep.writeAsString(mapOut, json.encode(result.sourceMap!.toJson()))
+        buildStep.writeAsString(
+            mapOut,
+            json
+                .encode(result.sourceMap!.toJson())
+                .replaceAll('http://source_maps', ''))
     ]);
   }
 }
 
-class _CachedStylesheets {
-  final canonicalizeCache =
-      <Tuple2<Uri, bool>, Tuple3<sass.AsyncImporter, Uri, Uri>?>{};
-  final importCache = <Uri, sass.Stylesheet?>{};
-  final resultsCache = <Uri, sass.ImporterResult>{};
-}
-
-// ignore: subtype_of_sealed_class
-/// Version of an [AsyncImportCache] that uses an external [_CachedStylesheets]
-/// instance to store cached data.
-///
-/// Effectively, this allows us to use an async import cache with build-step
-/// specific importers that still caches information across build step.
-class _BuildAwareImportCache implements sass.AsyncImportCache {
-  final _CachedStylesheets _cache;
-  final sass.AsyncImporter _importer;
-  final sass.Logger _logger;
-
-  _BuildAwareImportCache(
-      {required _CachedStylesheets cache,
-      required sass.AsyncImporter importer,
-      required sass.Logger logger})
-      : _cache = cache,
-        _importer = importer,
-        _logger = logger;
-
-  @override
-  Future<Tuple3<sass.AsyncImporter, Uri, Uri>?> canonicalize(
-    Uri url, {
-    sass.AsyncImporter? baseImporter,
-    Uri? baseUrl,
-    bool forImport = false,
-  }) {
-    final resolvedUri = baseUrl?.resolveUri(url) ?? url;
-
-    // We don't support the legacy behavior around different canonicalization
-    // for import uris.
-    final query = Tuple2(resolvedUri, false);
-    return _cache.canonicalizeCache.putIfAbsentAsync(query, () async {
-      final canonical = await _importer.canonicalize(resolvedUri);
-      if (canonical == null) {
-        return null;
-      }
-
-      return Tuple3(_importer, canonical, resolvedUri);
-    });
-  }
-
-  @override
-  void clearCanonicalize(Uri url) {}
-
-  @override
-  void clearImport(Uri canonicalUrl) {}
-
-  @override
-  Uri humanize(Uri canonicalUrl) => canonicalUrl;
-
-  @override
-  Future<Tuple2<sass.AsyncImporter, sass.Stylesheet>?> import(Uri url,
-      {sass.AsyncImporter? baseImporter,
-      Uri? baseUrl,
-      bool forImport = false}) async {
-    final canonical = await canonicalize(url, baseUrl: baseUrl);
-    if (canonical != null) {
-      final stylesheet = await importCanonical(_importer, canonical.item2);
-      if (stylesheet != null) {
-        return Tuple2(_importer, stylesheet);
-      }
-    }
-  }
-
-  @override
-  Future<sass.Stylesheet?> importCanonical(
-      sass.AsyncImporter importer, Uri canonicalUrl,
-      {Uri? originalUrl, bool quiet = false}) {
-    return _cache.importCache.putIfAbsentAsync(canonicalUrl, () async {
-      final result = await _importer.load(canonicalUrl);
-      if (result == null) return null;
-
-      _cache.resultsCache[canonicalUrl] = result;
-      return sass.Stylesheet.parse(
-        result.contents,
-        result.syntax,
-        url: canonicalUrl,
-        logger: quiet ? sass.Logger.quiet : _logger,
-      );
-    });
-  }
-
-  @override
-  Uri sourceMapUrl(Uri canonicalUrl) {
-    final id = AssetId.resolve(
-        _cache.resultsCache[canonicalUrl]?.sourceMapUrl ?? canonicalUrl);
-    return id.servedUri ?? id.uri;
-  }
-}
-
 class _BuildImporter extends sass.AsyncImporter {
-  final AssetReader reader;
+  static const _readerZoneKey = #zap_dev.sass.reader;
 
-  _BuildImporter(this.reader);
+  static T withReader<T>(T Function() body, AssetReader reader) {
+    return runZoned(body, zoneValues: {_readerZoneKey: reader});
+  }
+
+  AssetReader get _reader => Zone.current[_readerZoneKey] as AssetReader;
 
   /// Returns potential asset ids for a sass [uri]:
   ///
@@ -188,14 +100,14 @@ class _BuildImporter extends sass.AsyncImporter {
   ///    readable asset, returns that asset.
   ///  - Otherwise, returns `null`
   Future<AssetId?> _readableAssetFor(AssetId id) async {
-    if (await reader.canRead(id)) {
+    if (await _reader.canRead(id)) {
       return id;
     }
 
     final pathWithUnderscore =
         p.url.join(p.url.dirname(id.path) + '/_${p.url.basename(id.path)}');
     final withUnderscore = AssetId(id.package, pathWithUnderscore);
-    if (await reader.canRead(withUnderscore)) {
+    if (await _reader.canRead(withUnderscore)) {
       return withUnderscore;
     }
   }
@@ -225,8 +137,9 @@ class _BuildImporter extends sass.AsyncImporter {
   FutureOr<sass.ImporterResult?> load(Uri url) async {
     final import = AssetId.resolve(url);
     return sass.ImporterResult(
-      await reader.readAsString(import),
-      sourceMapUrl: url,
+      await _reader.readAsString(import),
+      sourceMapUrl:
+          import.servedUri?.replace(scheme: 'http', host: 'source_maps'),
       syntax: sass.Syntax.forPath(import.path),
     );
   }
@@ -234,17 +147,15 @@ class _BuildImporter extends sass.AsyncImporter {
 
 /// Exports a logger from `package:logging` as a logger that can be used by
 /// sass.
-class _LoggerAsSassLogger implements sass.Logger {
-  final Logger logger;
-
-  _LoggerAsSassLogger(this.logger);
+class _BuildSassLogger implements sass.Logger {
+  const _BuildSassLogger();
 
   @override
   void debug(String message, SourceSpan span) {
     final source = span.start.sourceUrl?.toString() ?? '<unknown source>';
     final line = span.start.line + 1;
 
-    logger.fine('$source:$line: $message');
+    log.fine('$source:$line: $message');
   }
 
   @override
@@ -263,16 +174,7 @@ class _LoggerAsSassLogger implements sass.Logger {
       buffer.write('on ${span.message(message, color: false)}');
     }
 
-    logger.warning(buffer);
-  }
-}
-
-extension<K, V> on Map<K, V> {
-  Future<V> putIfAbsentAsync(K key, Future<V> Function() ifAbsent) async {
-    if (containsKey(key)) return this[key] as V;
-    var value = await ifAbsent();
-    this[key] = value;
-    return value;
+    log.warning(buffer);
   }
 }
 

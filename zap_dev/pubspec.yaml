@@ -14,12 +14,8 @@ dependencies:
   dart_style: ^2.2.0
   path: ^1.8.0
   recase: ^4.0.0
-  # We're importing internal sass code, implement sealed interfaces and do other
-  # shady things... We're likely to be broken by something that sass wouldn't
-  # consider breaking, so let's pin the version here. Users aren't likely to import
-  # sass so it's probably fine?
-  sass_api: 1.0.0-beta.23
-  sass: 1.45.0
+  sass_api: ^1.0.0-beta.36
+  sass: ^1.49.7
   source_span: ^1.8.1
   stack_trace: ^1.10.0
   zap:
