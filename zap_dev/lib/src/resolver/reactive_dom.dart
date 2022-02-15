@@ -255,8 +255,16 @@ class BindThis extends ElementBinder {
   BindThis(DartCodeVariable target) : super(target);
 }
 
-class BindAttribute extends ElementBinder {
+class BindProperty extends ElementBinder {
   final String attribute;
+  final SpecialBindingMode? specialMode;
 
-  BindAttribute(this.attribute, DartCodeVariable target) : super(target);
+  bool get isReadOnly => false;
+
+  BindProperty(this.attribute, DartCodeVariable target, {this.specialMode})
+      : super(target);
+}
+
+enum SpecialBindingMode {
+  inputValue,
 }

@@ -279,18 +279,34 @@ abstract class _ComponentOrSubcomponentWriter {
 
           if (binder is BindThis) {
             buffer.write(_statementsToChangeVariable(target, nodeName));
-          } else if (binder is BindAttribute) {
-            buffer
-              ..write(nodeName)
-              ..write('.watchAttribute(')
-              ..write(dartStringLiteral(binder.attribute))
-              ..write(')')
-              ..write('.transform($prefix.lifecycle)')
-              ..writeln('.listen((value) {')
-              ..writeln('  if (value != $prefix$variableName) {')
-              ..writeln('    ${_statementsToChangeVariable(target, 'value')}')
-              ..writeln('  }')
-              ..writeln('});');
+          } else if (binder is BindProperty) {
+            final callback = '''
+                (value) {
+                  if (value != $prefix$variableName) {
+                    ${_statementsToChangeVariable(target, 'value')}
+                  }
+                }
+            ''';
+
+            switch (binder.specialMode) {
+              case SpecialBindingMode.inputValue:
+                final import = generator.imports.dartHtmlImport;
+                buffer.write('$import.GlobalEventHandlers.inputEvent'
+                    '.forElement($nodeName)'
+                    '.map((e) => $nodeName.value)'
+                    '.transform(lifecycle())'
+                    '.listen($callback);');
+                break;
+              case null:
+                buffer
+                  ..write(nodeName)
+                  ..write('.watchAttribute(')
+                  ..write(dartStringLiteral(binder.attribute))
+                  ..write(')')
+                  ..write('.transform(lifecycle())')
+                  ..writeln('.listen($callback);');
+                break;
+            }
           }
         }
       }

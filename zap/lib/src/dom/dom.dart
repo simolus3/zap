@@ -12,7 +12,15 @@ extension ZapText on Text {
 extension ZapElement on Element {
   /// Adds an empty attribute [key] if [value] is true, removes it otherwise.
   void applyBooleanAttribute(String key, bool value) {
-    js.setProperty(this, key, value);
+    if (js.hasProperty(this, key)) {
+      js.setProperty(this, key, value);
+    } else {
+      if (value) {
+        attributes[key] = 'true';
+      } else {
+        attributes.remove(key);
+      }
+    }
   }
 
   /// Sets the attribute [key] to the stringified [value] if it's not null,

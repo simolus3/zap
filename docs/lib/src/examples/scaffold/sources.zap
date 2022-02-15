@@ -54,6 +54,10 @@ Future<List<ExampleWithSources>> loadSources() async {
     margin-bottom: 1em;
     margin-top: 2em;
   }
+
+  code {
+    min-width: 100%;
+  }
 </style>
 
 <h2>Sources</h2>

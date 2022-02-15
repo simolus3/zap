@@ -40,46 +40,106 @@ const rawHtml = ExampleComponent(
   files: ['introduction/raw_html.zap'],
 );
 
-const reactiveAssignments =
-    ExampleComponent(title: 'Reactive assignments', id: 'rx-assign', files: []);
-const reactiveDeclarations =
-    ExampleComponent(title: 'Reactive declarations', id: 'rx-decl', files: []);
-const reactiveStatements =
-    ExampleComponent(title: 'Reactive statements', id: 'rx-stmts', files: []);
+const reactiveAssignments = ExampleComponent(
+  title: 'Reactive assignments',
+  id: 'rx-assign',
+  files: ['reactivity/assignments.zap'],
+);
+const reactiveDeclarations = ExampleComponent(
+  title: 'Reactive declarations',
+  id: 'rx-decl',
+  files: ['reactivity/declarations.zap'],
+);
+const reactiveStatements = ExampleComponent(
+  title: 'Reactive statements',
+  id: 'rx-stmts',
+  files: ['reactivity/statements.zap'],
+);
 
-const declaringProps =
-    ExampleComponent(title: 'Declaring props', id: 'props-decl', files: []);
-const defaultValues =
-    ExampleComponent(title: 'Default values', id: 'props-default', files: []);
+const declaringProps = ExampleComponent(
+  title: 'Declaring props',
+  id: 'props-decl',
+  files: ['props/nested_props.zap', 'props/props_1.zap'],
+);
+const defaultValues = ExampleComponent(
+  title: 'Default values',
+  id: 'props-default',
+  files: ['props/nested_props.zap', 'props/props_2.zap'],
+);
 
-const ifBlocks =
-    ExampleComponent(title: 'If blocks', id: 'blocks-if', files: []);
-const elseBlocks =
-    ExampleComponent(title: 'Else blocks', id: 'blocks-else', files: []);
-const elseIfBlocks =
-    ExampleComponent(title: 'Else-if blocks', id: 'blocks-elseif', files: []);
-const awaitBlocks =
-    ExampleComponent(title: 'Await blocks', id: 'blocks-await', files: []);
-const eachBlocks =
-    ExampleComponent(title: 'For blocks', id: 'blocks-for', files: []);
+const ifBlocks = ExampleComponent(
+  title: 'If blocks',
+  id: 'blocks-if',
+  files: ['logic/if_blocks.zap'],
+);
+const elseBlocks = ExampleComponent(
+  title: 'Else blocks',
+  id: 'blocks-else',
+  files: ['logic/else_blocks.zap'],
+);
+const elseIfBlocks = ExampleComponent(
+  title: 'Else-if blocks',
+  id: 'blocks-elseif',
+  files: ['logic/else_if.zap'],
+);
+const awaitBlocks = ExampleComponent(
+  title: 'Await blocks',
+  id: 'blocks-await',
+  files: ['logic/await_blocks.zap'],
+);
+const eachBlocks = ExampleComponent(
+  title: 'For blocks',
+  id: 'blocks-for',
+  files: ['logic/each_blocks.zap'],
+);
 
-const domEvents =
-    ExampleComponent(title: 'DOM events', id: 'events-dom', files: []);
-const inlineHandler =
-    ExampleComponent(title: 'Inline handler', id: 'events-inline', files: []);
-const modifiers =
-    ExampleComponent(title: 'Modifiers', id: 'events-modifiers', files: []);
+const domEvents = ExampleComponent(
+  title: 'DOM events',
+  id: 'events-dom',
+  files: ['events/dom_events.zap'],
+);
+const inlineHandler = ExampleComponent(
+  title: 'Inline handler',
+  id: 'events-inline',
+  files: ['events/inline_handler.zap'],
+);
+const modifiers = ExampleComponent(
+  title: 'Modifiers',
+  id: 'events-modifiers',
+  files: ['events/modifiers.zap'],
+);
 const componentEvents = ExampleComponent(
-    title: 'Component events', id: 'events-components', files: []);
+  title: 'Component events',
+  id: 'events-components',
+  files: ['events/component_events.zap', 'events/inner.zap'],
+);
 const eventForwarding = ExampleComponent(
-    title: 'Event forwarding', id: 'events-forward', files: []);
+  title: 'Event forwarding',
+  id: 'events-forward',
+  files: ['events/forwarding.zap', 'events/outer.zap', 'events/inner.zap'],
+);
 const domEventForwarding = ExampleComponent(
-    title: 'DOM event forwarding', id: 'events-forward-dom', files: []);
+  title: 'DOM event forwarding',
+  id: 'events-forward-dom',
+  files: ['events/dom_forwarding.zap', 'events/custom_button.zap'],
+);
 
-const watchRead =
-    ExampleComponent(title: 'Readable', id: 'watch-read', files: []);
-const watchWrite =
-    ExampleComponent(title: 'Writable', id: 'watch-write', files: []);
+const watchRead = ExampleComponent(
+  title: 'Readable',
+  id: 'watch-read',
+  files: ['watchable/time.zap'],
+);
+const watchWrite = ExampleComponent(
+  title: 'Writable',
+  id: 'watch-write',
+  files: [
+    'watchable/sources.dart',
+    'watchable/writable/counter.zap',
+    'watchable/writable/decrementer.zap',
+    'watchable/writable/incrementer.zap',
+    'watchable/writable/resetter.zap',
+  ],
+);
 
 const examples = <ExampleGroup>[
   ExampleGroup(

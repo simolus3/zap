@@ -64,6 +64,13 @@ class ApplyAttribute extends Action {
   ApplyAttribute(this.element, this.name);
 }
 
+class ApplyBinding extends Action {
+  final ReactiveElement element;
+  final BindProperty binding;
+
+  ApplyBinding(this.element, this.binding);
+}
+
 class ChangePropertyOfSubcomponent extends Action {
   final SubComponent subcomponent;
   final String property;

@@ -16,6 +16,7 @@ import 'external_component.dart';
 import 'flow.dart';
 import 'preparation.dart';
 import 'reactive_dom.dart';
+import 'types/binding.dart';
 import 'types/checker.dart';
 import 'types/dom_types.dart';
 
@@ -596,11 +597,12 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
         if (zapTarget is! DartCodeVariable) continue;
 
         zapTarget.isMutable = true;
-        if (attributeName == 'this') {
-          binders.add(BindThis(zapTarget));
-        } else {
-          binders.add(BindAttribute(attributeName, zapTarget));
-        }
+        binders.add(resolver.checker.checkBindProperty(
+          bindName: attributeName,
+          elementTagName: e.tagName,
+          targetVariable: zapTarget,
+          attribute: attribute,
+        ));
       } else if (key == 'slot') {
         slot = (value as SimpleStringLiteral).value;
       } else {
@@ -927,6 +929,12 @@ class _FindComponents {
               _FindReadVariables.find(value.backingExpression, variables);
           flows.add(Flow(dependsOn, ApplyAttribute(node, key)));
         });
+
+        for (final binder in node.binders) {
+          if (binder is BindProperty) {
+            flows.add(Flow({binder.target}, ApplyBinding(node, binder)));
+          }
+        }
 
         node.children.forEach(processNode);
       } else if (node is ReactiveIf) {
