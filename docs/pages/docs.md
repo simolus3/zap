@@ -5,6 +5,102 @@ data:
   title: Zap documentation
 ---
 
+## Zap files
+
+Zap components are defined in `.zap` files. They consist of three sections, all
+of which are optional: scripts, styles and markup:
+
+```html
+<script>
+  // Dart code for the component
+</script>
+<style>
+  /* you can put scoped component css here */
+</style>
+
+<!-- Markup as HTML goes here -->
+```
+
+### script
+
+A `<script>` tag contains Dart code to run when a component is initialized.
+All variables declared there are bound to the component, and visible in the component's
+markup. Changes to variables are tracked by the compiler, and will cause usages to
+rebuild automatically.
+
+#### Properties
+
+To define a property, annotate a variable with `@prop`:
+
+```dart
+  @prop
+  User shownUser;
+```
+
+Properties can be given befault values by adding an initializer to the variable.
+The default value doesn't have to be a constant.
+
+#### Reactive assignments
+
+A component's state can be changed by assigning to a variable declared in a `<script>`
+block. The component will automatically update references to changed variables.
+
+Note that only assignments are tracked as updates. Mutable objects work poorly with
+zap, as they can change state without re-assignments.
+For more complex state management needs, consider using riverpod.
+
+#### Reactive statements
+
+Any top-level statement can be made reactive by prefixing it with a `$:` label.
+Reactive statements run once as the component initializes, and then again whenever
+the values that they depend on have changed.
+
+<script>
+  import 'dart:html';
+
+	@prop String title;
+
+	// this will update `document.title` whenever the `title` prop changes
+	$: document.title = title;
+
+	$: {
+		print(`multiple statements can be combined`);
+		print(`the current title is ${title}`);
+	}
+</script>
+
+Only variables that directly apear within the `$:` block will become dependencies of
+the reactive statement. Variables that might be used in called methods are not considered,
+for instance.
+
+### Library-level scripts
+
+A script tag with a `context="library"` attribute can be used to define Dart code that is not
+bound to the component. It can be used to define classes or global fields.
+Variables defined in this script are not reactive.
+
+<script context="library">
+	var totalComponents = 0;
+
+	// this allows an importer to do e.g. `import 'example.zap' show alertTotal`
+	void alertTotal() {
+		window.alert(totalComponents);
+	}
+</script>
+
+<script>
+	totalComponents += 1;
+	print('total number of times this component has been created: $totalComponents');
+</script>
+
+### `<style>`
+
+CSS inside a `<style>` block will be scoped to that component.
+This works by adding a class to affected elements, which is based on a hash
+of the component styles.
+
+Zap uses sass to parse `<style>` blocks, so Sass directives are supported out of the box.
+
 ## Template syntax
 
 ### Tags
@@ -20,6 +116,30 @@ file they were declared in as a tag:
 
 <headers />
 ```
+
+### Attributes and properties
+
+By default, attributes work just like in regular HTML.
+
+```html
+<div class="foo">
+	<button disabled>can't touch this</button>
+</div>
+```
+
+Attribute values can contain Dart expressions.
+
+```html
+<a href="page/{p}">page {p}</a>
+```
+
+Or they can be Dart expressions.
+
+```html
+<button disabled={!clickable}>...</button>
+```
+
+Properties can be set on components by providing them as attributes.
 
 ### Text expressions
 

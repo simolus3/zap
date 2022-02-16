@@ -8,7 +8,7 @@ dependencies:
   picocss:
     version: ^1.4.4
     hosted: https://simonbinder.eu
-  tar: ^0.5.0
+  tar: ^0.5.2
   zap:
 
 dev_dependencies:
@@ -26,5 +26,3 @@ dependency_overrides:
     path: ../zap
   zap_dev:
     path: ../zap_dev
-  tar:
-    path: /home/simon/programming/tar

@@ -55,6 +55,21 @@ class _TemplateFiles {
     yield* web;
   }
 
+  SynchronousTarEntry get gitignore {
+    return _entry('.gitignore', '''
+# Files and directories created by pub.
+.dart_tool/
+.packages
+
+# Conventional directory for build outputs.
+build/
+
+# Omit committing pubspec.lock for library packages; see
+# https://dart.dev/guides/libraries/private-files#pubspeclock.
+pubspec.lock
+''');
+  }
+
   SynchronousTarEntry get pubspec {
     return _entry(
       'pubspec.yaml',
@@ -103,7 +118,7 @@ A simple web project based on zap.
 
 To run this project, run `dart run webdev serve --auto refresh`.
 
-To build this project, simply run `dart run webdev build -o output`.
+To build this project, simply run `dart run webdev build`.
 
 For more information on zap, please visit https://simonbinder.eu/zap/.
 ''',
