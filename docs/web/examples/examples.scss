@@ -4,3 +4,6 @@
 // components for the examples.
 @use "package:zap_docs/src/examples/introduction/_styling.zap.scss";
 @use "package:zap_docs/src/examples/introduction/nested/_index.zap.scss";
+@use "package:zap_docs/src/examples/events/dom_events.zap.scss";
+@use "package:zap_docs/src/examples/events/dom_forwarding.zap.scss";
+@use "package:zap_docs/src/examples/events/inline_handler.zap.scss";

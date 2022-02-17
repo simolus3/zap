@@ -426,10 +426,10 @@ class _ExtractDom extends Transformer<void> {
     for (final node in e.children) {
       if (node is Text) {
         if (didHaveContent) {
-          newNodes.add(Text(node.content));
+          newNodes.add(Text(node.content.withoutDuplicateWhitespace));
         } else {
           // Remove whitespace on the left
-          final trimmed = node.content.trimLeft();
+          final trimmed = node.content.withoutDuplicateWhitespace.trimLeft();
           if (trimmed.isEmpty) continue;
 
           newNodes.add(Text(trimmed));
@@ -477,5 +477,15 @@ extension on Element {
           'Expected a raw text string without Dart expressions or macros!'));
       return null;
     }
+  }
+}
+
+extension on String {
+  // Replace consecutive whitespace, or all tabs/newline characters with a
+  // single space.
+  static final RegExp _ignoreWhitespace = RegExp('[ \\n\\t]{2,}|[\\n\\t]+');
+
+  String get withoutDuplicateWhitespace {
+    return replaceAll(_ignoreWhitespace, ' ');
   }
 }

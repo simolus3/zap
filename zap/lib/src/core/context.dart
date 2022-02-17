@@ -37,6 +37,6 @@ class ContextScope extends MapBase<Object?, Object?> {
 
   @override
   Object? remove(Object? key) {
-    definedData.remove(key);
+    return definedData.remove(key);
   }
 }
