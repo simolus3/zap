@@ -14,6 +14,7 @@ import 'component.dart';
 import 'dart.dart';
 import 'external_component.dart';
 import 'flow.dart';
+import 'optimization/optimizer.dart';
 import 'preparation.dart';
 import 'reactive_dom.dart';
 import 'types/binding.dart';
@@ -70,8 +71,15 @@ class Resolver {
     }
 
     _assignUpdateFlags(scope.scopes[scope.root]!);
-    return ResolvedComponent(componentName, component, prepare.cssClassName,
-        preparedLibrary, preparedUnit, dartAnalysis.userDefinedFunctions);
+    return ResolvedComponent(
+      componentName,
+      component,
+      prepare.cssClassName,
+      preparedLibrary,
+      preparedUnit,
+      dartAnalysis.userDefinedFunctions,
+      Optimizer(component).optimize(),
+    );
   }
 
   Future<void> _findExternalComponents(BuildStep buildStep) async {
@@ -1103,6 +1111,8 @@ class ResolvedComponent {
   final Component component;
   final List<FunctionElement> userDefinedFunctions;
 
+  final OptimizationResults optimization;
+
   final LibraryElement resolvedTmpLibrary;
   final CompilationUnit _resolvedTmpUnit;
 
@@ -1115,6 +1125,7 @@ class ResolvedComponent {
     this.resolvedTmpLibrary,
     this._resolvedTmpUnit,
     this.userDefinedFunctions,
+    this.optimization,
   );
 
   /// Returns all declared members that should be copied into the final output.

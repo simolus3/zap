@@ -18,6 +18,7 @@ import '../utils/dart.dart';
 
 import 'imports.dart';
 import 'options.dart';
+import 'ssr/node_to_text.dart';
 import 'tree.dart';
 
 const _prefix = r'_$';
@@ -85,11 +86,19 @@ class Generator {
   void _writeComponent(ComponentOrSubcomponent component) {
     _ComponentOrSubcomponentWriter writer;
     final scope = libraryScope.inner(ScopeLevel.$class);
+    final opt = this.component.optimization.forComponent(component);
 
     if (component is Component) {
       writer = _ComponentWriter(
           component, this.component.componentName, this, scope);
     } else {
+      // Instead of writing a full class, we can write this fragment as a static
+      // node.
+      if (opt.isCompileTimeConstant) {
+        _writeConstantComponent(component as ResolvedSubComponent);
+        return;
+      }
+
       writer =
           _SubComponentWriter(component as ResolvedSubComponent, this, scope);
     }
@@ -97,6 +106,15 @@ class Generator {
     writer.write();
 
     component.children.forEach(_writeComponent);
+  }
+
+  void _writeConstantComponent(ResolvedSubComponent component) {
+    final name = _nameForMisc(component);
+    final writer = NodeWriter();
+    component.fragment.rootNodes.forEach(writer.writeNode);
+
+    libraryScope.leaf().write('final $name = $zapPrefix.HtmlTag'
+        '(${dartStringLiteral(writer.buffer.toString())});');
   }
 }
 
@@ -187,6 +205,23 @@ abstract class _ComponentOrSubcomponentWriter {
 
   String _slotVariable(String? slot) {
     return '\$slot_${slot ?? ''}';
+  }
+
+  bool _componentIsOptimizedAway(ComponentOrSubcomponent component) {
+    final opt = generator.component.optimization.forComponent(component);
+    return opt.isCompileTimeConstant;
+  }
+
+  String _createSubFragment(
+      ComponentOrSubcomponent subComponent, String constructorArguments) {
+    final name = generator._nameForMisc(subComponent);
+
+    if (_componentIsOptimizedAway(subComponent)) {
+      // We'll write a top-level field for this constant fragment.
+      return name;
+    } else {
+      return '$name($constructorArguments)';
+    }
   }
 
   String _statementsToChangeVariable(
@@ -733,15 +768,15 @@ abstract class _ComponentOrSubcomponentWriter {
 
       for (var i = 0; i < node.whens.length; i++) {
         final component = node.whens[i].owningComponent!;
-        final name = generator._nameForMisc(component);
 
-        buffer.writeln('case $i: return $name(this);');
+        buffer.writeln(
+            'case $i: return ${_createSubFragment(component, 'this')};');
       }
 
       final defaultCase = node.otherwise?.owningComponent;
       if (defaultCase != null) {
-        final name = generator._nameForMisc(defaultCase);
-        buffer.writeln('default: return $name(this);');
+        buffer.writeln(
+            'default: return ${_createSubFragment(defaultCase, 'this')};');
       } else {
         buffer.writeln('default: return null;');
       }

@@ -16,7 +16,7 @@ class HtmlTag extends Fragment {
 
   List<Node>? _children;
 
-  HtmlTag();
+  HtmlTag([this._rawHtml]);
 
   set rawHtml(String html) {
     _rawHtml = html;

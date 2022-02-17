@@ -418,6 +418,11 @@ class _RewriteMixedDartExpressions extends Transformer<void> {
 
 class _ExtractDom extends Transformer<void> {
   @override
+  Text visitText(Text e, void a) {
+    return Text(e.content.withoutDuplicateWhitespace);
+  }
+
+  @override
   AstNode visitAdjacentNodes(AdjacentNodes e, void arg) {
     final newNodes = <DomNode>[];
     var didHaveContent = false;
@@ -426,7 +431,7 @@ class _ExtractDom extends Transformer<void> {
     for (final node in e.children) {
       if (node is Text) {
         if (didHaveContent) {
-          newNodes.add(Text(node.content.withoutDuplicateWhitespace));
+          newNodes.add(visitText(node, arg));
         } else {
           // Remove whitespace on the left
           final trimmed = node.content.withoutDuplicateWhitespace.trimLeft();
