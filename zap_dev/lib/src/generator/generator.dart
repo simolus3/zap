@@ -783,19 +783,26 @@ abstract class _ComponentOrSubcomponentWriter {
 
       buffer.writeln('}})');
     } else if (node is ReactiveAsyncBlock) {
-      final childClass = generator._nameForMisc(node.fragment.owningComponent!);
+      final childComponent = node.fragment.owningComponent!;
       final name = node.fragment.resolvedScope
           .findForSubcomponent(SubcomponentVariableKind.asyncSnapshot)!
           .element
           .name;
-      final updateFunction =
-          '(fragment, snapshot) => (fragment as $childClass).$name = snapshot';
+
+      final create = _createSubFragment(childComponent, 'this');
+      // If the component was optimized to a static html string, we don't have
+      // to apply any updates.
+      final update = _componentIsOptimizedAway(childComponent)
+          ? '(_, __) {}'
+          : '(fragment, snapshot) => '
+              '(fragment as ${generator._nameForMisc(childComponent)})'
+              '.$name = snapshot';
 
       final className = node.isStream ? 'StreamBlock' : 'FutureBlock';
-      buffer
-          .writeln('$zapPrefix.$className($childClass(this), $updateFunction)');
+      buffer.writeln('$zapPrefix.$className($create, $update)');
     } else if (node is ReactiveFor) {
-      final childClass = generator._nameForMisc(node.fragment.owningComponent!);
+      final subComponent = node.fragment.owningComponent!;
+
       final elementVariable = node.fragment.resolvedScope
           .findForSubcomponent(SubcomponentVariableKind.forBlockElement)!;
       final indexVariable = node.fragment.resolvedScope
@@ -806,27 +813,34 @@ abstract class _ComponentOrSubcomponentWriter {
       // Write the function creating child nodes
       buffer.write('(element, index) => ');
       if (indexVariable != null) {
-        buffer.write('$childClass(this, element, index)');
+        buffer.write(_createSubFragment(subComponent, 'this, element, index'));
       } else {
-        buffer.write('$childClass(this, element)');
+        buffer.write(_createSubFragment(subComponent, 'this, element'));
       }
 
       // Write the function updating child nodes
-      buffer
-        ..write(', (fragment, element, index) => ')
-        ..write('(fragment as $childClass)')
-        ..write('..${elementVariable.element.name} = element');
+      if (_componentIsOptimizedAway(subComponent)) {
+        buffer.write(', (_, __, ___) {}');
+      } else {
+        final childClass = generator._nameForMisc(subComponent);
 
-      if (indexVariable != null) {
-        buffer.write('..${indexVariable.element.name} = index');
+        buffer
+          ..write(', (fragment, element, index) => ')
+          ..write('(fragment as $childClass)')
+          ..write('..${elementVariable.element.name} = element');
+
+        if (indexVariable != null) {
+          buffer.write('..${indexVariable.element.name} = index');
+        }
       }
+
       buffer.write(')');
     } else if (node is MountSlot) {
-      final fallbackComponent =
-          generator._nameForMisc(node.defaultContent.owningComponent!);
+      final createFallback = _createSubFragment(
+          node.defaultContent.owningComponent!, componentThis);
 
       final providedSlot = '$componentThis.${_slotVariable(node.slotName)}';
-      final fallback = '() => $fallbackComponent($componentThis)';
+      final fallback = '() => $createFallback';
 
       buffer
           .write('$zapPrefix.Slot($providedSlot ?? $fallback, $componentThis)');
