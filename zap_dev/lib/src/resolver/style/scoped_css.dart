@@ -107,10 +107,3 @@ class _AddExplicitClasses extends sass.RecursiveStatementVisitor {
     super.visitStyleRule(node);
   }
 }
-
-extension on sass.CompoundSelector {
-  bool get isWildcard {
-    return components.length == 1 &&
-        components.single is sass.UniversalSelector;
-  }
-}
