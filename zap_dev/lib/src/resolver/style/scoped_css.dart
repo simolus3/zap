@@ -51,20 +51,44 @@ class _AddExplicitClasses extends sass.RecursiveStatementVisitor {
     final parsed = sass.SelectorList.parse(selector.span.text);
     final result = StringBuffer();
 
+    // The top-level selector is a commma-separated list of selectors. We need
+    // to transform each child selector because the styles apply to every node
+    // matching any of `parsed.components`.
     var firstSequence = true;
     for (final sequence in parsed.components) {
       if (!firstSequence) {
         result.write(', ');
       }
 
+      // Each component in here is either a compound selector (`h3.foo`) or a
+      // combinator (`+', `~`, `>`).
       for (final component in sequence.components) {
         if (component is sass.CompoundSelector) {
-          if (!component.isWildcard) {
-            for (final simple in component.components) {
-              result.write(sass.serializeSelector(simple));
+          var didAddSelector = false;
+
+          for (var i = 0; i < component.components.length; i++) {
+            final simpleComponent = component.components[i];
+
+            if (simpleComponent is sass.UniversalSelector) {
+              // We can just replace the `*` with the class name and we're done.
+              result.write('.$classToAdd');
+              didAddSelector = true;
+            } else {
+              if (simpleComponent is sass.PseudoSelector) {
+                // Prefer to write the class name before pseudo-selectors.
+                result.write('.$classToAdd');
+                didAddSelector = true;
+              }
+
+              result.write(sass.serializeSelector(simpleComponent));
             }
           }
-          result.write('.$classToAdd');
+
+          // If we didn't find a suitable place yet, just emit the selector
+          // at the end.
+          if (!didAddSelector) {
+            result.write('.$classToAdd');
+          }
         } else if (component is sass.Combinator) {
           // Nothing to transform, just write the combinator.
           result.write(component);

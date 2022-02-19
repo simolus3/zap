@@ -85,12 +85,39 @@ c
   });
 
   test('parses slots', () {
-    _check('''
+    _check(
+      '''
 <div>
-	<slot name="header">No header was provided</slot>
-	<p>Some content between header and footer</p>
-	<slot name="footer"></slot>
-</div>''', AdjacentNodes([]));
+  <slot name="header">No header was provided</slot>
+  <p>Some content between header and footer</p>
+  <slot name="footer"></slot>
+</div>''',
+      Element(
+        'div',
+        [],
+        AdjacentNodes([
+          Text('\n  '),
+          Element(
+            'slot',
+            [
+              Attribute('name', StringLiteral([Text('header')]))
+            ],
+            Text('No header was provided'),
+          ),
+          Text('\n  '),
+          Element('p', [], Text('Some content between header and footer')),
+          Text('\n  '),
+          Element(
+            'slot',
+            [
+              Attribute('name', StringLiteral([Text('footer')]))
+            ],
+            AdjacentNodes([]),
+          ),
+          Text('\n'),
+        ]),
+      ),
+    );
   });
 
   test('parses complex Dart expression', () {
@@ -99,7 +126,8 @@ c
 <span on:mousemove={(MouseEvent e) { x = event.client.x; y = event.client.y; }}>
 </span>
 ''',
-      Element(
+      AdjacentNodes([
+        Element(
           'span',
           [
             Attribute(
@@ -108,7 +136,10 @@ c
                   '(MouseEvent e) { x = event.client.x; y = event.client.y; }')),
             ),
           ],
-          null),
+          Text('\n'),
+        ),
+        Text('\n'),
+      ]),
     );
   });
 }

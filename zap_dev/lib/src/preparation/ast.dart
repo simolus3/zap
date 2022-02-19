@@ -1,5 +1,6 @@
 import 'package:source_span/source_span.dart';
 
+import '../utils/dart.dart';
 import 'token.dart';
 import 'syntactic_entity.dart';
 
@@ -99,6 +100,11 @@ class Text extends AstNode
   @override
   Res accept<Arg, Res>(AstVisitor<Arg, Res> visitor, Arg arg) {
     return visitor.visitText(this, arg);
+  }
+
+  @override
+  String toString() {
+    return 'Text: ${dartStringLiteral(content)}';
   }
 }
 

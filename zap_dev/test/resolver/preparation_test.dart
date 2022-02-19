@@ -25,8 +25,10 @@ void main() {
     expect(result.style, isNull);
 
     expect(result.temporaryDartFile, '''
+import 'dart:html';
+import 'package:zap/internal/dsl.dart';
 
-void __zap___component() {
+void __zap___component(ComponentOrPending self) {
 
   var name = 'world';
 
@@ -63,9 +65,10 @@ final __zap__1 = name;
     expect(result.style, isNull);
 
     expect(result.temporaryDartFile, '''
-
-  import 'dart:convert';
-void __zap___component() {
+import 'dart:html';
+import 'package:zap/internal/dsl.dart';
+import 'dart:convert';
+void __zap___component(ComponentOrPending self) {
 
 
   dynamic x;

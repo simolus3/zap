@@ -41,7 +41,8 @@ void main() {
   });
 
   test('rewrites .zap imports', () {
-    final component = ScriptComponents.of('''
+    final component = ScriptComponents.of(
+      '''
 import 'test.zap';
 import 'package:foo/bar.dart';
 import 'package:another/component.zap';
@@ -49,7 +50,9 @@ import 'package:another/component.zap';
 void main() {
   print('test');
 }
-''');
+''',
+      rewriteImports: ImportRewriteMode.zapToApi,
+    );
 
     expect(
         component.directives,
