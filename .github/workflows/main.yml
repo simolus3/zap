@@ -97,4 +97,4 @@ jobs:
         run: dart analyze --fatal-infos --fatal-warnings
 
       - name: Test
-        run: dart run build_runner test
+        run: dart test
