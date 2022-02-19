@@ -1,0 +1,12 @@
+name: Cache pub dependencies
+description: Cache pub dependencies
+
+runs:
+  using: composite
+  steps:
+   - name: Cache pub dependencies
+     uses: actions/cache@v2
+     with:
+       path: /home/runner/.pub-cache
+       key: pub-dependencies-${{ hashFiles('**/pubspec.yaml') }}
+       restore-keys: pub-dependencies
