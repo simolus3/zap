@@ -66,6 +66,9 @@ jobs:
       - name: Ensure formatted
         run: dart format -o none --set-exit-if-changed .
 
+      - name: Run build
+        run: dart pub run build_runner build
+
       - name: Run build in example
         working-directory: riverpod_zap/example
         run: dart pub run build_runner build
@@ -73,8 +76,8 @@ jobs:
       - name: Static analysis
         run: dart analyze --fatal-infos --fatal-warnings
 
-#      - name: Test
-#        run: dart run build_runner test
+      - name: Test
+        run: dart run build_runner test
 
   zap_dev:
     runs-on: ubuntu-latest

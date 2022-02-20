@@ -29,6 +29,18 @@ class ImportsTracker {
   String get zapImport => importForUri(Uri.parse('package:zap/zap.dart'));
 
   Uri _normalizeUri(Uri uri) {
+    // `.tmp.zap.api.dart` files expose members defined in
+    // `<script module="library">` tags, which are also copied into the final
+    // `.zap.dart` file. We always want to use the later to avoid members being
+    // defined twice.
+    if (url.extension(uri.path, 4) == '.tmp.zap.api.dart') {
+      uri = uri.replace(
+          path: uri.path.replaceAll('.tmp.zap.api.dart', '.zap.dart'));
+    } else if (url.extension(uri.path, 3) == '.tmp.zap.dart') {
+      uri =
+          uri.replace(path: uri.path.replaceAll('.tmp.zap.dart', '.zap.dart'));
+    }
+
     if (uri.scheme == 'asset') {
       // Convert `asset` uri into `package:` uri if possible
       final asset = AssetId.resolve(uri);
@@ -77,16 +89,5 @@ class ImportsTracker {
 
   String importForLibrary(LibraryElement element) {
     return importForUri(_uriFor(element));
-  }
-
-  /// The import for an element in a `.tmp.zap.api.dart` file.
-  ///
-  /// The import gets rewritten as if it pointed to `.zap.dart` as that's where
-  /// the generated file will go to.
-  String importForIntermediateLibrary(LibraryElement element) {
-    final uri = element.source.uri;
-    return importForUri(uri.replace(
-      path: uri.path.replaceAll('.tmp.zap.api.dart', '.zap.dart'),
-    ));
   }
 }

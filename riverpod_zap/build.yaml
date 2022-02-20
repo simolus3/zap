@@ -1,0 +1,6 @@
+targets:
+  $default:
+    sources:
+      exclude:
+        # The example is a project on its own, do not build from here.
+        - "example/**"

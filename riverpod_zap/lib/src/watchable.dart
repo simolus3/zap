@@ -72,6 +72,11 @@ class ProviderWatchable<State> extends Stream<State>
 
   @override
   State get value {
+    final provider = _provider;
+    if (provider is ProviderBase<State>) {
+      return _container.read(provider);
+    }
+
     // Create a short-lived subscription to read the state.
     final subscription = _newListener();
     final state = subscription.read();

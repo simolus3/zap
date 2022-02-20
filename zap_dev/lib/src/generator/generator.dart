@@ -180,8 +180,10 @@ abstract class _ComponentOrSubcomponentWriter {
     } else if (node is ReactiveRawHtml) {
       return '$zapPrefix.HtmlTag';
     } else if (node is SubComponent) {
-      final prefix = generator.imports.importForIntermediateLibrary(
-          node.component.temporaryApiClass.library);
+      // The import tracker will rewrite imports from the intermediate library
+      // to the final `.zap.dart` file.
+      final prefix = generator.imports
+          .importForLibrary(node.component.temporaryApiClass.library);
       return '$prefix.${node.component.temporaryApiClass.name}';
     } else if (node is DynamicSubComponent) {
       return '$zapPrefix.DynamicComponent';

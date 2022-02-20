@@ -29,6 +29,10 @@ class ApiExtractingBuilder implements Builder {
 
     final buffer = StringBuffer()
       ..writeln(components.directives)
+      // Export the .tmp.zap.dart file, which contains definitions from a
+      // `<script context="module">` definition. Those should be visible to
+      // components importing this one.
+      ..writeln("export '${inputId.uri}';")
       ..writeln("@\$ComponentMarker(${dartStringLiteral(basename)})")
       ..writeln('abstract class $componentName {');
     functionNode?.accept(_ApiInferrer(buffer));
