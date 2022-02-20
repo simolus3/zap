@@ -289,6 +289,8 @@ abstract class _ComponentOrSubcomponentWriter {
       }
     }
 
+    // Create getters for expressions, avoiding duplicate code when an
+    // expression is used more than once.
     for (final usedExpression in component.scope.usedDartExpressions) {
       final name = generator._nameForMisc(usedExpression);
 
@@ -297,6 +299,19 @@ abstract class _ComponentOrSubcomponentWriter {
         ..write(' get $name => ');
       writeDartWithPatchedReferences(usedExpression.expression);
       buffer.writeln(';');
+    }
+
+    // Similarly, create methods for side-effect actions to avoid emitting the
+    // same code in the constructor and in `update()`.
+    for (final flow in component.flows) {
+      final action = flow.action;
+      if (action is SideEffect) {
+        final name = generator._nameForMisc(action);
+
+        buffer.write('void $name() {');
+        writeDartWithPatchedReferences(action.statement);
+        buffer.write(';}');
+      }
     }
   }
 
@@ -463,7 +478,8 @@ abstract class _ComponentOrSubcomponentWriter {
     final action = flow.action;
 
     if (action is SideEffect) {
-      writeDartWithPatchedReferences(action.statement);
+      final implementingFunction = generator._nameForMisc(action);
+      buffer.writeln('$implementingFunction();');
     } else if (action is ChangeText) {
       writeSetText(action.text);
     } else if (action is RegisterEventHandler) {
@@ -1118,6 +1134,10 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
           writeDartWithPatchedReferences(initializer.dartStatement,
               patchSelf: false);
         }
+      } else if (initializer is InitialSideEffect) {
+        // Just call the method implementing the side-effect
+        final function = generator._nameForMisc(initializer.effect);
+        buffer.writeln('$function();');
       } else if (initializer is InitializeProperty) {
         // We have the property as $property, wrapped in a nullable
         // ZapValue.

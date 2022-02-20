@@ -23,6 +23,7 @@ abstract class ComponentOrSubcomponent {
 }
 
 class Component extends ComponentOrSubcomponent {
+  /// A list of statements to run in the body of the generated constructor.
   final List<ComponentInitializer> componentInitializers;
   final List<FunctionDeclarationStatement> instanceFunctions;
   final List<String?> usedSlots;
@@ -58,6 +59,7 @@ class ResolvedSubComponent extends ComponentOrSubcomponent {
 
 abstract class ComponentInitializer {}
 
+/// Run a statement from the `<script>` tag in the component's constructor.
 class InitializeStatement extends ComponentInitializer {
   final Statement dartStatement;
   final DartCodeVariable? initializedVariable;
@@ -65,6 +67,21 @@ class InitializeStatement extends ComponentInitializer {
   InitializeStatement(this.dartStatement, this.initializedVariable);
 }
 
+/// Run a side effect (a statement labelled `$`) for the first time.
+///
+/// This could be modelled as an [InitializeStatement], but referencing the
+/// actual effect here allows us to extract the [SideEffect.statement] into a
+/// method on the component, avoiding to emit the same code twice.
+///
+/// This effectively runs a `$` statement from the component's constructor.
+class InitialSideEffect extends ComponentInitializer {
+  final SideEffect effect;
+
+  InitialSideEffect(this.effect);
+}
+
+/// Initialize a component variable annotated with `@prop` to the value passed
+/// from the constructor.
 class InitializeProperty extends ComponentInitializer {
   final BaseZapVariable variable;
 

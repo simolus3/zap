@@ -861,12 +861,14 @@ class _FindComponents {
 
         if (isReactiveLabel) {
           final inner = stmt.statement;
-          flows.add(
-            Flow(_FindReadVariables.find(inner, variables), SideEffect(inner)),
-          );
-        }
+          final sideEffect = SideEffect(inner);
 
-        initializers.add(InitializeStatement(stmt, null));
+          flows
+              .add(Flow(_FindReadVariables.find(inner, variables), sideEffect));
+          initializers.add(InitialSideEffect(sideEffect));
+        } else {
+          initializers.add(InitializeStatement(stmt, null));
+        }
       } else if (stmt is FunctionDeclarationStatement) {
         if (!stmt.functionDeclaration.name.name.startsWith(zapPrefix)) {
           functions.add(stmt);
