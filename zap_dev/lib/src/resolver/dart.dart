@@ -9,6 +9,7 @@ class ZapVariableScope {
   ZapVariableScope? parent;
 
   final FunctionDeclaration? function;
+  final List<ResolvedDartExpression> usedDartExpressions = [];
 
   ZapVariableScope(this.function);
 
@@ -50,9 +51,6 @@ abstract class BaseZapVariable {
   PromotableElement get element;
 
   /// The resolved type of this variable.
-  ///
-  /// See [ResolvedDartExpression.type] for a discussion on why this might be
-  /// different from the declared type of [element].
   DartType get type => element.type;
 
   int? _updateSlot;
@@ -147,6 +145,21 @@ class SelfReference extends BaseZapVariable {
 
   SelfReference(ZapVariableScope scope, this.declaration, this.element)
       : super._(scope);
+}
+
+class ResolvedDartExpression {
+  final Expression expression;
+  final ZapVariableScope scope;
+
+  final DartType staticType;
+
+  ResolvedDartExpression(
+    this.expression,
+    this.scope,
+    DartType dynamic,
+  ) : staticType = expression.staticType ?? dynamic {
+    scope.usedDartExpressions.add(this);
+  }
 }
 
 enum SubcomponentVariableKind {

@@ -1,4 +1,3 @@
-import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/element/type.dart';
 
 import 'component.dart';
@@ -68,7 +67,7 @@ class MountSlot extends ReactiveNode {
 }
 
 class ReactiveRawHtml extends ReactiveNode {
-  final Expression expression;
+  final ResolvedDartExpression expression;
   final bool needsToString;
 
   ReactiveRawHtml({required this.expression, required this.needsToString});
@@ -83,7 +82,7 @@ abstract class ReactiveBlock extends ReactiveNode {
 }
 
 class ReactiveIf extends ReactiveBlock {
-  final List<Expression> conditions;
+  final List<ResolvedDartExpression> conditions;
   final List<DomFragment> whens;
   final DomFragment? otherwise;
 
@@ -92,7 +91,7 @@ class ReactiveIf extends ReactiveBlock {
 
 class ReactiveFor extends ReactiveBlock {
   /// The iterable this for block is iterating over.
-  final Expression expression;
+  final ResolvedDartExpression expression;
   final DartType elementType;
 
   final DomFragment fragment;
@@ -103,7 +102,7 @@ class ReactiveFor extends ReactiveBlock {
 class ReactiveAsyncBlock extends ReactiveBlock {
   final bool isStream;
   final DartType type;
-  final Expression expression;
+  final ResolvedDartExpression expression;
 
   final DomFragment fragment;
 
@@ -116,14 +115,14 @@ class ReactiveAsyncBlock extends ReactiveBlock {
 }
 
 class ReactiveKeyBlock extends ReactiveBlock {
-  final Expression expression;
+  final ResolvedDartExpression expression;
   final DomFragment fragment;
 
   ReactiveKeyBlock(this.expression, this.fragment);
 }
 
 class ReactiveAttribute {
-  final Expression backingExpression;
+  final ResolvedDartExpression backingExpression;
   final AttributeMode mode;
 
   ReactiveAttribute(this.backingExpression, this.mode);
@@ -137,7 +136,7 @@ enum AttributeMode {
 
 class SubComponent extends ReactiveNode {
   final ExternalComponent component;
-  final Map<String, Expression> expressions;
+  final Map<String, ResolvedDartExpression> expressions;
   final List<EventHandler> eventHandlers;
 
   final DomFragment? defaultSlot;
@@ -162,7 +161,7 @@ class SubComponent extends ReactiveNode {
 /// Renders the [expression], which should evaluate to a `ZapComponent`, as a
 /// subcomponent.
 class DynamicSubComponent extends ReactiveBlock {
-  final Expression expression;
+  final ResolvedDartExpression expression;
 
   DynamicSubComponent(this.expression);
 }
@@ -177,7 +176,7 @@ class ConstantText extends ReactiveNode {
 }
 
 class ReactiveText extends ReactiveNode {
-  final Expression expression;
+  final ResolvedDartExpression expression;
   final bool needsToString;
 
   ReactiveText(this.expression, this.needsToString);
@@ -208,7 +207,7 @@ class EventHandler {
   ///
   /// This can be null, in which case the event will be forwarded to parent
   /// components.
-  final Expression? listener;
+  final ResolvedDartExpression? listener;
   final bool isNoArgsListener;
 
   /// The node on which the event handler is applied.
