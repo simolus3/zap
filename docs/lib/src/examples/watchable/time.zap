@@ -1,7 +1,5 @@
 <script>
   import 'package:zap/zap.dart';
-
-  final currentTime = watch(time);
 </script>
 
 <script context="library">
@@ -12,4 +10,4 @@ final time = Watchable<DateTime>.stream(
 );
 </script>
 
-<h1>The time is {currentTime}</h1>
+<h1>The time is {watch(time)}</h1>

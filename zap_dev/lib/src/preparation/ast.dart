@@ -201,15 +201,14 @@ class RawDartExpression extends AstNode with _NoChildren {
 abstract class Block implements DomNode {}
 
 class IfBlock extends AstNode implements Block {
-  RawDartExpression condition;
-  DomNode then;
+  List<IfCondition> conditions;
   DomNode? otherwise;
 
-  IfBlock(this.condition, this.then, this.otherwise);
+  IfBlock(this.conditions, this.otherwise);
 
   @override
   Iterable<AstNode> get children =>
-      [condition, then, if (otherwise != null) otherwise!];
+      [...conditions, if (otherwise != null) otherwise!];
 
   @override
   Res accept<Arg, Res>(AstVisitor<Arg, Res> visitor, Arg arg) {
@@ -218,9 +217,29 @@ class IfBlock extends AstNode implements Block {
 
   @override
   void transformChildren<Arg>(AstTransformer<Arg> transformer, Arg arg) {
-    condition = transformer.transformChild(condition, this, arg);
-    then = transformer.transformChild(then, this, arg);
+    conditions = transformer.transformChildren(conditions, this, arg);
     otherwise = transformer.transformNullableChild(otherwise, this, arg);
+  }
+}
+
+class IfCondition extends AstNode {
+  RawDartExpression condition;
+  DomNode body;
+
+  IfCondition(this.condition, this.body);
+
+  @override
+  Iterable<AstNode> get children => [condition, body];
+
+  @override
+  Res accept<Arg, Res>(AstVisitor<Arg, Res> visitor, Arg arg) {
+    return visitor.visitIfCondition(this, arg);
+  }
+
+  @override
+  void transformChildren<Arg>(AstTransformer<Arg> transformer, Arg arg) {
+    condition = transformer.transformChild(condition, this, arg);
+    body = transformer.transformChild(body, this, arg);
   }
 }
 
@@ -323,6 +342,7 @@ abstract class AstVisitor<Arg, Res> {
   Res visitElement(Element e, Arg a);
 
   Res visitIfBlock(IfBlock e, Arg a);
+  Res visitIfCondition(IfCondition e, Arg a);
   Res visitForBlock(ForBlock e, Arg a);
   Res visitAwaitBlock(AwaitBlock e, Arg a);
   Res visitKeyBlock(KeyBlock e, Arg a);
@@ -362,6 +382,9 @@ abstract class GeneralizingVisitor<Arg, Res> extends AstVisitor<Arg, Res> {
 
   @override
   Res visitIfBlock(IfBlock e, Arg a) => defaultNode(e, a);
+
+  @override
+  Res visitIfCondition(IfCondition e, Arg a) => defaultNode(e, a);
 
   @override
   Res visitKeyBlock(KeyBlock e, Arg a) => defaultNode(e, a);

@@ -365,19 +365,20 @@ class _PendingIfStatement extends _PendingBlock {
     parser.scanner.skipWhitespaceInTag();
     parser.scanner.rightBrace();
 
+    final conditions = <IfCondition>[IfCondition(expression, children.build())];
     DomNode? otherwise;
-    while (pendingElse.isNotEmpty) {
-      final block = pendingElse.removeLast();
-      if (otherwise == null) {
-        otherwise = block.condition != null
-            ? IfBlock(block.condition!, block.nodes.build(), null)
-            : block.nodes.build();
+
+    for (final pending in pendingElse) {
+      final body = pending.nodes.build();
+
+      if (pending.condition != null) {
+        conditions.add(IfCondition(pending.condition!, body));
       } else {
-        otherwise = IfBlock(block.condition!, block.nodes.build(), otherwise);
+        otherwise = body;
       }
     }
 
-    return IfBlock(expression, children.build(), otherwise);
+    return IfBlock(conditions, otherwise);
   }
 }
 

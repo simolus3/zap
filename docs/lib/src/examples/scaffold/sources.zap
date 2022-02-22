@@ -10,9 +10,14 @@
 
   final current = watch(selectedComponent);
   Future<ExampleWithSources?> currentSources = Future.value(null);
-  $: currentSources = allSources.then((all) {
-    return all.firstWhereOrNull((e) => e.id == current.id);
-  });
+  $: {
+    // Re-run when the current component changes.
+    current;
+
+    currentSources = allSources.then((all) {
+      return all.firstWhereOrNull((e) => e.id == current.id);
+    });
+  }
 </script>
 <script context="library">
 class ExampleWithSources {

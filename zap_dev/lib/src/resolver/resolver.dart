@@ -65,8 +65,17 @@ class Resolver {
 
     // Mark all variables read in a flow
     for (final flow in component.flows) {
-      for (final variable in flow.dependencies) {
+      for (final variable in flow.dependencies.whereType<BaseZapVariable>()) {
         variable.isInReactiveRead = true;
+      }
+    }
+
+    // Also, all variables using `watch()` in their initializer are definitely
+    // mutable
+    for (final variable
+        in component.scope.declaredVariables.whereType<DartCodeVariable>()) {
+      if (variable.initializer?.watched.isNotEmpty == true) {
+        variable.isMutable = true;
       }
     }
 
@@ -162,6 +171,10 @@ class Resolver {
       }
     }
 
+    for (final watched in scope.usedDartExpressions.expand((e) => e.watched)) {
+      watched.updateSlot = start++;
+    }
+
     // Child scopes can re-use higher update numbers since variables in
     // different child scopes aren't visible to each other.
     for (final scope in scope.childScopes) {
@@ -251,9 +264,20 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
       });
 
       final initializer = declaration.variables.variables.single.initializer!;
-      return ResolvedDartExpression(
-          initializer, scope, resolver.typeProvider.dynamicType);
+      return _resolveAstExpression(initializer, scope);
     });
+  }
+
+  ResolvedDartExpression _resolveAstExpression(
+      Expression expr, ZapVariableScope scope) {
+    final resolved = ResolvedDartExpression(
+      expr,
+      scope,
+      dynamic: resolver.typeProvider.dynamicType,
+    );
+    expr.accept(_FindWatchedExpressions(this, resolved));
+
+    return resolved;
   }
 
   @override
@@ -363,11 +387,16 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
         } else {
           assert(scope == scopes.root);
 
+          final initializer = node.initializer;
+
           variable = DartCodeVariable(
             scope: zapScope,
             declaration: node,
             element: resolved,
             isProperty: isProp(resolved),
+            initializer: initializer != null
+                ? _resolveAstExpression(initializer, zapScope)
+                : null,
           );
         }
 
@@ -415,22 +444,36 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
             .reportError(ZapError('watch() must be called directly', null));
         return;
       }
+    }
+  }
+}
 
-      final grandparent = parent.parent;
-      if (grandparent is! VariableDeclaration) {
-        resolver.errorReporter.reportError(ZapError(
-            'The result of watch() must directly be stored in a variable.',
-            null));
+class _FindWatchedExpressions extends RecursiveAstVisitor<void> {
+  final _AnalyzeVariablesAndScopes _dartAnalysis;
+
+  ResolvedDartExpression expression;
+
+  _FindWatchedExpressions(this._dartAnalysis, this.expression);
+
+  @override
+  void visitMethodInvocation(MethodInvocation node) {
+    if (isWatchFunctionFromDslLibrary(node.methodName)) {
+      // Ok, we have a call to `watch()`!
+      final watchedExpression = node.argumentList.arguments.singleOrNull;
+      if (watchedExpression != null) {
+        final oldExpression = expression;
+
+        expression = _dartAnalysis._resolveAstExpression(
+            watchedExpression, expression.scope);
+        watchedExpression.accept(this);
+        oldExpression.watched.add(WatchedExpression(expression));
+
+        expression = oldExpression;
         return;
       }
-
-      final variable = scopes.variables[grandparent.declaredElement];
-      if (variable is DartCodeVariable) {
-        variable
-          ..isMutable = true
-          ..watching = parent.argumentList.arguments.first;
-      }
     }
+
+    super.visitMethodInvocation(node);
   }
 }
 
@@ -720,12 +763,9 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
 
   @override
   void visitIfBlock(zap.IfBlock e, void arg) {
-    _enterScope(preparedScope.children
-        .singleWhere((s) => s is SubFragmentScope && s.forNode == e));
-
     final conditions = <ResolvedDartExpression>[];
-    final whens = <List<ReactiveNode>>[];
-    List<ReactiveNode>? otherwise;
+    final whens = <DomFragment>[];
+    DomFragment? otherwise;
 
     ResolvedDartExpression checkBoolean(zap.RawDartExpression dart) {
       final condition = _resolveExpression(dart);
@@ -737,35 +777,34 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
       return condition;
     }
 
-    zap.IfBlock? currentIf = e;
-    while (currentIf != null) {
-      conditions.add(checkBoolean(currentIf.condition));
+    for (final condition in e.conditions) {
+      _enterScope(preparedScope.children
+          .singleWhere((s) => s is SubFragmentScope && s.forNode == condition));
 
+      conditions.add(checkBoolean(condition.condition));
       _newChildGroup();
+      condition.body.accept(this, arg);
+      whens.add(_newFragment(_finishChildGroup().children));
 
-      currentIf.then.accept(this, arg);
-      whens.add(_finishChildGroup().children);
-
-      final orElse = currentIf.otherwise;
-      if (orElse is zap.IfBlock) {
-        currentIf = orElse;
-      } else {
-        if (orElse != null) {
-          _newChildGroup();
-
-          orElse.accept(this, arg);
-          otherwise = _finishChildGroup().children;
-        }
-        currentIf = null;
-      }
+      _leaveScope();
     }
 
-    final whenFragments = [for (final when in whens) _newFragment(when)];
-    final otherwiseFragment =
-        otherwise == null ? null : _newFragment(otherwise);
+    final otherwiseNode = e.otherwise;
+    if (otherwiseNode != null) {
+      _enterScope(preparedScope.children
+          .singleWhere((s) => s is SubFragmentScope && s.forNode == e));
+      _newChildGroup();
+      otherwiseNode.accept(this, arg);
+      otherwise = _newFragment(_finishChildGroup().children);
+      _leaveScope();
+    }
 
-    _addChild(ReactiveIf(conditions, whenFragments, otherwiseFragment));
-    _leaveScope();
+    _addChild(ReactiveIf(conditions, whens, otherwise));
+  }
+
+  @override
+  void visitIfCondition(zap.IfCondition e, void a) {
+    throw UnsupportedError('unreachable, handled in visitIf');
   }
 
   @override
@@ -852,6 +891,26 @@ class _FindComponents {
     final initializers = <ComponentInitializer>[];
     final subComponents = <ResolvedSubComponent>[];
 
+    Set<HasUpdateMask> findDependencies(ResolvedDartExpression expression,
+        [Map<Element, BaseZapVariable>? localVariables]) {
+      final found = <HasUpdateMask>{};
+      found.addAll(_FindReadVariables.find(
+          expression.expression, localVariables ?? variables));
+
+      for (final watched in expression.watched) {
+        found.add(watched);
+
+        // Handle the inner part of `watch()` calls also being mutable / nested
+        // `watch()` calls.
+        final dependenciesOfWatch = findDependencies(watched.expression);
+        if (dependenciesOfWatch.isNotEmpty) {
+          flows.add(Flow(dependenciesOfWatch, UpdateWatchable(watched)));
+        }
+      }
+
+      return found;
+    }
+
     // Find flow instructions in the component's Dart code
     outer:
     for (final stmt in statements) {
@@ -898,6 +957,22 @@ class _FindComponents {
         }
 
         initializers.add(InitializeStatement(stmt, initialized));
+
+        if (initialized != null) {
+          final zapInitializer = initialized.initializer;
+          if (zapInitializer != null) {
+            final dependencies = findDependencies(zapInitializer)
+                .whereType<WatchedExpression>()
+                .toSet();
+
+            // If a variable uses `watch()` in it's initializer, re-assign it
+            // when a watched expression updates.
+            if (dependencies.isNotEmpty) {
+              flows.add(Flow(dependencies,
+                  ReEvaluateVariableWithWatchInitializer(initialized)));
+            }
+          }
+        }
       }
     }
 
@@ -929,14 +1004,12 @@ class _FindComponents {
     // And also infer it from the DOM
     void processNode(ReactiveNode node) {
       if (node is ReactiveText) {
-        final relevant =
-            _FindReadVariables.find(node.expression.expression, variables);
+        final relevant = findDependencies(node.expression);
         flows.add(Flow(relevant, ChangeText(node)));
       } else if (node is ReactiveElement) {
         resolveEventHandlers(node.eventHandlers);
         node.attributes.forEach((key, value) {
-          final dependsOn = _FindReadVariables.find(
-              value.backingExpression.expression, variables);
+          final dependsOn = findDependencies(value.backingExpression);
           flows.add(Flow(dependsOn, ApplyAttribute(node, key)));
         });
 
@@ -960,28 +1033,22 @@ class _FindComponents {
 
         // The if should be updated if any variable referenced in any condition
         // updates.
-        final finder = _FindReadVariables(variables);
-        for (final condition in node.conditions) {
-          condition.expression.accept(finder);
-        }
+        final dependencies = node.conditions.expand(findDependencies).toSet();
 
-        flows.add(Flow(finder.found, UpdateBlockExpression(node)));
+        flows.add(Flow(dependencies, UpdateBlockExpression(node)));
       } else if (node is ReactiveAsyncBlock) {
         final scope = node.fragment.resolvedScope;
         final snapshotVariable =
             scope.findForSubcomponent(SubcomponentVariableKind.asyncSnapshot)!;
         final localDeclarations = {snapshotVariable.element: snapshotVariable};
+        final childVariables = {...variables, ...localDeclarations};
 
-        final flow = _findFlowUpdates(
-          {...variables, ...localDeclarations},
-          node.fragment,
-          [],
-        );
+        final flow = _findFlowUpdates(childVariables, node.fragment, []);
         subComponents.add(ResolvedSubComponent(
             flow.subComponents, scope, node.fragment, flow.flow));
 
         flows.add(Flow(
-          _FindReadVariables.find(node.expression.expression, variables),
+          findDependencies(node.expression, childVariables),
           UpdateBlockExpression(node),
         ));
       } else if (node is ReactiveFor) {
@@ -990,17 +1057,14 @@ class _FindComponents {
           for (final variable in scope.declaredVariables)
             variable.element: variable
         };
+        final childVariables = {...variables, ...localDeclarations};
 
-        final flow = _findFlowUpdates(
-          {...variables, ...localDeclarations},
-          node.fragment,
-          [],
-        );
+        final flow = _findFlowUpdates(childVariables, node.fragment, []);
         subComponents.add(ResolvedSubComponent(
             flow.subComponents, scope, node.fragment, flow.flow));
 
         flows.add(Flow(
-          _FindReadVariables.find(node.expression.expression, variables),
+          findDependencies(node.expression, childVariables),
           UpdateBlockExpression(node),
         ));
       } else if (node is ReactiveAsyncBlock) {
@@ -1008,12 +1072,12 @@ class _FindComponents {
         subComponents.add(ResolvedSubComponent(flow.subComponents,
             node.fragment.resolvedScope, node.fragment, flow.flow));
         flows.add(Flow(
-          _FindReadVariables.find(node.expression.expression, variables),
+          findDependencies(node.expression),
           UpdateBlockExpression(node),
         ));
       } else if (node is ReactiveRawHtml) {
         flows.add(Flow(
-          _FindReadVariables.find(node.expression.expression, variables),
+          findDependencies(node.expression),
           UpdateBlockExpression(node),
         ));
       } else if (node is MountSlot) {
@@ -1028,8 +1092,7 @@ class _FindComponents {
         }
 
         for (final assignedProperty in node.expressions.entries) {
-          final relevantVariables = _FindReadVariables.find(
-              assignedProperty.value.expression, variables);
+          final relevantVariables = findDependencies(assignedProperty.value);
 
           if (relevantVariables.isNotEmpty) {
             flows.add(Flow(
@@ -1042,8 +1105,7 @@ class _FindComponents {
         resolveEventHandlers(node.eventHandlers);
       } else if (node is DynamicSubComponent) {
         flows.add(Flow(
-            _FindReadVariables.find(node.expression.expression, variables),
-            UpdateBlockExpression(node)));
+            findDependencies(node.expression), UpdateBlockExpression(node)));
       } else {
         node.children.forEach(processNode);
       }
@@ -1067,6 +1129,12 @@ class _FindReadVariables extends GeneralizingAstVisitor<void> {
     node.accept(visitor);
 
     return visitor.found;
+  }
+
+  @override
+  void visitFunctionBody(FunctionBody node) {
+    // Don't consider variables used in child functions.
+    return;
   }
 
   @override

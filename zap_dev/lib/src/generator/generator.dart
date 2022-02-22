@@ -146,7 +146,8 @@ abstract class _ComponentOrSubcomponentWriter {
       // Root component
       return 'this';
     } else {
-      return _DartSourceRewriter(generator, component.scope, 0, '', true)
+      return _DartSourceRewriter(
+              generator, component.scope, 0, '', true, const {})
           ._prefixFor(generator.component.component.scope, trailingDot: false);
     }
   }
@@ -228,8 +229,9 @@ abstract class _ComponentOrSubcomponentWriter {
 
   String _statementsToChangeVariable(
       BaseZapVariable variable, String expression) {
-    final prefix = _DartSourceRewriter(generator, component.scope, 0, '', true)
-        ._prefixFor(variable.scope);
+    final prefix =
+        _DartSourceRewriter(generator, component.scope, 0, '', true, const {})
+            ._prefixFor(variable.scope);
     final variableName = generator._nameForVar(variable);
 
     final result = StringBuffer();
@@ -297,7 +299,15 @@ abstract class _ComponentOrSubcomponentWriter {
       buffer
         ..write(dartTypeToString(usedExpression.staticType))
         ..write(' get $name => ');
-      writeDartWithPatchedReferences(usedExpression.expression);
+      writeDartWithPatchedReferences(
+        usedExpression.expression,
+        // When this expression uses `watch(<x>)`, refer to the getter we'll
+        // generate for `<x>` instead of duplicating the source code.
+        watchedExpressions: {
+          for (final expr in usedExpression.watched)
+            expr.expression.expression: expr
+        },
+      );
       buffer.writeln(';');
     }
 
@@ -311,6 +321,19 @@ abstract class _ComponentOrSubcomponentWriter {
         buffer.write('void $name() {');
         writeDartWithPatchedReferences(action.statement);
         buffer.write(';}');
+      }
+
+      // Mutable stream subscriptions are stored as instance variables too
+      if (!flow.isOneOffAction && action is RegisterEventHandler) {
+        final dartAsync =
+            generator.imports.importForUri(Uri.parse('dart:async'));
+        final type = dartTypeToString(action.handler.dartEventType);
+
+        buffer
+          ..write('late ')
+          ..write('$dartAsync.StreamSubscription<$type> ')
+          ..write(generator._nameForMisc(action.handler))
+          ..writeln(';');
       }
     }
   }
@@ -339,9 +362,9 @@ abstract class _ComponentOrSubcomponentWriter {
       if (node is ReactiveElement) {
         for (final binder in node.binders) {
           final target = binder.target;
-          final prefix =
-              _DartSourceRewriter(generator, component.scope, 0, '', true)
-                  ._prefixFor(target.scope);
+          final prefix = _DartSourceRewriter(
+                  generator, component.scope, 0, '', true, const {})
+              ._prefixFor(target.scope);
           final variableName = generator._nameForVar(target);
           final nodeName = generator._nameForNode(node);
 
@@ -499,7 +522,7 @@ abstract class _ComponentOrSubcomponentWriter {
           // Just change the onData callback of the stream subscription now
           buffer
             ..write(generator._nameForMisc(handler))
-            ..write('onData(');
+            ..write('.onData(');
           callbackForEventHandler(handler);
           buffer.writeln(');');
         }
@@ -507,11 +530,10 @@ abstract class _ComponentOrSubcomponentWriter {
     } else if (action is ApplyAttribute) {
       final attribute = action.element.attributes[action.name]!;
       final nodeName = generator._nameForNode(action.element);
+      buffer.write(nodeName);
 
       switch (attribute.mode) {
         case AttributeMode.setValue:
-          buffer.write(nodeName);
-
           if (action.name == 'class' &&
               generator.component.cssClassName != null) {
             // Make sure the scoped css class is still included when setting the
@@ -557,6 +579,14 @@ abstract class _ComponentOrSubcomponentWriter {
 
       buffer
           .write('$target.${action.property} = ${referenceExpression(expr)};');
+    } else if (action is ReEvaluateVariableWithWatchInitializer) {
+      final setter = generator._nameForVar(action.variable);
+      final expression = referenceExpression(action.variable.initializer!);
+
+      buffer.write('$setter = $expression;');
+      buffer.write(_DartSourceRewriter(
+              generator, component.scope, 0, '', false, const {})
+          .invalidateExpression('${action.variable.updateBitmask}'));
     } else if (action is UpdateBlockExpression) {
       final block = action.block;
       final nodeName = generator._nameForNode(action.block);
@@ -931,7 +961,7 @@ abstract class _ComponentOrSubcomponentWriter {
           ..writeln('    $name = value;');
         if (variable.needsUpdateTracking) {
           final update =
-              _DartSourceRewriter(generator, component.scope, 0, '', true)
+              _DartSourceRewriter(generator, component.scope, 0, '', true, {})
                   .invalidateExpression(variable.updateBitmask.toString());
           buffer.writeln('    $update');
         }
@@ -957,14 +987,18 @@ abstract class _ComponentOrSubcomponentWriter {
     buffer.writeln(';');
   }
 
-  void writeDartWithPatchedReferences(AstNode dartCode,
-      {bool patchSelf = true}) {
+  void writeDartWithPatchedReferences(
+    AstNode dartCode, {
+    bool patchSelf = true,
+    Map<AstNode, WatchedExpression> watchedExpressions = const {},
+  }) {
     buffer.write(
       _DartSourceRewriter.patchDartReferences(
         dartCode: dartCode,
         patchSelf: patchSelf,
         generator: generator,
         component: component,
+        watchExpressions: watchedExpressions,
       ),
     );
   }
@@ -1010,23 +1044,6 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
 
     // And DOM nodes
     writeCommonInstanceFields();
-
-    // Mutable stream subscriptions are stored as instance variables too
-    for (final flow in component.flows) {
-      final action = flow.action;
-      if (!flow.isOneOffAction && action is RegisterEventHandler) {
-        final htmlPrefix = generator.imports.dartHtmlImport;
-        final type = dartTypeToString(action.handler.dartEventType);
-
-        buffer
-          ..write('late ')
-          ..write('StreamSubscription<$htmlPrefix.')
-          ..write(type)
-          ..write('> ')
-          ..write(generator._nameForMisc(action.handler))
-          ..writeln(';');
-      }
-    }
 
     writeConstructor();
 
@@ -1074,8 +1091,6 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
 
     buffer.writeln(') {');
 
-    buffer.writeln('final self = $zapPrefix.PendingComponent();');
-
     for (final initializer in component.componentInitializers) {
       if (initializer is InitializeStatement) {
         final initializedVariable = initializer.initializedVariable;
@@ -1085,54 +1100,23 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
         // the component instance.
         if (statement is VariableDeclarationStatement &&
             initializedVariable != null) {
-          if (initializedVariable.watching != null) {
-            final varInit = statement.variables.variables.first.initializer!
-                as MethodInvocation;
+          final field = generator._nameForVar(initializedVariable);
+          final knownInitializer = initializedVariable.initializer;
 
-            final watchableExpr = varInit.argumentList.arguments.single;
-            // This variable is watching another expression. Store that
-            // expression in a temporary variable, assign and set up watcher.
-            final variableName = generator._nameForMisc(initializer);
-            buffer.write('final $variableName = ');
-            writeDartWithPatchedReferences(watchableExpr, patchSelf: false);
-            buffer.writeln(';');
+          if (knownInitializer != null) {
+            final name = referenceExpression(knownInitializer);
 
-            // Assign
-            buffer
-              ..write(generator._nameForVar(initializedVariable))
-              ..write(' = $variableName.value;');
-
-            // Setup watcher
-            buffer
-              ..writeln('$variableName.transform(lifecycle()).listen((value) {')
-              ..writeln(
-                  _statementsToChangeVariable(initializedVariable, 'value'))
-              ..writeln('});');
-          } else {
-            for (final variable in statement.variables.variables) {
-              final initializer = variable.initializer;
-              final zapTarget = component.scope.declaredVariables
-                  .firstWhereOrNull(
-                      (zap) => zap.element == variable.declaredElement);
-              if (zapTarget != null) {
-                final field = generator._nameForVar(zapTarget);
-
-                if (initializer != null) {
-                  // Convert to assignment
-                  buffer.write('$field = ');
-                  writeDartWithPatchedReferences(initializer, patchSelf: false);
-                  buffer.writeln(';');
-                } else if (generator.component.typeSystem
-                    .isNullable(zapTarget.type)) {
-                  // Implicitly initialized to null at the declaration
-                  buffer.writeln('$field = null;');
-                }
-              }
-            }
+            buffer.write('$field = $name;');
+          } else if (generator.component.typeSystem
+              .isNullable(initializedVariable.type)) {
+            // If this were a regular variable, it would have been initialized
+            // to null at the declaration. So, let's set the field to null to
+            // mirror that.
+            buffer.writeln('$field = null;');
           }
         } else {
-          writeDartWithPatchedReferences(initializer.dartStatement,
-              patchSelf: false);
+          // Not a zap variable, just write the original statement
+          writeDartWithPatchedReferences(initializer.dartStatement);
         }
       } else if (initializer is InitialSideEffect) {
         // Just call the method implementing the side-effect
@@ -1161,7 +1145,7 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
             generator.component.typeSystem.isNullable(variable.type);
 
         if (defaultExpr != null) {
-          writeDartWithPatchedReferences(defaultExpr, patchSelf: false);
+          writeDartWithPatchedReferences(defaultExpr);
         } else if (isNullable) {
           buffer.write('null');
         } else {
@@ -1175,7 +1159,7 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
       }
     }
 
-    buffer.writeln('takeOverPending(self);}');
+    buffer.write('}');
   }
 }
 
@@ -1388,6 +1372,7 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
   final Generator generator;
   final ZapVariableScope? scope;
   final ZapVariableScope rootScope;
+  final Map<AstNode, WatchedExpression> watchExpressions;
 
   final bool patchSelf;
 
@@ -1395,20 +1380,26 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
   int skew = 0;
   String content;
 
-  _DartSourceRewriter(this.generator, this.scope, this.startOffsetInDart,
-      this.content, this.patchSelf)
-      : rootScope = generator.component.component.scope;
+  _DartSourceRewriter(
+    this.generator,
+    this.scope,
+    this.startOffsetInDart,
+    this.content,
+    this.patchSelf,
+    this.watchExpressions,
+  ) : rootScope = generator.component.component.scope;
 
   static String patchDartReferences({
     required AstNode dartCode,
     required Generator generator,
     bool patchSelf = true,
     ComponentOrSubcomponent? component,
+    Map<AstNode, WatchedExpression> watchExpressions = const {},
   }) {
     final originalCode = generator.prepareResult.temporaryDartFile
         .substring(dartCode.offset, dartCode.offset + dartCode.length);
-    final rewriter = _DartSourceRewriter(
-        generator, component?.scope, dartCode.offset, originalCode, patchSelf);
+    final rewriter = _DartSourceRewriter(generator, component?.scope,
+        dartCode.offset, originalCode, patchSelf, watchExpressions);
     dartCode.accept(rewriter);
     return rewriter.content;
   }
@@ -1509,6 +1500,39 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
 
     if (notifyUpdate) {
       _replaceRange(node.offset + node.length, 0, ')');
+    }
+  }
+
+  @override
+  void visitMethodInvocation(MethodInvocation node) {
+    if (isWatchFunctionFromDslLibrary(node.methodName)) {
+      // Replace `watch(foo) with `$watchImpl(foo, updateFlag: 123)`
+      final prefix = _prefixFor(rootScope);
+      final resolvedWatch =
+          watchExpressions[node.argumentList.arguments.single];
+
+      if (resolvedWatch != null) {
+        _replaceNode(node.methodName, '$prefix\$watchImpl');
+        node.argumentList.accept(this);
+
+        final updateFlag = resolvedWatch.updateBitmask;
+        _replaceNode(node.argumentList.rightParenthesis, ', $updateFlag)');
+
+        return;
+      }
+    }
+    super.visitMethodInvocation(node);
+  }
+
+  @override
+  void visitNode(AstNode node) {
+    if (watchExpressions.containsKey(node)) {
+      final target = watchExpressions[node]!.expression;
+      final getterName = generator._nameForMisc(target);
+
+      _replaceNode(node, '${_prefixFor(target.scope)}$getterName');
+    } else {
+      super.visitNode(node);
     }
   }
 

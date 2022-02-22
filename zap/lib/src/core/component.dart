@@ -6,6 +6,7 @@ import 'package:meta/meta.dart';
 import 'context.dart';
 import 'fragment.dart';
 import 'internal.dart';
+import 'watchable.dart';
 
 @internal
 ZapComponent? parentComponent;
@@ -47,21 +48,25 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
   final Map<Fragment, int> _fragmentUpdates = {};
   Completer<void>? _scheduledUpdate;
 
+  /// A tracker for values `watch()`-ed by this component.
+  ///
+  /// The generator will assign a unique integer ID to each syntactic occurence
+  /// of `watch()` somewhere in the component's code.
+  /// Further, calls to `watch()` are translated to calls to [$watchImpl], which
+  /// takes this generated ID.
+  /// We store IDs we've already subscribed to to avoid creating multiple
+  /// subscriptions all the time, as [$watchImpl] is called every time the
+  /// current value of a `watch()` call is referenced.
+  final Set<int> _activeWatchables = {};
+
   late final ContextScope _scope;
   final StreamController<Event> _eventEmitter = StreamController.broadcast();
 
   @override
   Map<Object?, Object?> get context => _scope;
 
-  @protected
-  void takeOverPending(PendingComponent pendingSelf) {
-    pendingSelf._wasCreated = true;
-    _scope = pendingSelf._context;
-
-    _onMountListeners.addAll(pendingSelf._onMount);
-    _afterUpdateListeners.addAll(pendingSelf._onAfterUpdate);
-    _beforeUpdateListeners.addAll(pendingSelf._onBeforeUpdate);
-    _unmountListeners.addAll(pendingSelf._onDestroy);
+  ZapComponent() {
+    _scope = ContextScope(parentComponent?._scope);
   }
 
   /// Returns a stream transformer binding streams to the lifecycle of this
@@ -246,59 +251,25 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
 
     return component;
   }
-}
 
-class PendingComponent extends ComponentOrPending {
-  final _onMount = <void Function()>[];
-  final _onAfterUpdate = <void Function()>[];
-  final _onBeforeUpdate = <void Function()>[];
-  final _onDestroy = <void Function()>[];
+  T $watchImpl<T>(
+    Watchable<T> watchable,
+    int updateFlag, {
+    bool sourceIsMutable = false,
+  }) {
+    if (!sourceIsMutable) {
+      if (_activeWatchables.add(updateFlag)) {
+        watchable.transform(lifecycle<T>()).listen((event) {
+          // Rebuild parts of the component depending on this watchable.
+          $invalidate(updateFlag);
+        });
+      }
 
-  var _wasCreated = false;
-
-  final _context = ContextScope(parentComponent?._scope);
-
-  @override
-  Map<Object?, Object?> get context => _context;
-
-  @override
-  void afterUpdate(void Function() callback) {
-    _checkNotCreated();
-    _onAfterUpdate.add(callback);
-  }
-
-  @override
-  void beforeUpdate(void Function() callback) {
-    _checkNotCreated();
-    _onBeforeUpdate.add(callback);
-  }
-
-  @override
-  void onDestroy(void Function() callback) {
-    _checkNotCreated();
-    _onDestroy.add(callback);
-  }
-
-  @override
-  void onMount(void Function() callback) {
-    _checkNotCreated();
-    _onMount.add(callback);
-  }
-
-  @override
-  void emitEvent(Event event) {
-    throw UnsupportedError(
-        "Can't emit events before the component is initialized");
-  }
-
-  @override
-  Future<void> get tick => Future.microtask(() => null);
-
-  void _checkNotCreated() {
-    if (_wasCreated) {
-      throw StateError('Called a runtime component method on an invalid '
-          'pending component instance. Are you storing `self` in a variable?');
+      return watchable.value;
     }
+
+    throw UnimplementedError(
+        'todo: watch() with a source that could change is not yet supported');
   }
 }
 

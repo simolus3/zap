@@ -27,13 +27,11 @@ b
 c
 {/if}''',
       IfBlock(
-        RawDartExpression(' dart_expression '),
-        Text('\na\n'),
-        IfBlock(
-          RawDartExpression('another_expression'),
-          Text('\nb\n'),
-          Text('\nc\n'),
-        ),
+        [
+          IfCondition(RawDartExpression(' dart_expression '), Text('\na\n')),
+          IfCondition(RawDartExpression('another_expression'), Text('\nb\n')),
+        ],
+        Text('\nc\n'),
       ),
     );
   });
@@ -209,6 +207,12 @@ class _EqualityEnforcingVisitor extends AstVisitor<void, void> {
 
   @override
   void visitIfBlock(IfBlock e, void a) {
+    _currentAs(e);
+    _checkChildren(e);
+  }
+
+  @override
+  void visitIfCondition(IfCondition e, void a) {
     _currentAs(e);
     _checkChildren(e);
   }

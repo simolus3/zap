@@ -20,9 +20,21 @@ class ZapVariableScope {
   }
 }
 
+abstract class HasUpdateMask {
+  /// An index for this variable when running updates.
+  ///
+  /// Updates are encoded as a bitmap.
+  int? get updateSlot;
+  set updateSlot(int? value);
+}
+
+extension UpdateBitmask on HasUpdateMask {
+  int get updateBitmask => 1 << updateSlot!;
+}
+
 /// Base class for variables that can be used in the DOM part of a zap
 /// component.
-abstract class BaseZapVariable {
+abstract class BaseZapVariable implements HasUpdateMask {
   /// The amount of individual bits we can control with JavaScript numbers.
   static const _availableUpdateSlots = 53;
 
@@ -57,11 +69,10 @@ abstract class BaseZapVariable {
 
   BaseZapVariable._(this.scope);
 
-  /// An index for this variable when running updates.
-  ///
-  /// Updates are encoded as a bitmap.
+  @override
   int? get updateSlot => _updateSlot;
 
+  @override
   set updateSlot(int? value) {
     if (value == null) {
       _updateSlot = null;
@@ -69,8 +80,6 @@ abstract class BaseZapVariable {
       _updateSlot = value % _availableUpdateSlots;
     }
   }
-
-  int get updateBitmask => 1 << updateSlot!;
 
   bool get needsUpdateTracking => isMutable && isInReactiveRead;
 }
@@ -89,9 +98,7 @@ class DartCodeVariable extends BaseZapVariable {
   /// components.
   final bool isProperty;
 
-  /// If this variable has been declared with a call to `watch()`, this contains
-  /// the expression being watched with this variable.
-  Expression? watching;
+  final ResolvedDartExpression? initializer;
 
   bool get isLate => element.isLate;
 
@@ -100,6 +107,7 @@ class DartCodeVariable extends BaseZapVariable {
     required this.declaration,
     required this.element,
     this.isProperty = false,
+    this.initializer,
   }) : super._(scope) {
     if (isProperty) {
       // Properties are always mutable.
@@ -153,13 +161,25 @@ class ResolvedDartExpression {
 
   final DartType staticType;
 
+  /// All expressions watched in this expression.
+  List<WatchedExpression> watched = [];
+
   ResolvedDartExpression(
     this.expression,
-    this.scope,
-    DartType dynamic,
-  ) : staticType = expression.staticType ?? dynamic {
+    this.scope, {
+    required DartType dynamic,
+  }) : staticType = expression.staticType ?? dynamic {
     scope.usedDartExpressions.add(this);
   }
+}
+
+class WatchedExpression implements HasUpdateMask {
+  final ResolvedDartExpression expression;
+
+  WatchedExpression(this.expression);
+
+  @override
+  int? updateSlot;
 }
 
 enum SubcomponentVariableKind {

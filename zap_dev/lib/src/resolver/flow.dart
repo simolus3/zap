@@ -4,11 +4,20 @@ import 'dart.dart';
 import 'reactive_dom.dart';
 
 class Flow {
-  final Set<BaseZapVariable> dependencies;
+  final Set<HasUpdateMask> dependencies;
   final Action action;
 
-  Iterable<BaseZapVariable> get _mutableDependencies =>
-      dependencies.where((dep) => dep.isMutable);
+  Iterable<HasUpdateMask> get _mutableDependencies => dependencies.where(
+        (dep) {
+          if (dep is BaseZapVariable) {
+            return dep.isMutable;
+          } else if (dep is WatchedExpression) {
+            return true;
+          } else {
+            throw AssertionError('Uknown flow dependency');
+          }
+        },
+      );
 
   Flow(this.dependencies, this.action);
 
@@ -90,4 +99,16 @@ class UpdateBlockExpression extends Action {
   final ReactiveNode block;
 
   UpdateBlockExpression(this.block);
+}
+
+class UpdateWatchable extends Action {
+  final WatchedExpression watched;
+
+  UpdateWatchable(this.watched);
+}
+
+class ReEvaluateVariableWithWatchInitializer extends Action {
+  final DartCodeVariable variable;
+
+  ReEvaluateVariableWithWatchInitializer(this.variable);
 }

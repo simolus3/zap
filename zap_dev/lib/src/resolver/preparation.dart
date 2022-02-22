@@ -179,15 +179,22 @@ class _ComponentSanityChecker extends RecursiveVisitor<void, void> {
   @override
   void visitIfBlock(IfBlock e, void arg) {
     final previous = _scope;
-    final child = SubFragmentScope(e)..parent = previous;
 
-    // The condition is still evaluated in the parent scope
-    e.condition.accept(this, arg);
+    for (final condition in e.conditions) {
+      // The condition is still evaluated in the parent scope
+      condition.condition.accept(this, arg);
 
-    _scope = child;
-    e.then.accept(this, arg);
-    e.otherwise?.accept(this, arg);
-    _scope = previous..children.add(child);
+      final child = _scope = SubFragmentScope(condition)..parent = previous;
+      condition.body.accept(this, arg);
+      _scope = previous..children.add(child);
+    }
+
+    final otherwise = e.otherwise;
+    if (otherwise != null) {
+      final child = _scope = SubFragmentScope(e)..parent = previous;
+      otherwise.accept(this, arg);
+      _scope = previous..children.add(child);
+    }
   }
 
   @override
@@ -368,7 +375,7 @@ class ForBlockVariableScope extends PreparedVariableScope {
 }
 
 class SubFragmentScope extends PreparedVariableScope {
-  final Block forNode;
+  final AstNode forNode;
 
   SubFragmentScope(this.forNode);
 }
