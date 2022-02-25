@@ -656,7 +656,7 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
           attribute: attribute,
         ));
       } else if (key == 'slot') {
-        slot = (value as SimpleStringLiteral).value;
+        slot = (value!.expression as SimpleStringLiteral).value;
       } else {
         // A regular attribute it is then.
         final type = value!.staticType;
