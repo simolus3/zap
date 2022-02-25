@@ -806,9 +806,8 @@ abstract class _ComponentOrSubcomponentWriter {
           if (child == null) {
             buffer.write('null');
           } else {
-            final classOfFragment =
-                generator._nameForMisc(child.owningComponent!);
-            buffer.write('() => $classOfFragment(this)');
+            buffer.write(
+                '() => ${_createSubFragment(child.owningComponent!, 'this')}');
           }
 
           buffer.write(',');
