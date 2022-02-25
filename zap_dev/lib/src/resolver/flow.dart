@@ -101,12 +101,18 @@ class UpdateBlockExpression extends Action {
   UpdateBlockExpression(this.block);
 }
 
+/// Update the source of a `watch()` call.
+///
+/// This is used when the expression being watched is itself mutable.
 class UpdateWatchable extends Action {
   final WatchedExpression watched;
 
   UpdateWatchable(this.watched);
 }
 
+/// Update a variable that used a `watch()` call in its initializer.
+///
+/// When the value of the watched expression changes, so should the variable.
 class ReEvaluateVariableWithWatchInitializer extends Action {
   final DartCodeVariable variable;
 

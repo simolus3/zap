@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 import 'dart:html';
 
 import 'package:meta/meta.dart';
@@ -57,7 +58,7 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
   /// We store IDs we've already subscribed to to avoid creating multiple
   /// subscriptions all the time, as [$watchImpl] is called every time the
   /// current value of a `watch()` call is referenced.
-  final Set<int> _activeWatchables = {};
+  final Map<int, _SubscribedWatchable<Object?>> _activeWatchables = {};
 
   late final ContextScope _scope;
   final StreamController<Event> _eventEmitter = StreamController.broadcast();
@@ -252,25 +253,56 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
     return component;
   }
 
-  T $watchImpl<T>(
-    Watchable<T> watchable,
-    int updateFlag, {
-    bool sourceIsMutable = false,
-  }) {
-    if (!sourceIsMutable) {
-      if (_activeWatchables.add(updateFlag)) {
-        watchable.transform(lifecycle<T>()).listen((event) {
-          // Rebuild parts of the component depending on this watchable.
-          $invalidate(updateFlag);
-        });
-      }
+  /// Implementation for a `watch()` call in a component's Dart script or
+  /// expression.
+  ///
+  /// Inside the compiler, each syntactic occurence of `watch()` call is
+  /// assigned a number (the [updateFlag]). This is the same mechanism used for
+  /// variables. When the value of a watchable changes, [update] is called with
+  /// the [updateFlag] of the watchable, which the component will use to apply
+  /// necessary changes to the DOM.
+  T $watchImpl<T>(Watchable<T> watchable, int updateFlag) {
+    // If the inner expression `x` of `watch(x)` is mutable, the same watch
+    // could potentially be used with different watchables. In this case, we
+    // have to cancel old subscriptions before tracking the new one.
+    final previousWatchable = _activeWatchables[updateFlag];
+    debugger();
 
-      return watchable.value;
+    void subscribe() {
+      // We're cancelling the subscription when the component is destroyed or
+      // when a new watchable replaces this one.
+      // ignore: cancel_subscriptions
+      final subscription = watchable.transform(lifecycle<T>()).listen((event) {
+        // Rebuild parts of the component depending on this watchable.
+        // We use bitmasks to track updates (see also `HasUpdateMask` in
+        // `zap_dev`).
+        debugger();
+        $invalidate(1 << updateFlag);
+      });
+
+      _activeWatchables[updateFlag] =
+          _SubscribedWatchable(watchable, subscription);
     }
 
-    throw UnimplementedError(
-        'todo: watch() with a source that could change is not yet supported');
+    if (previousWatchable != null) {
+      if (previousWatchable.watchable != watchable) {
+        // Cancel the previous subscription and subscribe to the new watchable.
+        previousWatchable.subscription.cancel();
+        subscribe();
+      }
+    } else {
+      subscribe();
+    }
+
+    return watchable.value;
   }
+}
+
+class _SubscribedWatchable<T> {
+  final Watchable<T> watchable;
+  final StreamSubscription<T> subscription;
+
+  _SubscribedWatchable(this.watchable, this.subscription);
 }
 
 class _LifecycleTransformer<T> extends StreamTransformerBase<T, T> {

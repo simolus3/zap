@@ -579,6 +579,10 @@ abstract class _ComponentOrSubcomponentWriter {
 
       buffer
           .write('$target.${action.property} = ${referenceExpression(expr)};');
+    } else if (action is UpdateWatchable) {
+      final expr = referenceExpression(action.watched.expression);
+      buffer.writeln(
+          '\$watchImpl($expr, ${action.watched.updateSlot!}); // track update');
     } else if (action is ReEvaluateVariableWithWatchInitializer) {
       final setter = generator._nameForVar(action.variable);
       final expression = referenceExpression(action.variable.initializer!);
@@ -1515,7 +1519,7 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
         _replaceNode(node.methodName, '$prefix\$watchImpl');
         node.argumentList.accept(this);
 
-        final updateFlag = resolvedWatch.updateBitmask;
+        final updateFlag = resolvedWatch.updateSlot!;
         _replaceNode(node.argumentList.rightParenthesis, ', $updateFlag)');
 
         return;
