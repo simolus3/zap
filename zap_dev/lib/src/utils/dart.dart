@@ -4,7 +4,6 @@ import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/dart/constant/value.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
-import 'package:build/build.dart';
 import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
 
@@ -76,8 +75,8 @@ Iterable<String?> readSlotAnnotations(Element element) {
   });
 }
 
-Iterable<AssetId> additionalZapExports(
-    AssetId libraryId, LibraryElement library) sync* {
+Iterable<Uri> additionalZapExports(
+    Uri libraryUri, LibraryElement library) sync* {
   for (final meta in library.metadata) {
     final value = meta.computeConstantValue();
     if (value == null) continue;
@@ -91,10 +90,7 @@ Iterable<AssetId> additionalZapExports(
     if (name != 'zap:additional_export') continue;
 
     for (final export in value.getField('options')!.toListValue()!) {
-      yield AssetId.resolve(
-        Uri.parse(export.toStringValue()!),
-        from: libraryId,
-      );
+      yield libraryUri.resolve(export.toStringValue()!);
     }
   }
 }

@@ -6,11 +6,11 @@ import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:analyzer/dart/element/type_provider.dart';
 import 'package:analyzer/dart/element/type_system.dart';
-import 'package:build/build.dart';
 import 'package:source_span/source_span.dart';
 
 import '../../preparation/ast.dart';
 import '../../errors.dart';
+import '../dart_resolver.dart';
 import 'dom_types.dart';
 
 class TypeChecker {
@@ -122,27 +122,16 @@ class TypeChecker {
   }
 
   static Future<TypeChecker> checkerFor(TypeProvider provider, TypeSystem ts,
-      ErrorReporter errors, BuildStep buildStep) async {
-    return TypeChecker._(provider, ts, await _resolveTypes(buildStep), errors);
+      ErrorReporter errors, DartResolver resolver) async {
+    return TypeChecker._(provider, ts, await _resolveTypes(resolver), errors);
   }
 
-  static Future<ResolvedDomTypes> _resolveTypes(BuildStep step) {
+  static Future<ResolvedDomTypes> _resolveTypes(DartResolver resolver) {
     if (_domCompleter != null) {
       return _domCompleter!.future;
     } else {
       final completer = _domCompleter = Completer.sync()
-        ..complete(
-          () async {
-            LibraryElement? dartHtml;
-            await for (final lib in step.resolver.libraries) {
-              if (lib.name.contains('dart.') && lib.name.contains('html')) {
-                dartHtml = lib;
-              }
-            }
-
-            return ResolvedDomTypes(dartHtml!);
-          }(),
-        );
+        ..complete(resolver.dartHtml.then(ResolvedDomTypes.new));
 
       return completer.future;
     }

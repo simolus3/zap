@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
+import 'package:path/path.dart';
 
 import '../preparation/ast.dart';
 import '../preparation/parser.dart';
@@ -33,12 +34,18 @@ Future<PrepareResult> prepare(
   final script = checker.script?.readInnerText(reporter);
 
   var imports = '';
+  List<String> importedZapFiles = const [];
   ScriptComponents? splitScript;
 
   if (script != null) {
     splitScript =
         ScriptComponents.of(script, rewriteImports: ImportRewriteMode.zapToApi);
     imports = splitScript.directives;
+
+    importedZapFiles = [
+      for (final import in splitScript.originalImports)
+        if (url.extension(import) == '.zap') import
+    ];
   }
 
   // Analyze as script as if it were written in a function to allow
@@ -89,6 +96,7 @@ Future<PrepareResult> prepare(
 
   return PrepareResult._(
     imports,
+    importedZapFiles,
     fileBuilder.toString(),
     resolvedStyle,
     hasStyle ? className : null,
@@ -102,6 +110,8 @@ Future<PrepareResult> prepare(
 
 class PrepareResult {
   final String imports;
+  final List<String> importedZapFiles;
+
   final String temporaryDartFile;
   final String temporaryScss;
 
@@ -121,6 +131,7 @@ class PrepareResult {
 
   PrepareResult._(
     this.imports,
+    this.importedZapFiles,
     this.temporaryDartFile,
     this.temporaryScss,
     this.cssClassName,

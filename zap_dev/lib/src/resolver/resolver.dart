@@ -12,6 +12,7 @@ import '../errors.dart';
 import '../utils/dart.dart';
 import 'component.dart';
 import 'dart.dart';
+import 'dart_resolver.dart';
 import 'external_component.dart';
 import 'flow.dart';
 import 'optimization/optimizer.dart';
@@ -46,10 +47,10 @@ class Resolver {
     this.componentName,
   ) : scope = _ScopeInformation(prepare.rootScope);
 
-  Future<ResolvedComponent> resolve(BuildStep buildStep) async {
+  Future<ResolvedComponent> resolve(DartResolver resolver) async {
     checker = await TypeChecker.checkerFor(
-        typeProvider, typeSystem, errorReporter, buildStep);
-    await _findExternalComponents(buildStep);
+        typeProvider, typeSystem, errorReporter, resolver);
+    await _findExternalComponents(resolver);
     dartAnalysis = _AnalyzeVariablesAndScopes(this);
 
     // Create resolved scopes and variables
@@ -91,7 +92,7 @@ class Resolver {
     );
   }
 
-  Future<void> _findExternalComponents(BuildStep buildStep) async {
+  Future<void> _findExternalComponents(DartResolver resolver) async {
     void scanNamespace(LibraryElement lib) {
       for (final element in lib.exportNamespace.definedNames.values) {
         final tagName = componentTagName(element);
@@ -109,10 +110,10 @@ class Resolver {
       // It exists so that zap components can be exported without breaking
       // the compilation flow because the component files don't exist during
       // all stages of the build.
-      AssetId id;
+      Uri uri;
 
       try {
-        id = await buildStep.resolver.assetIdForElement(imported);
+        uri = await resolver.uriForElement(imported);
       } catch (e, s) {
         // It's expected that we can't recover the asset id of SDK libraries,
         // so don't log that.
@@ -124,15 +125,15 @@ class Resolver {
         continue;
       }
 
-      for (final additional in additionalZapExports(id, imported)) {
-        final import = AssetId.resolve(Uri.parse(
-            rewriteUri(additional.uri.toString(), ImportRewriteMode.zapToApi)));
+      for (final additional in additionalZapExports(uri, imported)) {
+        final import = Uri.parse(
+            rewriteUri(additional.toString(), ImportRewriteMode.zapToApi));
         LibraryElement included;
         try {
-          included = await buildStep.resolver.libraryFor(import);
+          included = await resolver.resolveUri(import);
         } catch (e, s) {
           log.fine(
-            'Additional export $import of $id does not appear to be a library',
+            'Additional export $import of $uri does not appear to be a library',
             e,
             s,
           );

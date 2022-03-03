@@ -1,13 +1,16 @@
 import 'dart:async';
 
 import 'package:analyzer/dart/analysis/results.dart';
+import 'package:analyzer/dart/element/element.dart';
 import 'package:build/build.dart' hide Resolver;
+import 'package:build/build.dart' as build;
 import 'package:dart_style/dart_style.dart';
 import 'package:path/path.dart' as p;
 
 import '../errors.dart';
 import '../generator/generator.dart';
 import '../generator/options.dart';
+import '../resolver/dart_resolver.dart';
 import '../resolver/preparation.dart';
 import '../resolver/resolver.dart';
 import '../utils/zap.dart';
@@ -45,7 +48,8 @@ class ZapBuilder implements Builder {
       componentName,
     );
 
-    final component = await resolver.resolve(buildStep);
+    final dartResolver = _BuildDartResolver(buildStep.resolver);
+    final component = await resolver.resolve(dartResolver);
 
     final options = GenerationOptions(isForDevelopment);
     final generator = Generator(component, prepResult, options, outId)..write();
@@ -66,5 +70,32 @@ class ZapBuilder implements Builder {
     return const {
       '.zap': ['.zap.dart'],
     };
+  }
+}
+
+class _BuildDartResolver implements DartResolver {
+  final build.Resolver resolver;
+
+  _BuildDartResolver(this.resolver);
+
+  @override
+  Future<LibraryElement> get dartHtml async {
+    await for (final library in resolver.libraries) {
+      if (library.name.contains('dart.') && library.name.contains('html')) {
+        return library;
+      }
+    }
+
+    throw StateError('Could not find `dart:html`?!');
+  }
+
+  @override
+  Future<LibraryElement> resolveUri(Uri uri) {
+    return resolver.libraryFor(AssetId.resolve(uri));
+  }
+
+  @override
+  Future<Uri> uriForElement(Element element) async {
+    return (await resolver.assetIdForElement(element)).uri;
   }
 }
