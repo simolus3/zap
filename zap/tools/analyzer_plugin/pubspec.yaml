@@ -1,0 +1,11 @@
+name: zap_analyzer_plugin_bootstrap
+
+environment:
+  sdk: '^2.16.0'
+
+dependencies:
+  zap_dev: ^0.1.0
+
+dependency_overrides:
+  zap_dev:
+    path: ../../../zap_dev

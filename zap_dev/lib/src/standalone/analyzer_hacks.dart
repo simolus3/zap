@@ -6,6 +6,15 @@ import 'package:analyzer/src/generated/source.dart';
 import 'package:path/path.dart';
 import 'package:watcher/watcher.dart';
 
+/// The build system generates hidden assets into `.dart_tool/build/generated`,
+/// but these assets can be imported as if they were located right in the
+/// project's source tree.
+///
+/// The analyzer tries to be smart about this by rewiring file lookups to also
+/// find files in `.dart_tool/build/generated`. This is pretty neat overall, but
+/// the exact opposite of what we want when we control the intermediate zap
+/// files with an overlay file system.
+/// To disable this mechanism, we hide the generated folder from the analyzer.
 class HideGeneratedBuildFolder extends ResourceProvider {
   final ResourceProvider _inner;
 

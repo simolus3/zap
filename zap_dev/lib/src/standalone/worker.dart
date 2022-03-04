@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:analyzer/dart/analysis/analysis_context.dart';
 import 'package:analyzer/dart/analysis/analysis_context_collection.dart';
 import 'package:analyzer/dart/analysis/results.dart';
@@ -26,10 +28,15 @@ class ZapWorker {
 
   final Pool _pool = Pool(1);
 
+  final StreamController<ZapFile> _finishedAnalysis =
+      StreamController.broadcast();
+
   ZapWorker(this._underlyingProvider)
       : _overlayFs = OverlayResourceProvider(_underlyingProvider) {
     _providerForDartAnalyzer = HideGeneratedBuildFolder(_overlayFs);
   }
+
+  Stream<ZapFile> get analyzedFiles => _finishedAnalysis.stream;
 
   ZapAnalysisContext newContext(String root, [List<String>? exclude]) {
     final collection = AnalysisContextCollection(
@@ -171,6 +178,7 @@ class ZapWorker {
     );
     await resolver.resolve(dartResolver);
     file.state = ZapFileState.analyzed;
+    _finishedAnalysis.add(file);
   }
 
   ErrorReporter _reportErrorsInFile(ZapFile file) {
