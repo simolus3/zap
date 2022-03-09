@@ -28,6 +28,8 @@ import 'events/dom_forwarding.zap.dart' as events;
 import 'watchable/time.zap.dart' as watch;
 import 'watchable/writable/counter.zap.dart' as watch;
 
+import 'riverpod/example.zap.dart' as riverpod;
+
 import 'examples.dart';
 
 final selectedComponent = WritableWatchable(examples.first.children.first);
@@ -83,6 +85,9 @@ ZapComponent instantiate(ExampleComponent component) {
       return watch.Time();
     case watchWrite:
       return watch.Counter();
+
+    case riverpodExample:
+      return riverpod.Example();
 
     default:
       throw StateError('Unknown example ${component.id}!');

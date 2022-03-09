@@ -141,6 +141,17 @@ const watchWrite = ExampleComponent(
   ],
 );
 
+const riverpodExample = ExampleComponent(
+  title: 'MapBox with JS interop',
+  id: 'mapbox',
+  files: [
+    'riverpod/example.zap',
+    'riverpod/map.zap',
+    'riverpod/marker.zap',
+    'riverpod/mapbox.dart',
+  ],
+);
+
 const examples = <ExampleGroup>[
   ExampleGroup(
     title: 'Introduction',
@@ -193,6 +204,10 @@ const examples = <ExampleGroup>[
       watchRead,
       watchWrite,
     ],
+  ),
+  ExampleGroup(
+    title: 'Riverpod',
+    children: [riverpodExample],
   ),
 ];
 

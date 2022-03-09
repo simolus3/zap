@@ -5,10 +5,12 @@ environment:
   sdk: ^2.16.0
 
 dependencies:
+  js: ^0.6.4
   picocss:
     version: ^1.4.4
     hosted: https://simonbinder.eu
   tar: ^0.5.2
+  riverpod_zap:
   zap:
 
 dev_dependencies:
@@ -22,6 +24,8 @@ dev_dependencies:
     hosted: https://simonbinder.eu
 
 dependency_overrides:
+  riverpod_zap:
+    path: ../riverpod_zap
   zap:
     path: ../zap
   zap_dev:

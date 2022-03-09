@@ -23,3 +23,10 @@ targets:
         enabled: false
       "|index_samples":
         enabled: true
+
+global_options:
+  build_web_compilers|entrypoint:
+    options:
+        dart2js_args:
+          # todo: Set right token from environment, but how?
+          - "-DMAPBOX_TOKEN=mapbox_token"

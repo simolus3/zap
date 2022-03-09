@@ -1,0 +1,21 @@
+<script>
+  import 'mapbox.dart' as mapbox;
+  import 'package:riverpod_zap/riverpod.dart';
+
+  @prop
+  num lat;
+  @prop
+  num lon;
+  @prop
+  String label;
+
+  final map = watch(self.use(mapbox.map));
+
+  final module = self.read(mapbox.module);
+  final popup = module.newPopup(mapbox.PopupOptions(offset: 25))
+      ..setText(label);
+  final marker = module.newMarker()
+      ..setLngLat([lon, lat])
+      ..setPopup(popup)
+      ..addTo(map);
+</script>

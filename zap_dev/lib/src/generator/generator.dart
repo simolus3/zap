@@ -1,5 +1,6 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/syntactic_entity.dart';
+import 'package:analyzer/dart/ast/token.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/nullability_suffix.dart';
@@ -244,7 +245,14 @@ abstract class _ComponentOrSubcomponentWriter {
   }
 
   String referenceExpression(ResolvedDartExpression expression) {
-    return generator._nameForMisc(expression);
+    final ownScope = component.scope;
+    final expressionScope = expression.scope;
+
+    final prefix =
+        _DartSourceRewriter(generator, ownScope, 0, '', true, const {})
+            ._prefixFor(expressionScope);
+
+    return '$prefix${generator._nameForMisc(expression)}';
   }
 
   /// Writes
@@ -588,9 +596,11 @@ abstract class _ComponentOrSubcomponentWriter {
       final expression = referenceExpression(action.variable.initializer!);
 
       buffer.write('$setter = $expression;');
-      buffer.write(_DartSourceRewriter(
-              generator, component.scope, 0, '', false, const {})
-          .invalidateExpression('${action.variable.updateBitmask}'));
+      if (action.variable.needsUpdateTracking) {
+        buffer.write(_DartSourceRewriter(
+                generator, component.scope, 0, '', false, const {})
+            .invalidateExpression('${action.variable.updateBitmask}'));
+      }
     } else if (action is UpdateBlockExpression) {
       final block = action.block;
       final nodeName = generator._nameForNode(action.block);
@@ -1506,6 +1516,19 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
     }
   }
 
+  /// For syntactic constructions of the form `x.y`, where `x` is an import
+  /// prefix identifier, rewrites the construction to just `y`. Visiting the
+  /// simple identifier will add the necessary prefix.
+  void _handleTarget(Expression? left, Token? operator) {
+    if (left is SimpleIdentifier) {
+      final target = left.staticElement;
+      if (target is PrefixElement && operator != null) {
+        _replaceNode(left, '');
+        _replaceNode(operator, '');
+      }
+    }
+  }
+
   @override
   void visitMethodInvocation(MethodInvocation node) {
     if (isWatchFunctionFromDslLibrary(node.methodName)) {
@@ -1516,7 +1539,8 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
 
       if (resolvedWatch != null) {
         _replaceNode(node.methodName, '$prefix\$watchImpl');
-        node.argumentList.accept(this);
+
+        visitNode(node.argumentList.arguments.single);
 
         final updateFlag = resolvedWatch.updateSlot!;
         _replaceNode(node.argumentList.rightParenthesis, ', $updateFlag)');
@@ -1524,6 +1548,8 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
         return;
       }
     }
+
+    _handleTarget(node.target, node.operator);
     super.visitMethodInvocation(node);
   }
 
@@ -1553,10 +1579,7 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
   void visitPrefixedIdentifier(PrefixedIdentifier node) {
     final targetOfPrefix = node.prefix.staticElement;
     if (targetOfPrefix is PrefixElement) {
-      // Pointing towards a named import. We're rewriting imports either way, so
-      // just write the rest
-      _replaceNode(node.prefix, '');
-      _replaceNode(node.period, '');
+      _handleTarget(node.prefix, node.period);
       visitSimpleIdentifier(node.identifier);
     } else {
       super.visitPrefixedIdentifier(node);

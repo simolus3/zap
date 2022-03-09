@@ -217,6 +217,7 @@ class _ScopeInformation {
 class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
   var _isInReactiveRead = false;
   var _isInRootZapFunction = false;
+  var _isInUserDefinedFunction = false;
 
   PreparedVariableScope scope;
 
@@ -282,47 +283,56 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
   }
 
   @override
-  void visitFunctionDeclaration(FunctionDeclaration node) {
-    final element = node.declaredElement;
+  void visitFunctionExpression(FunctionExpression node) {
+    final parent = node.parent;
 
-    if (node.name.name.startsWith(zapPrefix)) {
-      if (!_isInRootZapFunction) {
-        scopes.scopes[scope] = ZapVariableScope(node);
+    if (parent is FunctionDeclaration) {
+      final element = parent.declaredElement;
 
-        // We're analyzing the function for the root scope. Read the element for
-        // the "ComponentOrPending" parameter added to the helper code.
-        final selfDecl = node.functionExpression.parameters?.parameters.single;
-        final selfElement =
-            node.functionExpression.parameters?.parameterElements.single;
+      if (parent.name.name.startsWith(zapPrefix)) {
+        if (!_isInRootZapFunction) {
+          scopes.scopes[scope] = ZapVariableScope(parent);
 
-        scopes.addVariable(SelfReference(zapScope, selfDecl!, selfElement!));
-        _isInRootZapFunction = true;
+          // We're analyzing the function for the root scope. Read the element for
+          // the "ComponentOrPending" parameter added to the helper code.
+          final selfDecl = node.parameters?.parameters.single;
+          final selfElement = node.parameters?.parameterElements.single;
 
-        super.visitFunctionDeclaration(node);
-        _isInRootZapFunction = false;
-      } else {
-        final currentScope = scope;
-        final currentResolvedScope = zapScope;
+          scopes.addVariable(SelfReference(zapScope, selfDecl!, selfElement!));
+          _isInRootZapFunction = true;
 
-        // This function introduces a new scope for a nested block.
-        final child =
-            scope.children.singleWhere((e) => e.blockName == node.name.name);
+          super.visitFunctionExpression(node);
+          _isInRootZapFunction = false;
+        } else {
+          final currentScope = scope;
+          final currentResolvedScope = zapScope;
 
-        scope = child;
+          // This function introduces a new scope for a nested block.
+          final child = scope.children
+              .singleWhere((e) => e.blockName == parent.name.name);
 
-        final resolvedScope = scopes.scopes[scope] = ZapVariableScope(node);
-        resolvedScope.parent = currentResolvedScope;
-        currentResolvedScope.childScopes.add(resolvedScope);
+          scope = child;
 
-        super.visitFunctionDeclaration(node);
-        scope = currentScope;
+          final resolvedScope = scopes.scopes[scope] = ZapVariableScope(parent);
+          resolvedScope.parent = currentResolvedScope;
+          currentResolvedScope.childScopes.add(resolvedScope);
+
+          super.visitFunctionExpression(node);
+          scope = currentScope;
+        }
+
+        return;
+      } else if (_isInRootZapFunction) {
+        // Don't visit functions from library-level scripts, we only care about
+        // what's in the function created for zap analysis.
+        userDefinedFunctions.add(element as FunctionElement);
       }
-    } else if (_isInRootZapFunction) {
-      // Don't visit functions from library-level scripts, we only care about
-      // what's in the function created for zap analysis.
-      userDefinedFunctions.add(element as FunctionElement);
-      return super.visitFunctionDeclaration(node);
     }
+
+    final inUserDefinedBefore = _isInUserDefinedFunction;
+    _isInUserDefinedFunction = true;
+    super.visitFunctionExpression(node);
+    _isInUserDefinedFunction = inUserDefinedBefore;
   }
 
   @override
@@ -342,6 +352,11 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
 
   @override
   void visitVariableDeclaration(VariableDeclaration node) {
+    if (_isInUserDefinedFunction) {
+      // We don't track variables declared in inner functions.
+      return super.visitVariableDeclaration(node);
+    }
+
     if (node.name.name.startsWith(zapPrefix)) {
       // Artificial variable inserted to analyze inline expression from the DOM
       // tree.

@@ -9,6 +9,14 @@ nav {
     box-shadow: 0 1px 0 #eee;
 }
 
+// Pico and MapBox behave weirdly together
+.mapboxgl-marker {
+  color: unset;
+  background-color: unset;
+  padding: unset;
+  border: unset;
+}
+
 svg {
     height: 1rem;
 }

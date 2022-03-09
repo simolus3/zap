@@ -406,10 +406,20 @@ class _RewriteMixedDartExpressions extends Transformer<void> {
     return text.content.replaceAll(r'$', r'\$');
   }
 
+  DartExpression _textToExpression(Text e) {
+    return DartExpression(
+      RawDartExpression("'${_dartStringLiteralFor(e)}'")
+        ..first = e.first
+        ..last = e.last,
+    )
+      ..first = e.first
+      ..last = e.last;
+  }
+
   @override
   AstNode visitText(Text e, void a) {
     if (e.parent is Attribute) {
-      return DartExpression(RawDartExpression("'${_dartStringLiteralFor(e)}'"));
+      return _textToExpression(e);
     }
 
     return e;
@@ -418,6 +428,16 @@ class _RewriteMixedDartExpressions extends Transformer<void> {
   @override
   AstNode visitStringLiteral(StringLiteral e, void a) {
     // Rewrite a mixed literal and Dart expression to a single Dart expression.
+    if (e.children.length == 1) {
+      final child = e.children.single;
+
+      if (child is Text) {
+        return _textToExpression(child);
+      } else {
+        return child;
+      }
+    }
+
     final buffer = StringBuffer("'");
 
     for (final component in e.children) {

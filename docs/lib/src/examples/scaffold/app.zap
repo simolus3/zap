@@ -5,6 +5,7 @@
   import 'navbar.zap';
   import 'sources.zap';
 
+  //
   var currentSelection = watch(selectedComponent);
 
   $: document.title = '${currentSelection.title} | Zap Example';
@@ -29,10 +30,12 @@
 
   main {
     grid-column: 2;
+    padding-right: 15px;
   }
 
   aside {
     grid-column: 3;
+    max-height: 100vh;
   }
 </style>
 

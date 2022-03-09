@@ -15,7 +15,14 @@ class Slot extends Fragment {
   @override
   void create(Element target, [Node? anchor]) {
     final oldParent = parentComponent;
-    parentComponent = _parent;
+    // Don't overide the parent component if one is already set. The reason
+    // is that slots passed down multiple times are first created from the inner
+    // component and then from the outer one. They should inherit their scope
+    // from the inner one though.
+    if (oldParent == null) {
+      parentComponent = _parent;
+    }
+
     _fragment = _create()..create(target, anchor);
     parentComponent = oldParent;
   }

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer';
 import 'dart:html';
 
 import 'package:meta/meta.dart';
@@ -266,7 +265,6 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
     // could potentially be used with different watchables. In this case, we
     // have to cancel old subscriptions before tracking the new one.
     final previousWatchable = _activeWatchables[updateFlag];
-    debugger();
 
     void subscribe() {
       // We're cancelling the subscription when the component is destroyed or
@@ -276,7 +274,6 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
         // Rebuild parts of the component depending on this watchable.
         // We use bitmasks to track updates (see also `HasUpdateMask` in
         // `zap_dev`).
-        debugger();
         $invalidate(1 << updateFlag);
       });
 
