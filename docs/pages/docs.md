@@ -448,16 +448,32 @@ final currentTime = Watchable.stream(
 Inside components, the `watch` function can be used to read the current value of
 a `Watchable`. When the watchable updates, so will the parts of the component
 reading that watchable.
-__TODO__: At the moment, `watch` can only be used in an assignment to variables.
-This could be expanded to also allow using `watch` inside text expressions.
+
+```html
+The current time is {watch(currentTime)}.
+```
+
+Conceptually, watchables are similar to stores in Svelte. In fact, the
+`WritableWatchable` class is very similar to a writable store in Svelte:
 
 ```html
 <script>
-  final now = watch(currentTime);
+  import 'package:zap/zap.dart';
+
+  final counter = WritableWatchable(0);
+  var currentCounter = watch(counter);
+
+  void handleClick() => counter.value++;
 </script>
 
-The current time is {now}.
+<button on:click={handleClick}>
+  You've clicked this button { counter }
+  { counter == 1 ? 'time' : 'times' }
+</button>
 ```
+
+While writable watchables are less convenient than a simple reactive variable,
+they make it easy to share state between two components.
 
 ### Context
 
