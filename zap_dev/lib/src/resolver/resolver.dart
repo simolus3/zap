@@ -657,7 +657,7 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
         final target = dartExpression;
         if (target is! SimpleIdentifier || target.staticElement == null) {
           resolver.errorReporter.reportError(ZapError(
-              'Target for `bind:` must be a local variable',
+              'Target for `b<ind:` must be a local variable',
               attribute.value?.span));
           continue;
         }

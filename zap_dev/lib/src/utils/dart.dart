@@ -17,8 +17,10 @@ class ScriptComponents {
   final List<String> originalImports;
   final String directives;
   final String body;
+  final int offsetOfBody;
 
-  ScriptComponents(this.originalImports, this.directives, this.body);
+  ScriptComponents(
+      this.originalImports, this.directives, this.body, this.offsetOfBody);
 
   factory ScriptComponents.of(String dartSource,
       {ImportRewriteMode rewriteImports = ImportRewriteMode.none}) {
@@ -27,7 +29,7 @@ class ScriptComponents {
 
     final directives = unit.directives;
     if (directives.isEmpty) {
-      return ScriptComponents([], '', dartSource);
+      return ScriptComponents([], '', dartSource, 0);
     } else {
       final directiveRewriter =
           _ZapToDartImportRewriter(dartSource, rewriteImports);
@@ -39,6 +41,7 @@ class ScriptComponents {
         directiveRewriter.originalDirectives,
         directiveRewriter.buffer.toString(),
         dartSource.substring(directiveRewriter.endOffset),
+        directiveRewriter.endOffset,
       );
     }
   }

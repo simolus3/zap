@@ -28,6 +28,7 @@ class AnalyzeCommand extends Command {
         await worker.analyze(result);
 
         if (result is ZapFile && result.errors.isNotEmpty) {
+          totalErrors += result.errors.length;
           for (final error in result.errors) {
             print(error.humanReadableDescription());
           }

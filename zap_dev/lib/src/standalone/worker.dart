@@ -16,6 +16,7 @@ import '../resolver/preparation.dart';
 import '../resolver/resolver.dart';
 import 'analyzer_hacks.dart';
 import 'context.dart';
+import 'dart_errors_in_zap.dart';
 import 'file.dart';
 
 class ZapWorker {
@@ -133,7 +134,7 @@ class ZapWorker {
     // Write the hidden Dart file used to resolve DOM expressions into a
     // the overlay FS.
     _overlayFs.setOverlay(file.temporaryDartPath,
-        content: result.temporaryDartFile, modificationStamp: now);
+        content: result.temporaryDartFile.contents, modificationStamp: now);
 
     // Now that the temporary file exists, we can resolve it to export the API
     // and read imports.
@@ -146,8 +147,8 @@ class ZapWorker {
       final function =
           unit.unit.declarations.whereType<FunctionDeclaration>().first;
 
-      final api =
-          writeApiForComponent(function, result.temporaryDartFile, export);
+      final api = writeApiForComponent(
+          function, result.temporaryDartFile.contents, export);
       _overlayFs.setOverlay(file.apiDartPath,
           content: api, modificationStamp: now);
     }
@@ -169,14 +170,22 @@ class ZapWorker {
       throw StateError('Could not resolve unit for $file');
     }
 
+    final errorReporter = _reportErrorsInFile(file);
+    final prepareResult = file.prepareResult!;
     final resolver = Resolver(
-      file.prepareResult!,
+      prepareResult,
       library,
       unit.unit,
-      _reportErrorsInFile(file),
+      errorReporter,
       'ZapComponent',
     );
-    await resolver.resolve(dartResolver);
+    final component = await resolver.resolve(dartResolver);
+
+    // Also map Dart analysis errors back to the zap structures that were
+    // mapped to the intermediate Dart file.
+    MapDartErrorsInZapFile(file.prepareResult!, component, errorReporter)
+        .reportErrors(unit.errors);
+
     file.state = ZapFileState.analyzed;
     _finishedAnalysis.add(file);
   }

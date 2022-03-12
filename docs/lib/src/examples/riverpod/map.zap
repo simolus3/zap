@@ -1,5 +1,4 @@
 <script>
-  import 'dart:html';
   import 'package:riverpod_zap/riverpod.dart';
   import 'mapbox.dart' as mapbox;
 

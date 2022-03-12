@@ -18,7 +18,8 @@ class PreparingBuilder implements Builder {
 
     final prepResult = await prepare(
         await buildStep.readAsString(input), input.uri, errorReporter);
-    await buildStep.writeAsString(tempDart, prepResult.temporaryDartFile);
+    await buildStep.writeAsString(
+        tempDart, prepResult.temporaryDartFile.contents);
 
     final css = prepResult.temporaryScss;
     await buildStep.writeAsString(tempCss, css);

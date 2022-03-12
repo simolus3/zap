@@ -1,6 +1,5 @@
 <script>
   import 'dart:convert';
-  import 'dart:html';
 
   import 'package:collection/collection.dart';
 

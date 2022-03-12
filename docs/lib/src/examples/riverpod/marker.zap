@@ -14,7 +14,7 @@
   final module = self.read(mapbox.module);
   final popup = module.newPopup(mapbox.PopupOptions(offset: 25))
       ..setText(label);
-  final marker = module.newMarker()
+  module.newMarker()
       ..setLngLat([lon, lat])
       ..setPopup(popup)
       ..addTo(map);

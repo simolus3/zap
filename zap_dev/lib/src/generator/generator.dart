@@ -1409,7 +1409,7 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
     ComponentOrSubcomponent? component,
     Map<AstNode, WatchedExpression> watchExpressions = const {},
   }) {
-    final originalCode = generator.prepareResult.temporaryDartFile
+    final originalCode = generator.prepareResult.temporaryDartFile.contents
         .substring(dartCode.offset, dartCode.offset + dartCode.length);
     final rewriter = _DartSourceRewriter(generator, component?.scope,
         dartCode.offset, originalCode, patchSelf, watchExpressions);

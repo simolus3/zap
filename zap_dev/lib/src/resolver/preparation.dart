@@ -30,17 +30,15 @@ Future<PrepareResult> prepare(
   final checker = _ComponentSanityChecker(reporter);
   component.accept(checker, null);
 
-  final fileBuilder = StringBuffer();
+  final fileBuilder = TemporaryDartFile();
   final script = checker.script?.readInnerText(reporter);
 
-  var imports = '';
   List<String> importedZapFiles = const [];
   ScriptComponents? splitScript;
 
   if (script != null) {
     splitScript =
         ScriptComponents.of(script, rewriteImports: ImportRewriteMode.zapToApi);
-    imports = splitScript.directives;
 
     importedZapFiles = [
       for (final import in splitScript.originalImports)
@@ -52,10 +50,25 @@ Future<PrepareResult> prepare(
   // statements.
   fileBuilder
     ..writeln("import 'dart:html';")
-    ..writeln("import 'package:zap/internal/dsl.dart';")
-    ..writeln(imports)
-    ..writeln('void $componentFunctionWrapper(ComponentOrPending self) {')
-    ..writeln(splitScript?.body ?? '');
+    ..writeln("import 'package:zap/internal/dsl.dart';");
+
+  if (splitScript != null) {
+    fileBuilder
+      ..startWritingNode(checker.script!.innerContent!)
+      ..writeln(splitScript.directives)
+      ..finishNode();
+  }
+
+  fileBuilder
+      .writeln('void $componentFunctionWrapper(ComponentOrPending self) {');
+
+  if (splitScript != null) {
+    fileBuilder
+      ..startWritingNode(checker.script!.innerContent!,
+          offsetInNode: splitScript.offsetOfBody)
+      ..writeln(splitScript.body)
+      ..finishNode();
+  }
 
   // The analyzer does not provide an API to parse and resolve expressions, so
   // write them as variables which we can then take a look at.
@@ -73,9 +86,16 @@ Future<PrepareResult> prepare(
 
   fileBuilder.writeln('}');
 
-  final moduleScript = checker.moduleScript?.readInnerText(reporter);
+  final moduleScript = checker.moduleScript;
   if (moduleScript != null) {
-    fileBuilder.write(moduleScript);
+    final contents = moduleScript.readInnerText(reporter);
+
+    if (contents != null) {
+      fileBuilder
+        ..startWritingNode(moduleScript)
+        ..write(contents)
+        ..finishNode();
+    }
   }
 
   component = component.accept(_ExtractDom(), null) as DomNode;
@@ -95,9 +115,9 @@ Future<PrepareResult> prepare(
       rawStyle, className, splitScript?.originalImports ?? const []);
 
   return PrepareResult._(
-    imports,
+    splitScript?.directives ?? '',
     importedZapFiles,
-    fileBuilder.toString(),
+    fileBuilder,
     resolvedStyle,
     hasStyle ? className : null,
     checker._rootScope,
@@ -112,7 +132,7 @@ class PrepareResult {
   final String imports;
   final List<String> importedZapFiles;
 
-  final String temporaryDartFile;
+  final TemporaryDartFile temporaryDartFile;
   final String temporaryScss;
 
   /// The class name for this component, used to implement scoped styles.
@@ -141,6 +161,73 @@ class PrepareResult {
     this.style,
     this.script,
   );
+}
+
+/// A temporary Dart file containing contents of `<script>` tags and expressions
+/// stored as variables so that we can easily analyze them later.
+class TemporaryDartFile {
+  final StringBuffer _buffer = StringBuffer();
+  final List<RegionInTemporaryDartFile> regions = [];
+
+  int _startOffsetForPending = 0;
+  RegionInTemporaryDartFile Function(int)? _finishNode;
+
+  String get contents => _buffer.toString();
+
+  void write(Object content) => _buffer.write(content);
+
+  void writeln([Object? content = '']) => _buffer.writeln(content);
+
+  void startWritingNode(AstNode node, {int offsetInNode = 0}) {
+    _startOffsetForPending = _buffer.length;
+    _finishNode = (endOffset) => RegionInTemporaryDartFile(
+          _startOffsetForPending,
+          endOffset,
+          node,
+          startOffsetInNode: offsetInNode,
+        );
+  }
+
+  void finishNode() {
+    regions.add(_finishNode!(_buffer.length));
+    _finishNode = null;
+  }
+
+  RegionInTemporaryDartFile? regionAt(int offset) {
+    var low = 0;
+    var high = regions.length - 1;
+
+    while (low <= high) {
+      var middle = (high + low) ~/ 2;
+      final regionHere = regions[middle];
+
+      if (regionHere.startOffset <= offset) {
+        if (regionHere.endOffsetExclusive > offset) {
+          // offset is in region
+          return regionHere;
+        } else {
+          // region at middle ends before the offset.
+          low = middle + 1;
+        }
+      } else {
+        assert(regionHere.startOffset > offset);
+        // region starts after the offset
+        high = middle - 1;
+      }
+    }
+  }
+}
+
+class RegionInTemporaryDartFile {
+  final int startOffset;
+  final int endOffsetExclusive;
+
+  final AstNode createdForNode;
+  final int startOffsetInNode;
+
+  RegionInTemporaryDartFile(
+      this.startOffset, this.endOffsetExclusive, this.createdForNode,
+      {this.startOffsetInNode = 0});
 }
 
 class _ComponentSanityChecker extends RecursiveVisitor<void, void> {
@@ -262,7 +349,7 @@ class _ComponentSanityChecker extends RecursiveVisitor<void, void> {
 }
 
 class _DartExpressionWriter {
-  final StringBuffer target;
+  final TemporaryDartFile target;
   var _scopeCounter = 0;
   var _variableCounter = 0;
 
@@ -271,7 +358,13 @@ class _DartExpressionWriter {
   void writeVariable(ScopedDartExpression expr) {
     final variable = '$zapPrefix${_variableCounter++}';
     expr.localVariableName = variable;
-    target.writeln('final $variable = ${expr.expression.code};');
+
+    target
+      ..write('final $variable = ')
+      ..startWritingNode(expr.expression)
+      ..write(expr.expression.code)
+      ..finishNode()
+      ..writeln(';');
   }
 
   void start(PreparedVariableScope root) {

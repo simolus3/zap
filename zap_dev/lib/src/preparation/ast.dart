@@ -8,6 +8,8 @@ abstract class AstNode extends SyntacticEntity {
   Token? first, last;
   AstNode? parent;
 
+  bool get hasSpan => first != null && last != null;
+
   @override
   FileSpan get span {
     final start = first;

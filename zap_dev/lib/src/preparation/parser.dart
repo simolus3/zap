@@ -122,6 +122,8 @@ class Parser {
         ..first = langle
         ..last = endOfFirstTag);
     } else if (tagNameContents == 'script' || tagNameContents == 'style') {
+      Token? firstForContent, lastForContent;
+
       // Fast-forward until we see this tag being closed
       final contents = StringBuffer();
       var next = scanner.nextForDom();
@@ -136,14 +138,21 @@ class Parser {
         }
 
         contents.write(next.lexeme);
+        firstForContent ??= next;
+        lastForContent = next;
+
         next = scanner.nextForDom();
       }
 
       scanner
         ..skipWhitespaceInTag()
         ..rightAngle();
-      _finishNode(
-          Element(tagNameContents, attributes, Text(contents.toString())));
+      _finishNode(Element(
+          tagNameContents,
+          attributes,
+          Text(contents.toString())
+            ..first = firstForContent
+            ..last = lastForContent));
     } else {
       _openedNodes.add(_PendingElement(langle, tagName.lexeme, attributes));
     }

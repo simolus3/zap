@@ -7,7 +7,8 @@ import 'dart:async';
 import '../src/core/snapshot.dart';
 import '../src/core/watchable.dart';
 
-export 'package:zap/zap.dart' show ComponentOrPending, ZapSnapshot;
+export 'package:zap/zap.dart'
+    show ComponentOrPending, EmitCustomEvent, ZapSnapshot;
 
 class Property {
   final String? key;
