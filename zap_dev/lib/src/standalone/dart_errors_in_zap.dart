@@ -26,25 +26,20 @@ class MapDartErrorsInZapFile {
       return false;
     }
 
-    if (error.errorCode.name == 'UNUSED_IMPORT' &&
-        error.message.contains('.tmp.zap.api.dart')) {
-      // These imports are added to analyze external components, ignore
-      return false;
-    }
-
-    if (error.errorCode.name == 'UNUSED_LABEL' &&
-        error.message.contains(r"'$'")) {
-      // The `$` label has a meaning in zap
-      return false;
-    }
-
-    if (error.errorCode.name ==
-        'NOT_ASSIGNED_POTENTIALLY_NON_NULLABLE_LOCAL_VARIABLE') {
-      // If this warning refers to a `@prop` variable, it will be initialized.
-      final refersToProperty = component.component.scope.declaredVariables
-          .where((v) => v is DartCodeVariable && v.isProperty)
-          .any((v) => error.message.contains("'${v.element.name}'"));
-      return !refersToProperty;
+    switch (error.errorCode.name) {
+      case 'UNUSED_IMPORT':
+      case 'URI_DOES_NOT_EXIST':
+        // These imports are added to analyze external components, ignore
+        return !error.message.contains('zap');
+      case 'UNUSED_LABEL':
+        // The `$` label has a meaning in zap
+        return !error.message.contains(r"'$'");
+      case 'NOT_ASSIGNED_POTENTIALLY_NON_NULLABLE_LOCAL_VARIABLE':
+        // If this warning refers to a `@prop` variable, it will be initialized.
+        final refersToProperty = component.component.scope.declaredVariables
+            .where((v) => v is DartCodeVariable && v.isProperty)
+            .any((v) => error.message.contains("'${v.element.name}'"));
+        return !refersToProperty;
     }
 
     return true;
