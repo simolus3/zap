@@ -4,6 +4,7 @@ environment:
   sdk: '^2.16.0'
 
 dependencies:
+  web_socket_channel: ^2.1.0
   zap_dev: ^0.1.0
 
 dependency_overrides:
