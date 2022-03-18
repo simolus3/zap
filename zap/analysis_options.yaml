@@ -1,6 +1,10 @@
+# we use this since for the runtime, making best use of Dart's static type system and
+# avoiding things potentially increasing code size is really important.
+# Other packages use `package:lints/recommended.yaml` which isn't nearly as strict.
 include: package:extra_pedantic/analysis_options.yaml
 
 linter:
   rules:
     avoid_catches_without_on_clauses: false # We always rethrow in that case.
+    prefer_final_parameters: false # just no...
 
