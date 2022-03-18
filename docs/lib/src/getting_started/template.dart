@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:html';
 
 import 'package:tar/tar.dart';
+import 'versions.dart' as v;
 
 void downloadExample(String packageName) {
   late List<int> tarFile;
@@ -82,21 +83,17 @@ environment:
   sdk: ^2.16.0
 
 dependencies:
-  zap:
-    hosted: https://simonbinder.eu
-    version: ^0.1.0
+  zap: ^${v.zap}
   riverpod_zap:
     hosted: https://simonbinder.eu
-    version: ^0.1.0
+    version: ^${v.riverpod_zap}
 
 dev_dependencies:
   build_runner: ^2.1.7
   build_web_compilers: ^3.2.2
   lints: ^1.0.1
   webdev: ^2.7.8
-  zap_dev:
-    hosted: https://simonbinder.eu
-    version: ^0.1.0
+  zap_dev: ^${v.zap_dev}
 ''',
     );
   }

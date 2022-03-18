@@ -4,6 +4,11 @@ builders:
     import: 'tool/index_examples.dart'
     builder_factories: ["IndexExamples.new"]
     build_extensions: {'.dart': ['json']}
+  extract_versions:
+    build_to: cache
+    import: 'tool/write_versions.dart'
+    builder_factories: ["WriteVersions.new"]
+    build_extensions: {'pubspec.yaml': ['lib/src/getting_started/versions.dart']}
 
 targets:
   $default:
@@ -22,6 +27,8 @@ targets:
       built_site|sass_builder:
         enabled: false
       "|index_samples":
+        enabled: true
+      "|extract_versions":
         enabled: true
 
 global_options:
