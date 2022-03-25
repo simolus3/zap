@@ -1,6 +1,6 @@
 name: riverpod_zap
 description: Support for `riverpod` in zap components.
-version: 0.1.0
+version: 0.1.1
 homepage: https://simonbinder.eu/zap/
 
 environment:
@@ -8,14 +8,10 @@ environment:
 
 dependencies:
   riverpod: ^2.0.0-dev.0
-  zap:
-    hosted: https://simonbinder.eu/
-    version: ^0.1.0
+  zap: ^0.2.0
   # Note: Even when the root build is happening from another package, zap_dev
   # should be applied to this one.
-  zap_dev:
-    hosted: https://simonbinder.eu/
-    version: ^0.1.0
+  zap_dev: ^0.2.0
 
 dev_dependencies:
   build_runner: ^2.0.0
