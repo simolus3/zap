@@ -89,7 +89,11 @@ abstract class _HideGeneratedBuildResource extends Resource {
   bool isOrContains(String path) => _inner.isOrContains(path);
 
   @override
+  // ignore: deprecated_member_use
   Folder get parent2 => _HideGeneratedBuildFolder(_inner.parent2, _provider);
+
+  @override
+  Folder get parent => _HideGeneratedBuildFolder(_inner.parent, _provider);
 
   @override
   String get path => _inner.path;
