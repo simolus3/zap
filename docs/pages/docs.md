@@ -55,6 +55,7 @@ Any top-level statement can be made reactive by prefixing it with a `$:` label.
 Reactive statements run once as the component initializes, and then again whenever
 the values that they depend on have changed.
 
+```html
 <script>
   import 'dart:html';
 
@@ -68,6 +69,7 @@ the values that they depend on have changed.
 		print(`the current title is ${title}`);
 	}
 </script>
+```
 
 Only variables that directly apear within the `$:` block will become dependencies of
 the reactive statement. Variables that might be used in called methods are not considered,
@@ -79,6 +81,7 @@ A script tag with a `context="library"` attribute can be used to define Dart cod
 bound to the component. It can be used to define classes or global fields.
 Variables defined in this script are not reactive.
 
+```html
 <script context="library">
 	var totalComponents = 0;
 
@@ -92,6 +95,7 @@ Variables defined in this script are not reactive.
 	totalComponents += 1;
 	print('total number of times this component has been created: $totalComponents');
 </script>
+```
 
 ### `<style>`
 

@@ -1355,6 +1355,7 @@ class _DartTypeWriter extends TypeVisitor<void> {
         }
 
         arg.accept(this);
+        i++;
       }
       buffer.write('>');
     }

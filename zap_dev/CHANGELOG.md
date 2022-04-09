@@ -1,3 +1,8 @@
+## 0.2.1
+
+- Fix syntax errors in generated code when a class uses more than one type
+  argument.
+
 ## 0.2.0
 
 - Members defined in a `<script context="module">` tag are now visible to
