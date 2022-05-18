@@ -5,7 +5,7 @@ Documentation for `zap`, of course built with `build_runner`.
 To view a dev build locally, run
 
 ```
-dart run webdev serve pages:9999 web:8080 --auto refresh
+dart pub global run webdev serve pages:9999 web:8080 --auto refresh
 ```
 
 and visit `http://localhost:8080`.
@@ -15,11 +15,11 @@ https://account.mapbox.com.
 You can then run the build with
 
 ```
-dart run webdev serve pages:9999 web:8080 --auto refresh -- '--define=build_web_compilers|ddc=environment={"MAPBOX_TOKEN": "your token"}'
+dart pub global run webdev serve pages:9999 web:8080 --auto refresh -- '--define=build_web_compilers|ddc=environment={"MAPBOX_TOKEN": "your token"}'
 ```
 
 To build the documentation as a static website, run
 
 ```
-dart run webdev build --release -o
+dart pub global run webdev build --release -o web:build
 ```

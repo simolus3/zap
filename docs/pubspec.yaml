@@ -11,6 +11,8 @@ dependencies:
     hosted: https://simonbinder.eu
   tar: ^0.5.2
   riverpod_zap:
+    version: ^0.1.1
+    hosted: https://simonbinder.eu
   zap:
 
 dev_dependencies:
@@ -21,7 +23,7 @@ dev_dependencies:
 #  webdev: ^2.7.8
   zap_dev:
   built_site:
-    version: ^0.2.5
+    version: ^0.2.8
     hosted: https://simonbinder.eu
 
 dependency_overrides:

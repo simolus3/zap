@@ -24,11 +24,11 @@ targets:
       - "website.yaml"
     builders:
       # Use the sass builder that comes with zap_dev, it's more efficient.
-      built_site|sass_builder:
+      built_site:sass_builder:
         enabled: false
-      "|index_samples":
+      ":index_samples":
         enabled: true
-      "|extract_versions":
+      ":extract_versions":
         enabled: true
 
 global_options:
