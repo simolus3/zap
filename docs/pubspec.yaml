@@ -23,7 +23,7 @@ dev_dependencies:
 #  webdev: ^2.7.8
   zap_dev:
   built_site:
-    version: ^0.2.8
+    version: ^0.2.9
     hosted: https://simonbinder.eu
 
 dependency_overrides:
