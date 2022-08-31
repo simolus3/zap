@@ -102,8 +102,8 @@ class ResolvedDomTypes {
   /// Extracts known elements and events from the resolved `dart:html` library.
   void _readKnownInformation() {
     final typeSystem = dartHtml.typeSystem;
-    final baseEventProvider = typeSystem.instantiateToBounds2(
-      classElement: _class('EventStreamProvider'),
+    final baseEventProvider = typeSystem.instantiateInterfaceToBounds(
+      element: _class('EventStreamProvider'),
       nullabilitySuffix: NullabilitySuffix.none,
     );
 
@@ -132,7 +132,7 @@ class ResolvedDomTypes {
         knownEvents[name] = DomEventType(
           '${element.name}.${field.name}',
           type.typeArguments.single as InterfaceType? ??
-              event.element.instantiate(
+              event.element2.instantiate(
                   typeArguments: const [],
                   nullabilitySuffix: NullabilitySuffix.none),
         );
@@ -147,7 +147,7 @@ class ResolvedDomTypes {
   }
 
   ClassElement _class(String name) {
-    return dartHtml.getType(name)!;
+    return dartHtml.getClass(name)!;
   }
 
   InterfaceType _nonNullableWithoutTypeParameters(String name) {

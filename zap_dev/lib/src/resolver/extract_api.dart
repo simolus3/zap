@@ -36,7 +36,7 @@ class _ApiInferrer extends RecursiveAstVisitor<void> {
 
   @override
   void visitVariableDeclaration(VariableDeclaration declaration) {
-    final element = declaration.declaredElement;
+    final element = declaration.declaredElement2;
 
     if (element is LocalVariableElement) {
       if (isProp(element)) {

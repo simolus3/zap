@@ -31,10 +31,10 @@ class Resolver {
   final ErrorReporter errorReporter;
   final String componentName;
 
-  final _ScopeInformation scope;
+  final _ScopeInformation _scope;
   final List<ExternalComponent> components = [];
   late final TypeChecker checker;
-  late final _AnalyzeVariablesAndScopes dartAnalysis;
+  late final _AnalyzeVariablesAndScopes _dartAnalysis;
 
   TypeProvider get typeProvider => preparedLibrary.typeProvider;
   TypeSystem get typeSystem => preparedLibrary.typeSystem;
@@ -45,21 +45,21 @@ class Resolver {
     this.preparedUnit,
     this.errorReporter,
     this.componentName,
-  ) : scope = _ScopeInformation(prepare.rootScope);
+  ) : _scope = _ScopeInformation(prepare.rootScope);
 
   Future<ResolvedComponent> resolve(DartResolver resolver) async {
     checker = await TypeChecker.checkerFor(
         typeProvider, typeSystem, errorReporter, resolver);
     await _findExternalComponents(resolver);
-    dartAnalysis = _AnalyzeVariablesAndScopes(this);
+    _dartAnalysis = _AnalyzeVariablesAndScopes(this);
 
     // Create resolved scopes and variables
-    preparedUnit.accept(dartAnalysis);
+    preparedUnit.accept(_dartAnalysis);
 
     final translator = _DomTranslator(this);
     prepare.component.accept(translator, null);
     final rootFragment = DomFragment(
-        translator._finishChildGroup().children, scope.resolvedRootScope);
+        translator._finishChildGroup().children, _scope.resolvedRootScope);
 
     final component =
         _FindComponents(this, rootFragment, prepare.slots).inferComponent();
@@ -80,14 +80,14 @@ class Resolver {
       }
     }
 
-    _assignUpdateFlags(scope.scopes[scope.root]!);
+    _assignUpdateFlags(_scope.scopes[_scope.root]!);
     return ResolvedComponent(
       componentName,
       component,
       prepare.cssClassName,
       preparedLibrary,
       preparedUnit,
-      dartAnalysis.userDefinedFunctions,
+      _dartAnalysis.userDefinedFunctions,
       Optimizer(component).optimize(),
     );
   }
@@ -228,8 +228,8 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
   final List<FunctionElement> userDefinedFunctions = [];
 
   _AnalyzeVariablesAndScopes(this.resolver)
-      : scopes = resolver.scope,
-        scope = resolver.scope.root;
+      : scopes = resolver._scope,
+        scope = resolver._scope.root;
 
   ZapVariableScope get zapScope => scopes.scopes[scope]!;
 
@@ -262,7 +262,7 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
       final declaration = body.block.statements
           .whereType<VariableDeclarationStatement>()
           .firstWhere((element) {
-        return element.variables.variables.any((v) => v.name.name == name);
+        return element.variables.variables.any((v) => v.name2.lexeme == name);
       });
 
       final initializer = declaration.variables.variables.single.initializer!;
@@ -287,9 +287,9 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
     final parent = node.parent;
 
     if (parent is FunctionDeclaration) {
-      final element = parent.declaredElement;
+      final element = parent.declaredElement2;
 
-      if (parent.name.name.startsWith(zapPrefix)) {
+      if (parent.name2.lexeme.startsWith(zapPrefix)) {
         if (!_isInRootZapFunction) {
           scopes.scopes[scope] = ZapVariableScope(parent);
 
@@ -309,7 +309,7 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
 
           // This function introduces a new scope for a nested block.
           final child = scope.children
-              .singleWhere((e) => e.blockName == parent.name.name);
+              .singleWhere((e) => e.blockName == parent.name2.lexeme);
 
           scope = child;
 
@@ -357,7 +357,7 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
       return super.visitVariableDeclaration(node);
     }
 
-    if (node.name.name.startsWith(zapPrefix)) {
+    if (node.name2.lexeme.startsWith(zapPrefix)) {
       // Artificial variable inserted to analyze inline expression from the DOM
       // tree.
       final old = _isInReactiveRead;
@@ -367,7 +367,7 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
 
       _isInReactiveRead = old;
     } else {
-      final resolved = node.declaredElement;
+      final resolved = node.declaredElement2;
 
       if (resolved is LocalVariableElement) {
         final currentScope = scope;
@@ -498,7 +498,7 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
 
   final Resolver resolver;
 
-  ZapVariableScope get scope => resolver.scope.scopes[preparedScope]!;
+  ZapVariableScope get scope => resolver._scope.scopes[preparedScope]!;
 
   final List<PreparedVariableScope> _variableScopes;
   final List<_PendingChildren> _childScopes = [_PendingChildren()];
@@ -509,10 +509,10 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
 
   PreparedVariableScope get preparedScope => _variableScopes.last;
 
-  _DomTranslator(this.resolver) : _variableScopes = [resolver.scope.root];
+  _DomTranslator(this.resolver) : _variableScopes = [resolver._scope.root];
 
   ResolvedDartExpression _resolveExpression(zap.RawDartExpression expr) {
-    return resolver.dartAnalysis._resolveExpression(expr);
+    return resolver._dartAnalysis._resolveExpression(expr);
   }
 
   void _newChildGroup([_PendingChildren? children]) {
@@ -661,7 +661,7 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
               attribute.value?.span));
           continue;
         }
-        final zapTarget = resolver.scope.variables[target.staticElement];
+        final zapTarget = resolver._scope.variables[target.staticElement];
         if (zapTarget is! DartCodeVariable) continue;
 
         zapTarget.isMutable = true;
@@ -844,7 +844,7 @@ class _DomTranslator extends zap.AstVisitor<void, void> {
 
   @override
   void visitDartExpression(zap.DartExpression e, void arg) {
-    final expr = resolver.dartAnalysis._resolveExpression(e.code);
+    final expr = resolver._dartAnalysis._resolveExpression(e.code);
 
     // Tell the generator to add a .toString() call if this expression isn't a
     // string already.
@@ -875,7 +875,7 @@ class _FindComponents {
   _FindComponents(this.resolver, this.root, this.usedSlots);
 
   Component inferComponent() {
-    final rootScope = resolver.scope.scopes[resolver.scope.root]!;
+    final rootScope = resolver._scope.scopes[resolver._scope.root]!;
     final variables = {
       for (final variable in rootScope.declaredVariables)
         variable.element: variable,
@@ -945,7 +945,7 @@ class _FindComponents {
           initializers.add(InitializeStatement(stmt, null));
         }
       } else if (stmt is FunctionDeclarationStatement) {
-        if (!stmt.functionDeclaration.name.name.startsWith(zapPrefix)) {
+        if (!stmt.functionDeclaration.name2.lexeme.startsWith(zapPrefix)) {
           functions.add(stmt);
         }
       } else {
@@ -955,10 +955,10 @@ class _FindComponents {
           // Filter out __zap__var_1 variables that have only been created to
           // analyze expressions used in the DOM.
           for (final variable in stmt.variables.variables) {
-            if (variable.name.name.startsWith(zapPrefix)) {
+            if (variable.name2.lexeme.startsWith(zapPrefix)) {
               continue outer;
             }
-            final zapVariable = variables[variable.declaredElement];
+            final zapVariable = variables[variable.declaredElement2];
             if (zapVariable is DartCodeVariable) {
               initialized = zapVariable;
 
@@ -1224,7 +1224,7 @@ class ResolvedComponent {
     return _resolvedTmpUnit.declarations.where((e) {
       // Exclude synthetic nodes we only use for static analysis.
       if (e is NamedCompilationUnitMember) {
-        return !e.name.name.startsWith(zapPrefix);
+        return !e.name2.lexeme.startsWith(zapPrefix);
       }
 
       return true;

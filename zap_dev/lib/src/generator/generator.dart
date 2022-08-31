@@ -1343,7 +1343,7 @@ class _DartTypeWriter extends TypeVisitor<void> {
     if (alias != null) {
       _writeElement(alias.element, alias.element.name);
     } else {
-      _writeElement(type.element, type.element.name);
+      _writeElement(type.element2, type.element2.name);
     }
 
     if (type.typeArguments.isNotEmpty) {
@@ -1371,7 +1371,7 @@ class _DartTypeWriter extends TypeVisitor<void> {
 
   @override
   void visitTypeParameterType(TypeParameterType type) {
-    buffer.write(type.element.name);
+    buffer.write(type.element2.name);
     _writeSuffix(type.nullabilitySuffix);
   }
 
@@ -1606,8 +1606,8 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
         _replaceRange(node.offset, 0, '$importPrefix.');
       } else if (target is ExecutableElement &&
           !target.isStatic &&
-          target.enclosingElement is ExtensionElement) {
-        final extension = target.enclosingElement as ExtensionElement;
+          target.enclosingElement3 is ExtensionElement) {
+        final extension = target.enclosingElement3 as ExtensionElement;
         final name = extension.name;
 
         // Target is from an extension, import that extension without an alias

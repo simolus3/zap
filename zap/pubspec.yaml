@@ -14,7 +14,7 @@ dev_dependencies:
   build_runner: ^2.1.5
   build_test: ^2.1.4
   build_web_compilers: ^3.2.1
-  extra_pedantic: ^2.0.0
+  extra_pedantic: ^3.0.0
   test: ^1.16.0
   zap_dev:
 

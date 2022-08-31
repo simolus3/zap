@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:analyzer/dart/analysis/analysis_context.dart';
 import 'package:analyzer/file_system/file_system.dart';
+import 'package:analyzer/file_system/physical_file_system.dart';
 import 'package:analyzer_plugin/plugin/plugin.dart';
 import 'package:analyzer_plugin/protocol/protocol_common.dart' as plugin;
 import 'package:analyzer_plugin/protocol/protocol_generated.dart' as plugin;
@@ -17,7 +19,8 @@ class ZapPlugin extends ServerPlugin {
 
   StreamSubscription? _workerSubscription;
 
-  ZapPlugin([ResourceProvider? provider]) : super(provider) {
+  ZapPlugin([ResourceProvider? provider])
+      : super(resourceProvider: provider ?? PhysicalResourceProvider.INSTANCE) {
     _workerSubscription = _worker.analyzedFiles.listen(sendErrorsNotification);
   }
 
@@ -34,14 +37,6 @@ class ZapPlugin extends ServerPlugin {
   String? get contactInfo => 'https://github.com/simolus3/zap/issues/new';
 
   @override
-  Never createAnalysisDriver(contextRoot) {
-    // analysis drivers are an outdated API, but the plugin interface wants us
-    // to provide this method. We manually keep track of newer analysis contexts
-    // instead, those are much easier to use.
-    throw UnsupportedError('not used');
-  }
-
-  @override
   Future<plugin.PluginShutdownResult> handlePluginShutdown(
       plugin.PluginShutdownParams parameters) async {
     await _workerSubscription?.cancel();
@@ -49,13 +44,31 @@ class ZapPlugin extends ServerPlugin {
   }
 
   @override
-  void contentChanged(String path) {
+  Future<void> contentChanged(List<String> paths) {
+    final pendingWork = <Future>[];
+
+    for (final path in paths) {
+      final file = _worker.file(path);
+      if (file is ZapFile) {
+        file.state = ZapFileState.dirty;
+
+        // Schedule for an analysis round.
+        pendingWork.add(_worker.analyze(file));
+      }
+    }
+
+    return Future.wait(pendingWork);
+  }
+
+  @override
+  Future<void> analyzeFile(
+      {required AnalysisContext analysisContext, required String path}) async {
     final file = _worker.file(path);
     if (file is ZapFile) {
       file.state = ZapFileState.dirty;
 
       // Schedule for an analysis round.
-      _worker.analyze(file);
+      await _worker.analyze(file);
     }
   }
 

@@ -85,7 +85,7 @@ Iterable<Uri> additionalZapExports(
     if (value == null) continue;
 
     final type = value.type;
-    if (type is! InterfaceType || type.element.name != 'pragma') {
+    if (type is! InterfaceType || type.element2.name != 'pragma') {
       continue;
     }
 
@@ -106,7 +106,7 @@ Iterable<DartObject> _findDslAnnotations(Element element, String className) {
     final type = value.type;
     if (type is! InterfaceType) return null;
 
-    final backingClass = type.element;
+    final backingClass = type.element2;
     if (backingClass.name == className &&
         backingClass.library.name == _dslLibrary) {
       return value;
@@ -174,7 +174,7 @@ String rewriteUri(String uri, ImportRewriteMode rewriteMode) {
       // Rewrite *.tmp.zap.api.dart to *.zap.dart
       const suffix = '.tmp.zap.api.dart';
       if (p.extension(uri, 4) == suffix) {
-        return uri.substring(0, uri.length - suffix.length) + '.zap.dart';
+        return '${uri.substring(0, uri.length - suffix.length)}.zap.dart';
       }
   }
 

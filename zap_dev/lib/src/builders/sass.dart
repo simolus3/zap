@@ -105,7 +105,7 @@ class _BuildImporter extends sass.AsyncImporter {
     }
 
     final pathWithUnderscore =
-        p.url.join(p.url.dirname(id.path) + '/_${p.url.basename(id.path)}');
+        p.url.join('${p.url.dirname(id.path)}/_${p.url.basename(id.path)}');
     final withUnderscore = AssetId(id.package, pathWithUnderscore);
     if (await _reader.canRead(withUnderscore)) {
       return withUnderscore;

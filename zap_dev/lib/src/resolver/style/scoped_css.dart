@@ -1,7 +1,6 @@
 // ignore_for_file: implementation_imports
 
 import 'package:sass_api/sass_api.dart' as sass;
-import 'package:sass/src/ast/selector.dart' as sass;
 import 'package:sass/src/visitor/serialize.dart' as sass;
 import 'package:path/path.dart' show url;
 
@@ -30,7 +29,7 @@ String componentScss(String original, String className, List<String> imports) {
   return result.toString();
 }
 
-class _AddExplicitClasses extends sass.RecursiveStatementVisitor {
+class _AddExplicitClasses with sass.RecursiveStatementVisitor {
   String source;
   final String classToAdd;
 
@@ -63,35 +62,36 @@ class _AddExplicitClasses extends sass.RecursiveStatementVisitor {
       // Each component in here is either a compound selector (`h3.foo`) or a
       // combinator (`+', `~`, `>`).
       for (final component in sequence.components) {
-        if (component is sass.CompoundSelector) {
-          var didAddSelector = false;
+        var didAddSelector = false;
+        final selector = component.selector;
 
-          for (var i = 0; i < component.components.length; i++) {
-            final simpleComponent = component.components[i];
+        for (var i = 0; i < selector.components.length; i++) {
+          final simpleComponent = selector.components[i];
 
-            if (simpleComponent is sass.UniversalSelector) {
-              // We can just replace the `*` with the class name and we're done.
+          if (simpleComponent is sass.UniversalSelector) {
+            // We can just replace the `*` with the class name and we're done.
+            result.write('.$classToAdd');
+            didAddSelector = true;
+          } else {
+            if (simpleComponent is sass.PseudoSelector) {
+              // Prefer to write the class name before pseudo-selectors.
               result.write('.$classToAdd');
               didAddSelector = true;
-            } else {
-              if (simpleComponent is sass.PseudoSelector) {
-                // Prefer to write the class name before pseudo-selectors.
-                result.write('.$classToAdd');
-                didAddSelector = true;
-              }
-
-              result.write(sass.serializeSelector(simpleComponent));
             }
-          }
 
-          // If we didn't find a suitable place yet, just emit the selector
-          // at the end.
-          if (!didAddSelector) {
-            result.write('.$classToAdd');
+            result.write(sass.serializeSelector(simpleComponent));
           }
-        } else if (component is sass.Combinator) {
+        }
+
+        // If we didn't find a suitable place yet, just emit the selector
+        // at the end.
+        if (!didAddSelector) {
+          result.write('.$classToAdd');
+        }
+
+        for (final combinator in component.combinators) {
           // Nothing to transform, just write the combinator.
-          result.write(component);
+          result.write(combinator);
         }
       }
 
