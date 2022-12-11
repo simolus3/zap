@@ -2,7 +2,8 @@ import 'dart:html';
 
 import 'package:test/test.dart';
 import 'package:zap/zap.dart';
-import 'package:riverpod/src/provider.dart' show RiverpodBinding;
+// ignore_for_file: invalid_use_of_internal_member
+import 'package:riverpod/src/devtool.dart' show RiverpodBinding;
 
 import 'components/default-scope.zap.dart';
 import 'components/overrides.zap.dart';
