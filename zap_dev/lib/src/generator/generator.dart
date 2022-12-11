@@ -1343,7 +1343,7 @@ class _DartTypeWriter extends TypeVisitor<void> {
     if (alias != null) {
       _writeElement(alias.element, alias.element.name);
     } else {
-      _writeElement(type.element2, type.element2.name);
+      _writeElement(type.element, type.element.name);
     }
 
     if (type.typeArguments.isNotEmpty) {
@@ -1370,8 +1370,13 @@ class _DartTypeWriter extends TypeVisitor<void> {
   }
 
   @override
+  void visitRecordType(RecordType type) {
+    throw UnsupportedError('Record types not currently supported');
+  }
+
+  @override
   void visitTypeParameterType(TypeParameterType type) {
-    buffer.write(type.element2.name);
+    buffer.write(type.element.name);
     _writeSuffix(type.nullabilitySuffix);
   }
 
@@ -1530,6 +1535,68 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
     }
   }
 
+  void _patchIdentifier(SyntacticEntity entity, Element? target) {
+    final targetLibrary = target?.library;
+
+    if (targetLibrary != generator.component.resolvedTmpLibrary) {
+      // Referencing an element from an import, add necessary import prefix.
+      final isTopLevel = targetLibrary != null &&
+          targetLibrary.topLevelElements.contains(target);
+
+      if (isTopLevel) {
+        final importPrefix = generator.imports.importForLibrary(targetLibrary);
+        _replaceRange(entity.offset, 0, '$importPrefix.');
+      } else if (target is ExecutableElement &&
+          !target.isStatic &&
+          target.enclosingElement is ExtensionElement) {
+        final extension = target.enclosingElement as ExtensionElement;
+        final name = extension.name;
+
+        // Target is from an extension, import that extension without an alias
+        // so that the extension invocation continues to work.
+        if (name != null) {
+          generator.imports.importWithoutAlias(extension.library, name);
+        }
+      }
+      return;
+    }
+
+    final variable = _variableFor(target);
+
+    if (variable is SelfReference) {
+      // Inside the main component, we can replace `self` with `this`. In
+      // inner components, we have to walk the parent.
+
+      if (patchSelf) {
+        if (rootScope == scope) {
+          _replaceNode(entity, 'this');
+        } else {
+          final prefix = _prefixFor(rootScope, trailingDot: false);
+          _replaceNode(entity, prefix);
+        }
+      }
+    } else if (target is FunctionElement &&
+        generator.component.userDefinedFunctions.contains(target)) {
+      final newName = generator._nameForFunction(target);
+      final prefix = _prefixFor(rootScope);
+
+      _replaceNode(entity, '$prefix$newName');
+    } else if (variable != null) {
+      final prefix = _prefixFor(variable.scope);
+      final name = generator._nameForVar(variable);
+
+      final replacement = '$prefix$name /* ${target?.name} */';
+      _replaceNode(entity, replacement);
+    }
+  }
+
+  @override
+  void visitFunctionDeclaration(FunctionDeclaration node) {
+    node.returnType?.accept(this);
+    _patchIdentifier(node.name, node.declaredElement);
+    node.functionExpression.accept(this);
+  }
+
   @override
   void visitMethodInvocation(MethodInvocation node) {
     if (isWatchFunctionFromDslLibrary(node.methodName)) {
@@ -1606,8 +1673,8 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
         _replaceRange(node.offset, 0, '$importPrefix.');
       } else if (target is ExecutableElement &&
           !target.isStatic &&
-          target.enclosingElement3 is ExtensionElement) {
-        final extension = target.enclosingElement3 as ExtensionElement;
+          target.enclosingElement is ExtensionElement) {
+        final extension = target.enclosingElement as ExtensionElement;
         final name = extension.name;
 
         // Target is from an extension, import that extension without an alias

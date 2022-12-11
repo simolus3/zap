@@ -262,7 +262,7 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
       final declaration = body.block.statements
           .whereType<VariableDeclarationStatement>()
           .firstWhere((element) {
-        return element.variables.variables.any((v) => v.name2.lexeme == name);
+        return element.variables.variables.any((v) => v.name.lexeme == name);
       });
 
       final initializer = declaration.variables.variables.single.initializer!;
@@ -287,9 +287,9 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
     final parent = node.parent;
 
     if (parent is FunctionDeclaration) {
-      final element = parent.declaredElement2;
+      final element = parent.declaredElement;
 
-      if (parent.name2.lexeme.startsWith(zapPrefix)) {
+      if (parent.name.lexeme.startsWith(zapPrefix)) {
         if (!_isInRootZapFunction) {
           scopes.scopes[scope] = ZapVariableScope(parent);
 
@@ -309,7 +309,7 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
 
           // This function introduces a new scope for a nested block.
           final child = scope.children
-              .singleWhere((e) => e.blockName == parent.name2.lexeme);
+              .singleWhere((e) => e.blockName == parent.name.lexeme);
 
           scope = child;
 
@@ -357,7 +357,7 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
       return super.visitVariableDeclaration(node);
     }
 
-    if (node.name2.lexeme.startsWith(zapPrefix)) {
+    if (node.name.lexeme.startsWith(zapPrefix)) {
       // Artificial variable inserted to analyze inline expression from the DOM
       // tree.
       final old = _isInReactiveRead;
@@ -367,7 +367,7 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
 
       _isInReactiveRead = old;
     } else {
-      final resolved = node.declaredElement2;
+      final resolved = node.declaredElement;
 
       if (resolved is LocalVariableElement) {
         final currentScope = scope;
@@ -945,7 +945,7 @@ class _FindComponents {
           initializers.add(InitializeStatement(stmt, null));
         }
       } else if (stmt is FunctionDeclarationStatement) {
-        if (!stmt.functionDeclaration.name2.lexeme.startsWith(zapPrefix)) {
+        if (!stmt.functionDeclaration.name.lexeme.startsWith(zapPrefix)) {
           functions.add(stmt);
         }
       } else {
@@ -955,10 +955,10 @@ class _FindComponents {
           // Filter out __zap__var_1 variables that have only been created to
           // analyze expressions used in the DOM.
           for (final variable in stmt.variables.variables) {
-            if (variable.name2.lexeme.startsWith(zapPrefix)) {
+            if (variable.name.lexeme.startsWith(zapPrefix)) {
               continue outer;
             }
-            final zapVariable = variables[variable.declaredElement2];
+            final zapVariable = variables[variable.declaredElement];
             if (zapVariable is DartCodeVariable) {
               initialized = zapVariable;
 
@@ -1224,7 +1224,7 @@ class ResolvedComponent {
     return _resolvedTmpUnit.declarations.where((e) {
       // Exclude synthetic nodes we only use for static analysis.
       if (e is NamedCompilationUnitMember) {
-        return !e.name2.lexeme.startsWith(zapPrefix);
+        return !e.name.lexeme.startsWith(zapPrefix);
       }
 
       return true;

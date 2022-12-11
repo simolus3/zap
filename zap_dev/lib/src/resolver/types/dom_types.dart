@@ -132,7 +132,7 @@ class ResolvedDomTypes {
         knownEvents[name] = DomEventType(
           '${element.name}.${field.name}',
           type.typeArguments.single as InterfaceType? ??
-              event.element2.instantiate(
+              event.element.instantiate(
                   typeArguments: const [],
                   nullabilitySuffix: NullabilitySuffix.none),
         );

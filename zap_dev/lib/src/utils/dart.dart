@@ -85,7 +85,7 @@ Iterable<Uri> additionalZapExports(
     if (value == null) continue;
 
     final type = value.type;
-    if (type is! InterfaceType || type.element2.name != 'pragma') {
+    if (type is! InterfaceType || type.element.name != 'pragma') {
       continue;
     }
 
@@ -106,7 +106,7 @@ Iterable<DartObject> _findDslAnnotations(Element element, String className) {
     final type = value.type;
     if (type is! InterfaceType) return null;
 
-    final backingClass = type.element2;
+    final backingClass = type.element;
     if (backingClass.name == className &&
         backingClass.library.name == _dslLibrary) {
       return value;

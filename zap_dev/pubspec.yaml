@@ -7,8 +7,7 @@ environment:
   sdk: '>=2.15.0 <3.0.0'
 
 dependencies:
-  analyzer: ^4.1.0
-  analyzer_plugin: ^0.11.0
+  analyzer: ^5.3.1
   args: ^2.3.0
   build: ^2.1.1
   build_version: ^2.1.0
@@ -19,8 +18,8 @@ dependencies:
   path: ^1.8.0
   pool: ^1.5.0
   recase: ^4.0.0
-  sass_api: ^3.0.0
-  sass: ^1.49.7
+  sass_api: ^4.1.2
+  sass: ^1.56.2
   source_span: ^1.8.1
   stack_trace: ^1.10.0
   watcher: ^1.0.1
