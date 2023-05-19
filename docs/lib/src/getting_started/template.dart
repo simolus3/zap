@@ -92,15 +92,15 @@ dev_dependencies:
   build_runner: ^2.1.7
   build_web_compilers: ^4.0.0
   sass_builder: ^2.2.1
-  lints: ^1.0.1
+  lints: ^2.1.0
   zap_dev: ^${v.zap_dev}
 ''',
     );
   }
 
   SynchronousTarEntry get analysisOptions {
-    return _entry('analysis_options.yaml',
-        'include: package:lints/analysis_options.yaml\n');
+    return _entry(
+        'analysis_options.yaml', 'include: package:lints/recommended.yaml\n');
   }
 
   SynchronousTarEntry get readme {
