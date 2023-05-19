@@ -1,7 +1,10 @@
-# we use this since for the runtime, making best use of Dart's static type system and
-# avoiding things potentially increasing code size is really important.
-# Other packages use `package:lints/recommended.yaml` which isn't nearly as strict.
-include: package:extra_pedantic/analysis_options.yaml
+include: package:lints/recommended.yaml
+
+analyzer:
+  language:
+    strict-inference: true
+    strict-raw-types: true
+    strict-casts: true
 
 linter:
   rules:
