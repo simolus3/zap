@@ -7,4 +7,3 @@ linter:
   rules:
     avoid_catches_without_on_clauses: false # We always rethrow in that case.
     prefer_final_parameters: false # just no...
-

@@ -1239,7 +1239,7 @@ class _SubComponentWriter extends _ComponentOrSubcomponentWriter {
 
 /// A writer for Dart types that automatically adds the right imports for all
 /// types.
-class _DartTypeWriter extends TypeVisitor<void> {
+class _DartTypeWriter extends UnifyingTypeVisitor<void> {
   final Generator generator;
   final StringBuffer buffer;
 
@@ -1264,6 +1264,11 @@ class _DartTypeWriter extends TypeVisitor<void> {
     }
 
     buffer.write(name);
+  }
+
+  @override
+  void visitDartType(DartType type) {
+    // Unhandled type
   }
 
   @override
@@ -1364,6 +1369,12 @@ class _DartTypeWriter extends TypeVisitor<void> {
   }
 
   @override
+  void visitInvalidType(InvalidType type) {
+    buffer.write('dynamic');
+    _writeSuffix(type.nullabilitySuffix);
+  }
+
+  @override
   void visitNeverType(NeverType type) {
     buffer.write('Never');
     _writeSuffix(type.nullabilitySuffix);
@@ -1371,7 +1382,37 @@ class _DartTypeWriter extends TypeVisitor<void> {
 
   @override
   void visitRecordType(RecordType type) {
-    throw UnsupportedError('Record types not currently supported');
+    buffer.write('(');
+    var first = true;
+
+    for (final field in type.positionalFields) {
+      if (!first) {
+        buffer.write(', ');
+      }
+      first = false;
+
+      field.type.accept(this);
+    }
+
+    if (type.namedFields.isNotEmpty) {
+      buffer.write('{');
+      first = true;
+      for (final field in type.namedFields) {
+        if (!first) {
+          buffer.write(', ');
+        }
+        first = false;
+
+        field.type.accept(this);
+        buffer
+          ..write(' ')
+          ..write(field.name);
+      }
+      buffer.write('}');
+    }
+
+    buffer.write(')');
+    _writeSuffix(type.nullabilitySuffix);
   }
 
   @override

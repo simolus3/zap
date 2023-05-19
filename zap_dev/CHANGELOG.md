@@ -1,3 +1,7 @@
+## 0.2.2
+
+- Compatibility with the latest analyzer package.
+
 ## 0.2.1
 
 - Fix syntax errors in generated code when a class uses more than one type

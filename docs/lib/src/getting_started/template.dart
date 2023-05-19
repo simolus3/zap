@@ -80,7 +80,7 @@ publish_to: none
 version: 0.1.0
 
 environment:
-  sdk: ^2.16.0
+  sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
   zap: ^${v.zap}
@@ -90,9 +90,9 @@ dependencies:
 
 dev_dependencies:
   build_runner: ^2.1.7
-  build_web_compilers: ^3.2.2
+  build_web_compilers: ^4.0.0
+  sass_builder: ^2.2.1
   lints: ^1.0.1
-  webdev: ^2.7.8
   zap_dev: ^${v.zap_dev}
 ''',
     );
@@ -113,7 +113,7 @@ A simple web project based on zap.
 
 ## Running and deploying
 
-To run this project, run `dart run webdev serve --auto refresh`.
+To run this project, run `dart run build_runner serve --live-reload`.
 
 To build this project, simply run `dart run webdev build`.
 

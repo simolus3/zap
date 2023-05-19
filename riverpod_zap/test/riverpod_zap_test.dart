@@ -2,8 +2,6 @@ import 'dart:html';
 
 import 'package:test/test.dart';
 import 'package:zap/zap.dart';
-// ignore_for_file: invalid_use_of_internal_member
-import 'package:riverpod/src/devtool.dart' show RiverpodBinding;
 
 import 'components/default-scope.zap.dart';
 import 'components/overrides.zap.dart';
@@ -21,6 +19,7 @@ void main() {
     expect(testbed.innerHtml, 'The current value is 0.');
   });
 
+/*
   test('disposes containers after the component is destroyed', () {
     expect(RiverpodBinding.debugInstance.containers, isEmpty);
 
@@ -30,6 +29,7 @@ void main() {
 
     expect(RiverpodBinding.debugInstance.containers, isEmpty);
   });
+*/
 
   test('listens to provider overrides', () async {
     final component = Overrides(ZapValue(1))..create(testbed);

@@ -1,13 +1,13 @@
 name: zap_dev
 description: Developer tooling for `zap`, a reactive web framework.
-version: 0.2.1
+version: 0.2.2
 homepage: https://simonbinder.eu/zap/
 
 environment:
   sdk: '>=2.15.0 <3.0.0'
 
 dependencies:
-  analyzer: ^5.3.1
+  analyzer: ^5.12.0
   args: ^2.3.0
   build: ^2.1.1
   build_version: ^2.1.0
@@ -18,8 +18,8 @@ dependencies:
   path: ^1.8.0
   pool: ^1.5.0
   recase: ^4.0.0
-  sass_api: ^4.1.2
-  sass: ^1.56.2
+  sass_api: ^7.0.0
+  sass: ^1.62.1
   source_span: ^1.8.1
   stack_trace: ^1.10.0
   watcher: ^1.0.1
