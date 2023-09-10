@@ -9,7 +9,7 @@ dependencies:
   picocss:
     version: ^1.5.10
     hosted: https://simonbinder.eu
-  tar: ^0.5.2
+  tar: ^1.0.0
   riverpod_zap:
     version: ^0.1.1
     hosted: https://simonbinder.eu

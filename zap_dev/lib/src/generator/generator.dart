@@ -1702,7 +1702,14 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
 
   @override
   void visitNamedType(NamedType node) {
+    final prefix = node.importPrefix;
+    if (prefix != null) {
+      // patchIdentifier will add the right identifier if needed.
+      _replaceNode(prefix, '');
+    }
     _patchIdentifier(node.name2, node.element);
+
+    node.typeArguments?.accept(this);
   }
 
   @override
