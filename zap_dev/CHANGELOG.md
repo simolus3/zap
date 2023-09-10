@@ -1,4 +1,4 @@
-## 0.2.3
+## 0.2.3+1
 
 - Support the latest versions of all dependencies
 

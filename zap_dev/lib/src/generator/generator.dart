@@ -1701,58 +1701,12 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
   }
 
   @override
+  void visitNamedType(NamedType node) {
+    _patchIdentifier(node.name2, node.element);
+  }
+
+  @override
   void visitSimpleIdentifier(SimpleIdentifier node) {
-    final target = node.staticElement;
-    final targetLibrary = target?.library;
-    if (targetLibrary != generator.component.resolvedTmpLibrary) {
-      // Referencing an element from an import, add necessary import prefix.
-      final isTopLevel = targetLibrary != null &&
-          targetLibrary.topLevelElements.contains(target);
-
-      if (isTopLevel) {
-        final importPrefix = generator.imports.importForLibrary(targetLibrary);
-        _replaceRange(node.offset, 0, '$importPrefix.');
-      } else if (target is ExecutableElement &&
-          !target.isStatic &&
-          target.enclosingElement is ExtensionElement) {
-        final extension = target.enclosingElement as ExtensionElement;
-        final name = extension.name;
-
-        // Target is from an extension, import that extension without an alias
-        // so that the extension invocation continues to work.
-        if (name != null) {
-          generator.imports.importWithoutAlias(extension.library, name);
-        }
-      }
-      return;
-    }
-
-    final variable = _variableFor(target);
-
-    if (variable is SelfReference) {
-      // Inside the main component, we can replace `self` with `this`. In
-      // inner components, we have to walk the parent.
-
-      if (patchSelf) {
-        if (rootScope == scope) {
-          _replaceNode(node, 'this');
-        } else {
-          final prefix = _prefixFor(rootScope, trailingDot: false);
-          _replaceNode(node, prefix);
-        }
-      }
-    } else if (target is FunctionElement &&
-        generator.component.userDefinedFunctions.contains(target)) {
-      final newName = generator._nameForFunction(target);
-      final prefix = _prefixFor(rootScope);
-
-      _replaceNode(node, '$prefix$newName');
-    } else if (variable != null) {
-      final prefix = _prefixFor(variable.scope);
-      final name = generator._nameForVar(variable);
-
-      final replacement = '$prefix$name /* ${node.name} */';
-      _replaceNode(node, replacement);
-    }
+    _patchIdentifier(node, node.staticElement);
   }
 }
