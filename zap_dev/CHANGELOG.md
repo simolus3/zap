@@ -1,3 +1,7 @@
+## 0.2.3
+
+- Support the latest versions of all dependencies
+
 ## 0.2.2
 
 - Compatibility with the latest analyzer package.

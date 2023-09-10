@@ -1,6 +1,6 @@
 name: zap
 description: Zap is a reactive web framework built on Dart. By compiling HTML-like files to Dart components, Zap makes it easy to write efficient web apps.
-version: 0.2.0
+version: 0.2.1
 homepage: https://simonbinder.eu/zap/
 
 environment:

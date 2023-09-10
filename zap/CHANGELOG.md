@@ -1,3 +1,7 @@
+## 0.2.1
+
+- Support the latest versions of all dependencies
+
 ## 0.2.0
 
 - Fix resolving context around subcomponents.
