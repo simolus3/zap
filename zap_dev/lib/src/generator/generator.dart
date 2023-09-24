@@ -12,11 +12,10 @@ import 'package:collection/collection.dart';
 import '../resolver/component.dart';
 import '../resolver/dart.dart';
 import '../resolver/flow.dart';
-import '../resolver/resolver.dart';
-import '../resolver/reactive_dom.dart';
 import '../resolver/preparation.dart';
+import '../resolver/reactive_dom.dart';
+import '../resolver/resolver.dart';
 import '../utils/dart.dart';
-
 import 'imports.dart';
 import 'options.dart';
 import 'ssr/node_to_text.dart';
@@ -1576,7 +1575,11 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
     }
   }
 
-  void _patchIdentifier(SyntacticEntity entity, Element? target) {
+  void _patchIdentifier(
+    SyntacticEntity entity,
+    Element? target, {
+    bool wrapVariablesInBraces = false,
+  }) {
     final targetLibrary = target?.library;
 
     if (targetLibrary != generator.component.resolvedTmpLibrary) {
@@ -1626,7 +1629,10 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
       final prefix = _prefixFor(variable.scope);
       final name = generator._nameForVar(variable);
 
-      final replacement = '$prefix$name /* ${target?.name} */';
+      var replacement = '$prefix$name /* ${target?.name} */';
+      if (wrapVariablesInBraces) {
+        replacement = '{$replacement}';
+      }
       _replaceNode(entity, replacement);
     }
   }
@@ -1672,6 +1678,23 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
     } else {
       super.visitNode(node);
     }
+  }
+
+  @override
+  void visitInterpolationElement(InterpolationElement node) {
+    if (node is InterpolationExpression) {
+      final expression = node.expression;
+      if (expression is SimpleIdentifier) {
+        // Interpolated variables must be wrapped in braces since the
+        // replacement identifier will have `$` in the name.
+        //
+        // For example, '$localVariable' becomes '${_$v1 /* localVariable */}'.
+        final missingBraces = node.rightBracket == null;
+        return _patchIdentifier(expression, expression.staticElement,
+            wrapVariablesInBraces: missingBraces);
+      }
+    }
+    super.visitInterpolationElement(node);
   }
 
   @override
