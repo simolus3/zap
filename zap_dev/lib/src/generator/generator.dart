@@ -1575,11 +1575,7 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
     }
   }
 
-  void _patchIdentifier(
-    SyntacticEntity entity,
-    Element? target, {
-    bool wrapVariablesInBraces = false,
-  }) {
+  void _patchIdentifier(SyntacticEntity entity, Element? target) {
     final targetLibrary = target?.library;
 
     if (targetLibrary != generator.component.resolvedTmpLibrary) {
@@ -1629,10 +1625,7 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
       final prefix = _prefixFor(variable.scope);
       final name = generator._nameForVar(variable);
 
-      var replacement = '$prefix$name /* ${target?.name} */';
-      if (wrapVariablesInBraces) {
-        replacement = '{$replacement}';
-      }
+      final replacement = '$prefix$name /* ${target?.name} */';
       _replaceNode(entity, replacement);
     }
   }
@@ -1681,17 +1674,23 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
   }
 
   @override
-  void visitInterpolationElement(InterpolationElement node) {
-    if (node case InterpolationExpression(:final SimpleIdentifier expression)) {
+  void visitInterpolationExpression(InterpolationExpression node) {
+    if (node.expression case final SimpleIdentifier expression) {
       // Interpolated variables must be wrapped in braces since the
       // replacement identifier will have `$` in the name.
       //
       // For example, '$localVariable' becomes '${_$v1 /* localVariable */}'.
       final missingBraces = node.rightBracket == null;
-      return _patchIdentifier(expression, expression.staticElement,
-          wrapVariablesInBraces: missingBraces);
+      if (missingBraces) {
+        _replaceRange(node.leftBracket.end, 0, '{');
+      }
+      _patchIdentifier(expression, expression.staticElement);
+      if (missingBraces) {
+        _replaceRange(expression.end, 0, '}');
+      }
+    } else {
+      super.visitInterpolationExpression(node);
     }
-    super.visitInterpolationElement(node);
   }
 
   @override
