@@ -3,7 +3,7 @@ description: Demo of using riverpod and zap for a simple todo app.
 publish_to: none
 
 environment:
-  sdk: '>=2.15.1 <3.0.0'
+  sdk: ^3.0.0
 
 dependencies:
   riverpod: ^2.0.0-0
