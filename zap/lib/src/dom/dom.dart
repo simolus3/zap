@@ -77,7 +77,7 @@ extension ZapDomEvents<T extends Event> on Stream<T> {
   }
 }
 
-class _ModifierSink<T extends Event> extends EventSink<T> {
+class _ModifierSink<T extends Event> implements EventSink<T> {
   final EventSink<T> _downstream;
 
   final bool preventDefault;
