@@ -83,7 +83,7 @@ class _ZBase32EncodingSink extends ByteConversionSinkBase {
   }
 }
 
-class _SinkOfStringToSinkString extends StringSink {
+class _SinkOfStringToSinkString implements StringSink {
   final Sink<String> _sink;
 
   _SinkOfStringToSinkString(this._sink);

@@ -2,7 +2,7 @@ name: zap_docs
 publish_to: none
 
 environment:
-  sdk: ^2.16.0
+  sdk: ^3.0.0
 
 dependencies:
   js: ^0.6.4
