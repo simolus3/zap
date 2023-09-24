@@ -1,6 +1,6 @@
 name: zap_dev
 description: Developer tooling for `zap`, a reactive web framework.
-version: 0.2.3+2
+version: 0.2.4
 homepage: https://simonbinder.eu/zap/
 
 environment:

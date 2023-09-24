@@ -1,3 +1,7 @@
+## 0.2.4
+
+- Fix invalid generated code for variable references in string interpolations.
+
 ## 0.2.3+1
 
 - Support the latest versions of all dependencies
