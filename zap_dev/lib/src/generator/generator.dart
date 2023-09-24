@@ -1682,17 +1682,14 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
 
   @override
   void visitInterpolationElement(InterpolationElement node) {
-    if (node is InterpolationExpression) {
-      final expression = node.expression;
-      if (expression is SimpleIdentifier) {
-        // Interpolated variables must be wrapped in braces since the
-        // replacement identifier will have `$` in the name.
-        //
-        // For example, '$localVariable' becomes '${_$v1 /* localVariable */}'.
-        final missingBraces = node.rightBracket == null;
-        return _patchIdentifier(expression, expression.staticElement,
-            wrapVariablesInBraces: missingBraces);
-      }
+    if (node case InterpolationExpression(:final SimpleIdentifier expression)) {
+      // Interpolated variables must be wrapped in braces since the
+      // replacement identifier will have `$` in the name.
+      //
+      // For example, '$localVariable' becomes '${_$v1 /* localVariable */}'.
+      final missingBraces = node.rightBracket == null;
+      return _patchIdentifier(expression, expression.staticElement,
+          wrapVariablesInBraces: missingBraces);
     }
     super.visitInterpolationElement(node);
   }
