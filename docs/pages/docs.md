@@ -37,7 +37,7 @@ To define a property, annotate a variable with `@prop`:
   User shownUser;
 ```
 
-Properties can be given befault values by adding an initializer to the variable.
+Properties can be given default values by adding an initializer to the variable.
 The default value doesn't have to be a constant.
 
 #### Reactive assignments
@@ -71,7 +71,7 @@ the values that they depend on have changed.
 </script>
 ```
 
-Only variables that directly apear within the `$:` block will become dependencies of
+Only variables that directly appear within the `$:` block will become dependencies of
 the reactive statement. Variables that might be used in called methods are not considered,
 for instance.
 
@@ -173,7 +173,7 @@ Additional conditions can be added with `{:else if expression}`, optionally
 ending in an `{:else}` clause.
 
 ```html
-#if porridge.temperature > 100}
+{#if porridge.temperature > 100}
 	<p>too hot!</p>
 {:else if 80 > porridge.temperature}
 	<p>too cold!</p>
@@ -250,7 +250,7 @@ type `Stream<T>`. The type of the variable `x` is again inferred to `ZapSnapshot
 Text written in zap components is escaped, so binding a string containing HTML
 characters would escape characters like `<`and `>` in the component.
 
-The `{@html }` block can be used to insert a Dart-expression __without any sanitazion__.
+The `{@html }` block can be used to insert a Dart-expression __without any sanitization__.
 For example, `{@html "<script>alert('hacks');</script>"}` _will_ do what you may fear
 it does. `{@html}` blocks should not be used with untrusted data.
 Please note that the expression inside a block must be a full HTML node - things like
@@ -299,7 +299,7 @@ Modifiers can be added to the event stream with the `|` character:
 The following modifiers are available:
 
 - `preventDefault`: calls `event.preventDefault()` before running the handler.
-- `stopPropagation`: calls `event.stopProgataion()`, preventing the event from
+- `stopPropagation`: calls `event.stopPropagation()`, preventing the event from
   reaching the next element.
 - `passive`: TODO this is currently a noop
 - `capture`: Fires the handler during the _capture_ phase instead of the _bubbling_
@@ -315,7 +315,7 @@ It is possible to have multiple event listeners for the same event.
 #### `bind:property`
 
 Data ordinarily flows down, from parent to child. The `bind:` directive allows
-data to flow the other way, from chil to parent. Most bindings are specific to
+data to flow the other way, from child to parent. Most bindings are specific to
 particular elements.
 
 The simplest bindings reflect the value of a property, such as `input.value`:
