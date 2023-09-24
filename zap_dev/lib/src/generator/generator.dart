@@ -12,11 +12,10 @@ import 'package:collection/collection.dart';
 import '../resolver/component.dart';
 import '../resolver/dart.dart';
 import '../resolver/flow.dart';
-import '../resolver/resolver.dart';
-import '../resolver/reactive_dom.dart';
 import '../resolver/preparation.dart';
+import '../resolver/reactive_dom.dart';
+import '../resolver/resolver.dart';
 import '../utils/dart.dart';
-
 import 'imports.dart';
 import 'options.dart';
 import 'ssr/node_to_text.dart';
@@ -1671,6 +1670,26 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
       _replaceNode(node, '${_prefixFor(target.scope)}$getterName');
     } else {
       super.visitNode(node);
+    }
+  }
+
+  @override
+  void visitInterpolationExpression(InterpolationExpression node) {
+    if (node.expression case final SimpleIdentifier expression) {
+      // Interpolated variables must be wrapped in braces since the
+      // replacement identifier will have `$` in the name.
+      //
+      // For example, '$localVariable' becomes '${_$v1 /* localVariable */}'.
+      final missingBraces = node.rightBracket == null;
+      if (missingBraces) {
+        _replaceRange(node.leftBracket.end, 0, '{');
+      }
+      _patchIdentifier(expression, expression.staticElement);
+      if (missingBraces) {
+        _replaceRange(expression.end, 0, '}');
+      }
+    } else {
+      super.visitInterpolationExpression(node);
     }
   }
 
