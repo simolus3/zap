@@ -34,3 +34,6 @@ dev_dependencies:
 dependency_overrides:
   zap:
     path: ../zap
+
+executables:
+  zap_dev:
