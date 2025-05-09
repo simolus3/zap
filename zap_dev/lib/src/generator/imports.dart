@@ -24,9 +24,12 @@ class ImportsTracker {
     });
   }
 
-  String get dartHtmlImport => importForUri(Uri.parse('dart:html'));
+  String get webImport =>
+      importForUri(Uri.parse('package:universal_web/web.dart'));
 
   String get zapImport => importForUri(Uri.parse('package:zap/zap.dart'));
+
+  String get jasprImport => importForUri(Uri.parse('package:jaspr/ui.dart'));
 
   Uri _normalizeUri(Uri uri) {
     // `.tmp.zap.api.dart` files expose members defined in

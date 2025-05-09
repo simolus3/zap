@@ -1,14 +1,14 @@
 /// Definitions inspected at build-time. These only exists so that they can
 /// be recognized by the zap compiler.
-library zap.internal.dsl;
+library;
 
 import 'dart:async';
 
-import '../src/core/snapshot.dart';
+import 'package:jaspr/jaspr.dart';
+
 import '../src/core/watchable.dart';
 
-export 'package:zap/zap.dart'
-    show ComponentOrPending, EmitCustomEvent, ZapSnapshot;
+export 'package:jaspr/jaspr.dart' show AsyncSnapshot;
 
 class Property {
   final String? key;
@@ -38,10 +38,10 @@ T extractFromIterable<T>(Iterable<T> iterable) {
   throw UnsupportedError('Only used statically to mess with the type system.');
 }
 
-ZapSnapshot<T> extractFromFuture<T>(FutureOr<T> future) {
+AsyncSnapshot<T> extractFromFuture<T>(FutureOr<T> future) {
   throw UnsupportedError('Only used statically to mess with the type system.');
 }
 
-ZapSnapshot<T> extractFromStream<T>(Stream<T> stream) {
+AsyncSnapshot<T> extractFromStream<T>(Stream<T> stream) {
   throw UnsupportedError('Only used statically to mess with the type system.');
 }

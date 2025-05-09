@@ -131,7 +131,7 @@ class TypeChecker {
       return _domCompleter!.future;
     } else {
       final completer = _domCompleter = Completer.sync()
-        ..complete(resolver.dartHtml.then(ResolvedDomTypes.new));
+        ..complete(resolver.packageWeb.then(ResolvedDomTypes.new));
 
       return completer.future;
     }

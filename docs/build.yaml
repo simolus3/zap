@@ -33,7 +33,7 @@ global_options:
     options:
         dart2js_args:
           # todo: Set right token from environment, but how?
-          - "-DMAPBOX_TOKEN=mapbox_token"
+          - "-DMAPBOX_TOKEN=pk.eyJ1IjoiYmluZGVyc2ltIiwiYSI6ImNsMGh5enpzaTAwN20zY240d25xcWV0NmwifQ.1lxhWKm1hE2SslHhD3dDNg"
 
 additional_public_assets:
   - "pages/**"

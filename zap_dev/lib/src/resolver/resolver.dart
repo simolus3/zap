@@ -1205,6 +1205,8 @@ class ResolvedComponent {
 
   TypeSystem get typeSystem => resolvedTmpLibrary.typeSystem;
 
+  String get componentStateName => '_${componentName}State';
+
   ResolvedComponent(
     this.componentName,
     this.component,

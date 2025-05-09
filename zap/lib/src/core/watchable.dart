@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import '../core/snapshot.dart';
+import 'package:jaspr/jaspr.dart';
 
 /// A specialized stream that
 ///
@@ -16,12 +16,12 @@ abstract class Watchable<T> implements Stream<T> {
     return _StreamWatchable(_ValueWrappingStream(stream), initialValue);
   }
 
-  static Watchable<ZapSnapshot<T>> snapshots<T>(Stream<T> stream) {
-    final snapshots = Stream<ZapSnapshot<T>>.eventTransformed(
+  static Watchable<AsyncSnapshot<T>> snapshots<T>(Stream<T> stream) {
+    final snapshots = Stream<AsyncSnapshot<T>>.eventTransformed(
         stream, _ToSnapshotTransformer.new);
 
     return _StreamWatchable(
-        _ValueWrappingStream(snapshots), const ZapSnapshot<Never>.unresolved());
+        _ValueWrappingStream(snapshots), const AsyncSnapshot<Never>.nothing());
   }
 }
 
@@ -94,24 +94,25 @@ class _StreamWatchable<T> extends Stream<T> implements Watchable<T> {
 }
 
 class _ToSnapshotTransformer<T> implements EventSink<T> {
-  final EventSink<ZapSnapshot<T>> _out;
-  ZapSnapshot<T>? _last;
+  final EventSink<AsyncSnapshot<T>> _out;
+  AsyncSnapshot<T>? _last;
 
   _ToSnapshotTransformer(this._out);
 
   @override
-  void add(T event) => _out.add(_last = ZapSnapshot.withData(event));
+  void add(T event) =>
+      _out.add(_last = AsyncSnapshot.withData(ConnectionState.active, event));
 
   @override
   void addError(Object error, [StackTrace? stackTrace]) {
-    _out.add(_last = ZapSnapshot.withError(error, stackTrace));
+    _out.add(_last = AsyncSnapshot.withError(ConnectionState.active, error));
   }
 
   @override
   void close() {
     final last = _last;
     if (last != null) {
-      _out.add(last.finished);
+      _out.add(last.inState(ConnectionState.done));
     }
 
     _out.close();

@@ -39,7 +39,6 @@ class Generator {
   final Map<Object, String> _miscNames = {};
 
   String get zapPrefix => imports.zapImport;
-  String get htmlPrefix => imports.dartHtmlImport;
 
   Generator(this.component, this.prepareResult, this.options, AssetId output) {
     imports = ImportsTracker(libraryScope.inner(), output);
@@ -113,7 +112,7 @@ class Generator {
     final writer = NodeWriter();
     component.fragment.rootNodes.forEach(writer.writeNode);
 
-    libraryScope.leaf().write('final $name = $zapPrefix.HtmlTag'
+    libraryScope.leaf().write('final $name = $zapPrefix.RawHtml'
         '(${dartStringLiteral(writer.buffer.toString())});');
   }
 }
@@ -127,17 +126,6 @@ abstract class _ComponentOrSubcomponentWriter {
 
   _ComponentOrSubcomponentWriter(this.generator, this.classScope)
       : buffer = classScope.leaf();
-
-  bool _rendersSubcomponents(ReactiveNode node) =>
-      node is SubComponent || node is ReactiveBlock || node is MountSlot;
-
-  bool _isZapFragment(ReactiveNode node) =>
-      _rendersSubcomponents(node) || node is ReactiveRawHtml;
-
-  bool _passDownUpdates(ReactiveNode node) =>
-      _isZapFragment(node) && node is! SubComponent;
-
-  bool _isInitializedLater(ReactiveNode node) => _rendersSubcomponents(node);
 
   void write();
 
@@ -159,51 +147,14 @@ abstract class _ComponentOrSubcomponentWriter {
     return '${generator.imports.importForUri(uri)}.$identifier';
   }
 
+  String jaspr(String identifier) =>
+      prefixIdentifier(identifier, 'package:jaspr/ui.dart');
+
   String dartTypeToString(DartType type) {
     final buffer = StringBuffer();
 
     type.accept(_DartTypeWriter(generator, buffer));
     return buffer.toString();
-  }
-
-  String? dartTypeName(ReactiveNode node) {
-    final htmlPrefix = generator.imports.dartHtmlImport;
-    final zapPrefix = generator.imports.zapImport;
-
-    if (node is ReactiveElement) {
-      final known = node.knownElement;
-
-      return known != null
-          ? '$htmlPrefix.${known.className}'
-          : '$htmlPrefix.Element';
-    } else if (node is ReactiveText || node is ConstantText) {
-      return '$htmlPrefix.Text';
-    } else if (node is ReactiveRawHtml) {
-      return '$zapPrefix.HtmlTag';
-    } else if (node is SubComponent) {
-      // The import tracker will rewrite imports from the intermediate library
-      // to the final `.zap.dart` file.
-      final prefix = generator.imports
-          .importForLibrary(node.component.temporaryApiClass.library);
-      return '$prefix.${node.component.temporaryApiClass.name}';
-    } else if (node is DynamicSubComponent) {
-      return '$zapPrefix.DynamicComponent';
-    } else if (node is ReactiveIf) {
-      return '$zapPrefix.IfBlock';
-    } else if (node is ReactiveFor) {
-      final innerType = dartTypeToString(node.elementType);
-      return '$zapPrefix.ForBlock<$innerType>';
-    } else if (node is ReactiveAsyncBlock) {
-      final innerType = dartTypeToString(node.type);
-
-      return node.isStream
-          ? '$zapPrefix.StreamBlock<$innerType>'
-          : '$zapPrefix.FutureBlock<$innerType>';
-    } else if (node is MountSlot) {
-      return '$zapPrefix.Slot';
-    } else {
-      return null;
-    }
   }
 
   String _slotVariable(String? slot) {
@@ -223,24 +174,9 @@ abstract class _ComponentOrSubcomponentWriter {
       // We'll write a top-level field for this constant fragment.
       return name;
     } else {
-      return '$name($constructorArguments)';
+      final createFragment = '$name($constructorArguments)';
+      return '${generator.imports.zapImport}.FragmentComponent(() => $createFragment)';
     }
-  }
-
-  String _statementsToChangeVariable(
-      BaseZapVariable variable, String expression) {
-    final prefix =
-        _DartSourceRewriter(generator, component.scope, 0, '', true, const {})
-            ._prefixFor(variable.scope);
-    final variableName = generator._nameForVar(variable);
-
-    final result = StringBuffer();
-    if (variable.needsUpdateTracking) {
-      result.writeln('$prefix\$invalidate(${variable.updateBitmask});');
-    }
-
-    result.writeln('$prefix$variableName = $expression;');
-    return result.toString();
   }
 
   String referenceExpression(ResolvedDartExpression expression) {
@@ -254,50 +190,8 @@ abstract class _ComponentOrSubcomponentWriter {
     return '$prefix${generator._nameForMisc(expression)}';
   }
 
-  /// Writes
-  ///
-  ///  - DOM nodes and zap fragments
-  ///  - getters to evaluate expressions used in the component
+  /// Writes getters to evaluate expressions used in the component.
   void writeCommonInstanceFields() {
-    // Write instance fields storing DOM nodes or zap block helpers
-    for (final node in component.fragment.allNodes) {
-      final name = generator._nameForNode(node);
-      final isInitializedLater = _isInitializedLater(node);
-
-      if (isInitializedLater) {
-        buffer.write('late ');
-      }
-
-      buffer
-        ..write('final ')
-        ..write(dartTypeName(node))
-        ..write(' ')
-        ..write(name);
-
-      if (!isInitializedLater) {
-        buffer.write(' = ');
-        createNode(node);
-      }
-
-      buffer.writeln(';');
-
-      if (node is ReactiveIf) {
-        // Write a function used to evaluate the condition for an if block
-        final name = generator._nameForMisc(node);
-        buffer.writeln('${prefixIdentifier('int')} $name() {');
-        for (var i = 0; i < node.conditions.length; i++) {
-          if (i != 0) {
-            buffer.write('else ');
-          }
-          buffer
-            ..writeln('if (${referenceExpression(node.conditions[i])}) {')
-            ..writeln('  return $i;')
-            ..writeln('}');
-        }
-        buffer.writeln('else { return ${node.conditions.length}; }}');
-      }
-    }
-
     // Create getters for expressions, avoiding duplicate code when an
     // expression is used more than once.
     for (final usedExpression in component.scope.usedDartExpressions) {
@@ -345,313 +239,11 @@ abstract class _ComponentOrSubcomponentWriter {
     }
   }
 
-  void writeCreateMethod() {
-    final name = component is Component ? 'createInternal' : 'create';
-    final prefix = generator.htmlPrefix;
-
-    buffer
-      ..writeln(atOverride)
-      ..writeln('void $name($prefix.Element target, [$prefix.Node? anchor]) {');
-
-    // Create subcomponents. They require evaluating Dart expressions, so we
-    // can't do this earlier.
-    for (final node in component.fragment.allNodes) {
-      if (_isInitializedLater(node)) {
-        buffer
-          ..write(generator._nameForNode(node))
-          ..write(' = ');
-        createNode(node);
-        buffer.writeln(';');
-      }
-
-      // Implement `bind:this` binders by assigning nodes to their target
-      // variables now.
-      if (node is ReactiveElement) {
-        for (final binder in node.binders) {
-          final target = binder.target;
-          final prefix = _DartSourceRewriter(
-                  generator, component.scope, 0, '', true, const {})
-              ._prefixFor(target.scope);
-          final variableName = generator._nameForVar(target);
-          final nodeName = generator._nameForNode(node);
-
-          if (binder is BindThis) {
-            buffer.write(_statementsToChangeVariable(target, nodeName));
-          } else if (binder is BindProperty) {
-            final callback = '''
-                (value) {
-                  if (value != $prefix$variableName) {
-                    ${_statementsToChangeVariable(target, 'value')}
-                  }
-                }
-            ''';
-
-            switch (binder.specialMode) {
-              case SpecialBindingMode.inputValue:
-                final import = generator.imports.dartHtmlImport;
-                buffer.write('$import.GlobalEventHandlers.inputEvent'
-                    '.forElement($nodeName)'
-                    '.map((e) => $nodeName.value)'
-                    '.transform(lifecycle())'
-                    '.listen($callback);');
-                break;
-              case null:
-                buffer
-                  ..write(nodeName)
-                  ..write('.watchAttribute(')
-                  ..write(dartStringLiteral(binder.attribute))
-                  ..write(')')
-                  ..write('.transform(lifecycle())')
-                  ..writeln('.listen($callback);');
-                break;
-            }
-          }
-        }
-      }
-    }
-
-    // In the create method, we set the initial value of Dart expressions and
-    // register event handlers.
-    for (final flow in component.flows) {
-      if (flow.isOneOffAction) {
-        writeFlowAction(flow, isInCreate: true);
-      }
-    }
-
-    void writeAdd(Iterable<ReactiveNode> nodes, String target, String? anchor) {
-      for (final node in nodes) {
-        final name = generator._nameForNode(node);
-
-        if (_isZapFragment(node)) {
-          buffer
-            ..write(name)
-            ..writeln('.create($target, $anchor);');
-          continue;
-        } else if (anchor == null) {
-          // Write an append call
-          buffer.writeln('$target.append($name);');
-        } else {
-          // Use insertBefore then
-          buffer.writeln('$target.insertBefore($name, $anchor);');
-        }
-
-        // Mount child nodes as well
-        writeAdd(node.children, name, null);
-      }
-    }
-
-    /// Also add nodes into the document now.
-    writeAdd(component.fragment.rootNodes, 'target', 'anchor');
-    buffer.writeln('}');
-  }
-
-  void writeRemoveMethod() {
-    final name = component is Component ? 'remove' : 'destroy';
-
-    buffer
-      ..writeln(atOverride)
-      ..writeln('void $name() {');
-
-    for (final rootNode in component.fragment.rootNodes) {
-      buffer.write(generator._nameForNode(rootNode));
-
-      if (_isZapFragment(rootNode)) {
-        // use .destroy() to unmount zap components
-        buffer.write('.destroy();');
-      } else {
-        // and .remove() to unmount `dart:html` elements.
-        buffer.write('.remove();');
-      }
-    }
-
-    // We can unmount the root nodes to remove this component from the DOM tree.
-    // However, we should still explicitly destroy() child components so that
-    // they can clean up resources.
-    for (final node
-        in component.fragment.rootNodes.expand((node) => node.allDescendants)) {
-      if (_rendersSubcomponents(node)) {
-        buffer.write(generator._nameForNode(node));
-
-        buffer.write('.destroy();');
-      }
-    }
-
-    buffer.writeln('}');
-  }
-
-  void writeUpdateMethod() {
-    buffer
-      ..writeln(atOverride)
-      ..writeln('void update(${prefixIdentifier('int')} delta) {');
-
-    for (final flow in component.flows) {
-      if (!flow.isOneOffAction) {
-        buffer
-          ..write('if (delta & ')
-          ..write(flow.bitmask)
-          ..writeln(' != 0) {');
-        writeFlowAction(flow);
-        buffer.writeln('}');
-      }
-    }
-
-    // Some nodes manage subcomponents and need to be updated as well
-    for (final node in component.fragment.allNodes.where(_passDownUpdates)) {
-      final name = generator._nameForNode(node);
-      buffer.writeln('$name.update(delta);');
-    }
-
-    buffer.writeln('}');
-  }
-
-  void writeFlowAction(Flow flow, {bool isInCreate = false}) {
-    final action = flow.action;
-
-    if (action is SideEffect) {
-      final implementingFunction = generator._nameForMisc(action);
-      buffer.writeln('$implementingFunction();');
-    } else if (action is ChangeText) {
-      writeSetText(action.text);
-    } else if (action is RegisterEventHandler) {
-      final handler = action.handler;
-      if (flow.isOneOffAction) {
-        // Just register the event handler, it won't be changed later!
-        registerEventHandler(handler);
-      } else {
-        if (isInCreate) {
-          // We need to store the result of listening in a stream subscription
-          // so that the event handler can be changed later.
-          buffer
-            ..write(generator._nameForMisc(handler))
-            ..write(' = ');
-          registerEventHandler(handler);
-        } else {
-          // Just change the onData callback of the stream subscription now
-          buffer
-            ..write(generator._nameForMisc(handler))
-            ..write('.onData(');
-          callbackForEventHandler(handler);
-          buffer.writeln(');');
-        }
-      }
-    } else if (action is ApplyAttribute) {
-      final attribute = action.element.attributes[action.name]!;
-      final nodeName = generator._nameForNode(action.element);
-      buffer.write(nodeName);
-
-      switch (attribute.mode) {
-        case AttributeMode.setValue:
-          if (action.name == 'class' &&
-              generator.component.cssClassName != null) {
-            // Make sure the scoped css class is still included when setting the
-            // class attribute
-            buffer
-              ..write('.setClassAttribute(')
-              ..write(dartStringLiteral(generator.component.cssClassName!))
-              ..write(', ')
-              ..write(referenceExpression(attribute.backingExpression))
-              ..write('.toString());');
-          } else {
-            // Just emit node.attributes[key] = value.toString()
-            buffer
-              ..write(".attributes['")
-              ..write(action.name)
-              ..write("'] = ")
-              ..write(referenceExpression(attribute.backingExpression))
-              ..write('.toString();');
-          }
-
-          break;
-        case AttributeMode.addIfTrue:
-          // Emit node.applyBooleanAttribute(key, value)
-          buffer
-            ..write('.applyBooleanAttribute(')
-            ..write(dartStringLiteral(action.name))
-            ..write(',')
-            ..write(referenceExpression(attribute.backingExpression))
-            ..write(');');
-          break;
-        case AttributeMode.setIfNotNullClearOtherwise:
-          buffer
-            ..write('.applyAttributeIfNotNull(')
-            ..write(dartStringLiteral(action.name))
-            ..write(',')
-            ..write(referenceExpression(attribute.backingExpression))
-            ..write(');');
-          break;
-      }
-    } else if (action is ChangePropertyOfSubcomponent) {
-      final target = generator._nameForNode(action.subcomponent);
-      final expr = action.subcomponent.expressions[action.property]!;
-
-      buffer
-          .write('$target.${action.property} = ${referenceExpression(expr)};');
-    } else if (action is UpdateWatchable) {
-      final expr = referenceExpression(action.watched.expression);
-      buffer.writeln(
-          '\$watchImpl($expr, ${action.watched.updateSlot!}); // track update');
-    } else if (action is ReEvaluateVariableWithWatchInitializer) {
-      final setter = generator._nameForVar(action.variable);
-      final expression = referenceExpression(action.variable.initializer!);
-
-      buffer.write('$setter = $expression;');
-      if (action.variable.needsUpdateTracking) {
-        buffer.write(_DartSourceRewriter(
-                generator, component.scope, 0, '', false, const {})
-            .invalidateExpression('${action.variable.updateBitmask}'));
-      }
-    } else if (action is UpdateBlockExpression) {
-      final block = action.block;
-      final nodeName = generator._nameForNode(action.block);
-
-      if (block is ReactiveIf) {
-        final nameOfBranchFunction = generator._nameForMisc(block);
-
-        buffer
-          ..write(nodeName)
-          ..write('.reEvaluate($nameOfBranchFunction());');
-      } else if (block is ReactiveAsyncBlock) {
-        final nodeName = generator._nameForNode(block);
-
-        final setter = block.isStream ? 'stream' : 'future';
-        final prefix = generator.zapPrefix;
-        final wrapper =
-            block.isStream ? '$prefix.\$safeStream' : '$prefix.\$safeFuture';
-        final type = dartTypeToString(block.type);
-
-        buffer
-          ..write('$nodeName.$setter = $wrapper<$type>(() => ')
-          ..write(referenceExpression(block.expression))
-          ..write(');');
-      } else if (block is ReactiveFor) {
-        final nodeName = generator._nameForNode(block);
-
-        buffer
-          ..write('$nodeName.data = ')
-          ..write(referenceExpression(block.expression))
-          ..write(';');
-      } else if (block is ReactiveKeyBlock) {
-        buffer
-          ..write('$nodeName.value = ')
-          ..write(referenceExpression(block.expression))
-          ..write(';');
-      } else if (block is ReactiveRawHtml) {
-        buffer
-          ..write('$nodeName.rawHtml = ')
-          ..write(referenceExpression(block.expression));
-
-        if (block.needsToString) {
-          buffer.write('.toString()');
-        }
-        buffer.write(';');
-      } else if (block is DynamicSubComponent) {
-        buffer
-          ..write('$nodeName.component = ')
-          ..write(referenceExpression(block.expression))
-          ..write(';');
-      } else {
-        throw ArgumentError('Unknown target for $action: ${action.block}');
-      }
+  void generateEventCallback(EventHandler handler) {
+    if (handler.isForwarding) {
+      buffer.write('$componentThis.forwardEvents()');
+    } else {
+      callbackForEventHandler(handler);
     }
   }
 
@@ -667,7 +259,7 @@ abstract class _ComponentOrSubcomponentWriter {
         buffer.write('$node.componentEvents<$type>'
             '(${dartStringLiteral(handler.event)})');
       } else {
-        buffer.write('${generator.imports.dartHtmlImport}.');
+        buffer.write('${generator.imports.webImport}.');
 
         if (knownEvent != null) {
           buffer.write(knownEvent.providerExpression);
@@ -746,47 +338,144 @@ abstract class _ComponentOrSubcomponentWriter {
     }
   }
 
-  void createNode(ReactiveNode node) {
-    final htmlPrefix = generator.htmlPrefix;
-    final zapPrefix = generator.zapPrefix;
+  void writeDartWithPatchedReferences(
+    AstNode dartCode, {
+    bool patchSelf = true,
+    Map<AstNode, WatchedExpression> watchedExpressions = const {},
+  }) {
+    buffer.write(
+      _DartSourceRewriter.patchDartReferences(
+        dartCode: dartCode,
+        patchSelf: patchSelf,
+        generator: generator,
+        component: component,
+        watchExpressions: watchedExpressions,
+      ),
+    );
+  }
 
-    if (node is ReactiveElement) {
-      final known = node.knownElement;
+  String createKey(ReactiveNode node) {
+    final name = generator._nameForNode(node);
+    return 'const ${jaspr('Key')}(${dartStringLiteral(name)})';
+  }
 
-      if (known != null) {
-        final type = '$htmlPrefix.${known.className}';
+  void writeNodeAsComponentExpression(ReactiveNode node) {
+    final key = createKey(node);
 
-        if (known.instantiable) {
-          // Use a direct constructor provided by the Dart SDK
-          buffer.write(type);
-          if (known.constructorName.isNotEmpty) {
-            buffer.write('.${known.constructorName}');
-          }
-
-          buffer.write('()');
-        } else {
-          // Use the newElement helper method from zap
-          buffer.write(
-              '$zapPrefix.newElement<$type>(${dartStringLiteral(node.tagName)})');
+    switch (node) {
+      case ConstantText(:final text):
+        buffer
+          ..write('const ')
+          ..write(jaspr('Text'))
+          ..write('(')
+          ..write(dartStringLiteral(text))
+          ..write(', key: $key')
+          ..write(')');
+      case ReactiveText(:final expression):
+        buffer
+          ..write(jaspr('Text'))
+          ..write('(')
+          ..write(referenceExpression(expression));
+        if (node.needsToString) {
+          buffer.write('.toString()');
         }
-      } else {
-        buffer.write("$htmlPrefix.Element.tag('${node.tagName}')");
-      }
+        buffer
+          ..write(', key: $key')
+          ..write(')');
+      case ReactiveElement():
+        // TODO: Binders / global key?
 
-      final className = generator.component.cssClassName;
-      if (className != null) {
-        buffer.write("..addComponentClass('$className')");
-      }
-    } else if (node is ReactiveText) {
-      buffer.write("$htmlPrefix.Text('')");
-    } else if (node is ConstantText) {
-      buffer.write("$htmlPrefix.Text(${dartStringLiteral(node.text)})");
-    } else if (node is ReactiveRawHtml) {
-      buffer.write('$zapPrefix.HtmlTag()');
-    } else if (node is SubComponent) {
-      final typeName = dartTypeName(node);
+        buffer
+          ..write(jaspr('DomComponent'))
+          ..write('(')
+          ..write('tag: ${dartStringLiteral(node.tagName)},')
+          ..write('key: $key,');
 
-      void instantiateComponent() {
+        if (node.children.isNotEmpty) {
+          buffer.writeln('children: [');
+          for (final child in node.children) {
+            writeNodeAsComponentExpression(child);
+            buffer.writeln(',');
+          }
+          buffer.write('],');
+        }
+
+        if (node.attributes.isNotEmpty) {
+          buffer.writeln('attributes: {');
+          node.attributes.forEach((name, value) {
+            void writeKey() {
+              buffer
+                ..write(dartStringLiteral(name))
+                ..write(': ');
+            }
+
+            switch (value.mode) {
+              case AttributeMode.setValue:
+                writeKey();
+
+                if (name == 'class' &&
+                    generator.component.cssClassName != null) {
+                  // Make sure the scoped css class is still included when setting the
+                  // class attribute
+                  buffer
+                    ..write('$zapPrefix.ZapGeneratedState.classAttribute(')
+                    ..write(
+                        dartStringLiteral(generator.component.cssClassName!))
+                    ..write(', ')
+                    ..write(referenceExpression(value.backingExpression))
+                    ..write('.toString())');
+                } else {
+                  // Just emit attributes[key] = value.toString()
+                  buffer
+                    ..write(referenceExpression(value.backingExpression))
+                    ..write('.toString()');
+                }
+              case AttributeMode.addIfTrue:
+                buffer.write(
+                    'if (${referenceExpression(value.backingExpression)})');
+                writeKey();
+                buffer.write("'true'");
+              case AttributeMode.setIfNotNullClearOtherwise:
+                buffer.write(
+                    'if (${referenceExpression(value.backingExpression)} != null)');
+                writeKey();
+                buffer.write("'true'");
+            }
+
+            buffer.writeln(',');
+          });
+          buffer.write('},');
+        }
+
+        if (node.binders.isNotEmpty) {
+          throw 'todo binders';
+        }
+
+        if (node.eventHandlers.isNotEmpty) {
+          buffer.writeln('events: {');
+          for (final handler in node.eventHandlers) {
+            buffer.write('${dartStringLiteral(handler.event)}:');
+            generateEventCallback(handler);
+            buffer.writeln(',');
+          }
+          buffer.write('}');
+        }
+
+        buffer.write(')');
+      case MountSlot():
+        final name = _slotVariable(node.slotName);
+        buffer
+          ..write(componentThis)
+          ..write('.component.')
+          ..write(name)
+          ..write(' ?? ')
+          ..write(_createSubFragment(
+              node.defaultContent.owningComponent!, componentThis));
+      case SubComponent():
+        final prefix = generator.imports
+            .importForLibrary(node.component.temporaryApiClass.library);
+        final typeName = '$prefix.${node.component.temporaryApiClass.name}';
+
         buffer.write('$typeName(');
 
         // Write properties passed down to the component.
@@ -812,207 +501,123 @@ abstract class _ComponentOrSubcomponentWriter {
         for (final slot in node.component.slotNames) {
           final child = slot == null ? node.defaultSlot : node.slots[slot];
 
+          buffer
+            ..write(_slotVariable(slot))
+            ..write(': ');
+
           if (child == null) {
             buffer.write('null');
           } else {
-            buffer.write(
-                '() => ${_createSubFragment(child.owningComponent!, 'this')}');
+            buffer.write(_createSubFragment(child.owningComponent!, 'this'));
           }
 
           buffer.write(',');
         }
 
+        buffer.write('key: $key,');
         buffer.writeln(')');
-      }
-
-      final component = this.component;
-      if (component is ResolvedSubComponent && component.isMountedInSlot) {
-        // The slot owner will take care of assigning the right parent context.
-        instantiateComponent();
-      } else {
+      case ReactiveAsyncBlock():
+        final isStream = node.isStream;
         buffer
-          ..write(componentThis)
-          ..write('.\$createChildComponent<$typeName>(() => ');
-        instantiateComponent();
+          ..write(generator.imports.jasprImport)
+          ..write(isStream ? '.StreamBuilder' : '.FutureBuilder')
+          ..write('<');
+        node.type.accept(_DartTypeWriter(generator, buffer));
+        buffer.write('>(');
+
+        buffer
+          ..write(isStream ? 'stream: ' : 'future: ')
+          ..write(referenceExpression(node.expression))
+          ..writeln(',')
+          ..write('builder: (_, snapshot) => ')
+          ..write(_createSubFragment(
+              node.fragment.owningComponent!, 'this, snapshot'))
+          ..write(',');
+
+        buffer.writeln('key: $key,');
         buffer.write(')');
-      }
-    } else if (node is DynamicSubComponent) {
-      buffer
-        ..write('$zapPrefix.DynamicComponent(')
-        ..write(referenceExpression(node.expression))
-        ..write(')');
-    } else if (node is ReactiveIf) {
-      buffer
-        ..writeln('$zapPrefix.IfBlock((caseNum) {')
-        ..writeln('switch (caseNum) {');
-
-      for (var i = 0; i < node.whens.length; i++) {
-        final component = node.whens[i].owningComponent!;
-
-        buffer.writeln(
-            'case $i: return ${_createSubFragment(component, 'this')};');
-      }
-
-      final defaultCase = node.otherwise?.owningComponent;
-      if (defaultCase != null) {
-        buffer.writeln(
-            'default: return ${_createSubFragment(defaultCase, 'this')};');
-      } else {
-        buffer.writeln('default: return null;');
-      }
-
-      buffer.writeln('}})');
-    } else if (node is ReactiveAsyncBlock) {
-      final childComponent = node.fragment.owningComponent!;
-      final name = node.fragment.resolvedScope
-          .findForSubcomponent(SubcomponentVariableKind.asyncSnapshot)!
-          .element
-          .name;
-
-      final create = _createSubFragment(childComponent, 'this');
-      // If the component was optimized to a static html string, we don't have
-      // to apply any updates.
-      final update = _componentIsOptimizedAway(childComponent)
-          ? '(_, __) {}'
-          : '(fragment, snapshot) => '
-              '(fragment as ${generator._nameForMisc(childComponent)})'
-              '.$name = snapshot';
-
-      final className = node.isStream ? 'StreamBlock' : 'FutureBlock';
-      buffer.writeln('$zapPrefix.$className($create, $update)');
-    } else if (node is ReactiveFor) {
-      final subComponent = node.fragment.owningComponent!;
-
-      final elementVariable = node.fragment.resolvedScope
-          .findForSubcomponent(SubcomponentVariableKind.forBlockElement)!;
-      final indexVariable = node.fragment.resolvedScope
-          .findForSubcomponent(SubcomponentVariableKind.forBlockIndex);
-
-      buffer.writeln('$zapPrefix.ForBlock(');
-
-      // Write the function creating child nodes
-      buffer.write('(element, index) => ');
-      if (indexVariable != null) {
-        buffer.write(_createSubFragment(subComponent, 'this, element, index'));
-      } else {
-        buffer.write(_createSubFragment(subComponent, 'this, element'));
-      }
-
-      // Write the function updating child nodes
-      if (_componentIsOptimizedAway(subComponent)) {
-        buffer.write(', (_, __, ___) {}');
-      } else {
-        final childClass = generator._nameForMisc(subComponent);
-
+      case DynamicSubComponent():
+        buffer.write(referenceExpression(node.expression));
+      case ReactiveIf():
+      case ReactiveFor():
+        // These two are hard to generate as an expression, so wrap in builder
+        buffer.writeln('${jaspr('Builder')}(key: $key, builder: (_) sync* {');
+        yieldNode(node);
+        buffer.writeln('})');
+      case ReactiveRawHtml():
+        final prefix = generator.imports.zapImport;
         buffer
-          ..write(', (fragment, element, index) => ')
-          ..write('(fragment as $childClass)')
-          ..write('..${elementVariable.element.name} = element');
+            .write('$prefix.RawHtml(${referenceExpression(node.expression)})');
+      case ReactiveKeyBlock():
+        throw UnimplementedError('Unknown: $node');
+    }
+  }
 
+  void yieldNode(ReactiveNode node) {
+    switch (node) {
+      case ReactiveIf():
+        for (final (i, condition) in node.conditions.indexed) {
+          if (i != 0) {
+            buffer.write('else ');
+          }
+          final then = node.whens[i];
+
+          buffer.writeln('if (${referenceExpression(condition)}) {');
+          buffer.writeln(
+              'yield ${_createSubFragment(then.owningComponent!, componentThis)};');
+          buffer.writeln('}');
+        }
+
+        if (node.otherwise case final otherwise?) {
+          buffer.writeln('else {');
+          buffer.writeln(
+              'yield ${_createSubFragment(otherwise.owningComponent!, componentThis)};');
+          buffer.writeln('}');
+        }
+      case ReactiveFor():
+        final subComponent = node.fragment.owningComponent!;
+
+        final iterable = node.expression;
+        final indexVariable = node.fragment.resolvedScope
+            .findForSubcomponent(SubcomponentVariableKind.forBlockIndex);
+
+        // Write the function creating child nodes
         if (indexVariable != null) {
-          buffer.write('..${indexVariable.element.name} = index');
+          buffer
+            ..writeln(
+                'for (final (i, element) in ${referenceExpression(iterable)}.indexed) {')
+            ..writeln(
+                'yield ${_createSubFragment(subComponent, 'this, element, i')};')
+            ..writeln('}');
+        } else {
+          buffer
+            ..writeln(
+                'for (final element in ${referenceExpression(iterable)}) {')
+            ..writeln(
+                'yield ${_createSubFragment(subComponent, 'this, element')};')
+            ..writeln('}');
         }
-      }
-
-      buffer.write(')');
-    } else if (node is MountSlot) {
-      final createFallback = _createSubFragment(
-          node.defaultContent.owningComponent!, componentThis);
-
-      final providedSlot = '$componentThis.${_slotVariable(node.slotName)}';
-      final fallback = '() => $createFallback';
-
-      buffer
-          .write('$zapPrefix.Slot($providedSlot ?? $fallback, $componentThis)');
-    } else {
-      throw ArgumentError('Unknown node type: $node');
+      default:
+        buffer.write('yield ');
+        writeNodeAsComponentExpression(node);
+        buffer.writeln(';');
     }
   }
 
-  void writePropertyAccessors() {
-    final variablesThatNeedChanges =
-        component.scope.declaredVariables.where((variable) {
-      if (variable is DartCodeVariable) {
-        return variable.isProperty;
-      } else if (variable is SubcomponentVariable) {
-        switch (variable.kind) {
-          case SubcomponentVariableKind.asyncSnapshot:
-          case SubcomponentVariableKind.forBlockElement:
-          case SubcomponentVariableKind.forBlockIndex:
-            return true;
-        }
-      } else {
-        return false;
-      }
-    });
+  void writeBuildMethod() {
+    final jaspr = generator.imports.jasprImport;
 
-    for (final variable in variablesThatNeedChanges) {
-      final element = variable.element;
-      final type = dartTypeToString(variable.type);
-      final name = generator._nameForVar(variable);
-
-      // int get foo => $$_v0;
-      buffer
-        ..write(type)
-        ..write(' get ')
-        ..write(element.name)
-        ..write(' => ')
-        ..write(name)
-        ..writeln(';');
-
-      if (variable.isMutable) {
-        // set foo (int value) {
-        //   if (value != $$_v0) {
-        //     $$_v0 = value;
-        //     $invalidate(bitmask);
-        //   }
-        // }
-        buffer
-          ..writeln('set ${element.name} ($type value) {')
-          ..writeln('  if (value != $name) {')
-          ..writeln('    $name = value;');
-        if (variable.needsUpdateTracking) {
-          final update =
-              _DartSourceRewriter(generator, component.scope, 0, '', true, {})
-                  .invalidateExpression(variable.updateBitmask.toString());
-          buffer.writeln('    $update');
-        }
-        buffer
-          ..writeln('  }')
-          ..writeln('}');
-      }
-    }
-  }
-
-  void writeSetText(ReactiveText target) {
     buffer
-      ..write(generator._nameForNode(target))
-      ..write('.zapText = ');
+      ..writeln(atOverride)
+      ..write(prefixIdentifier('Iterable'))
+      ..writeln(
+          '<$jaspr.Component> build($jaspr.BuildContext context) sync* {');
 
-    final expression = target.expression;
-    buffer.write(referenceExpression(expression));
-
-    if (target.needsToString) {
-      // Call .toString() on the result
-      buffer.write('.toString()');
+    for (final node in component.fragment.rootNodes) {
+      yieldNode(node);
     }
-    buffer.writeln(';');
-  }
 
-  void writeDartWithPatchedReferences(
-    AstNode dartCode, {
-    bool patchSelf = true,
-    Map<AstNode, WatchedExpression> watchedExpressions = const {},
-  }) {
-    buffer.write(
-      _DartSourceRewriter.patchDartReferences(
-        dartCode: dartCode,
-        patchSelf: patchSelf,
-        generator: generator,
-        component: component,
-        watchExpressions: watchedExpressions,
-      ),
-    );
+    buffer.writeln('}');
   }
 }
 
@@ -1027,15 +632,60 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
 
   @override
   void write() {
+    final jaspr = generator.imports.jasprImport;
     final prefix = generator.imports.zapImport;
-    buffer.writeln('class $name extends $prefix.ZapComponent {');
+    final stateName = generator.component.componentStateName;
+
+    // Write a Jaspr component class first:
+    buffer.writeln('final class $name extends $jaspr.StatefulComponent {');
+    buffer.write('const $name({super.key,');
+
+    final componentFields = StringBuffer();
+
+    for (final property in component.scope.declaredVariables
+        .whereType<DartCodeVariable>()
+        .where((e) => e.isProperty)) {
+      // Wrap properties in a ZapValue so that we can fallback to the default
+      // value otherwise. We can't use optional parameters as the default
+      // doesn't have to be a constant.
+      // todo: Don't do that if the parameter is non-nullable
+      final element = property.element;
+      final innerType = dartTypeToString(element.type);
+      final type = '$prefix.ZapValue<$innerType>?';
+      buffer
+        ..write(type)
+        ..write(' this.')
+        ..write(element.name)
+        ..write(',');
+
+      componentFields.writeln('final $type ${property.element.name};');
+    }
+
+    // Slots are also passed down as variables
+    for (final slot in component.usedSlots) {
+      final name = _slotVariable(slot);
+      componentFields.writeln('final $jaspr.Component? $name;');
+      buffer.writeln('$jaspr.Component? this.$name,');
+    }
+
+    buffer.writeln('});');
+
+    buffer
+      ..writeln(componentFields)
+      ..writeln(atOverride)
+      ..write('$stateName createState() => $stateName();')
+      ..writeln('}');
+
+    // All component logic is implemented as a jaspr State implementation.
+    buffer.writeln(
+        'final class $stateName extends $prefix.ZapGeneratedState<$name> {');
 
     // Write variables:
     for (final variable
         in component.scope.declaredVariables.whereType<DartCodeVariable>()) {
       final name = generator._nameForVar(variable);
-      // Variables need to be late because we only set them in the constructor's
-      // body.
+      // Variables need to be late because we only set them when the state is
+      // initialized.
       buffer.write('late ');
 
       if (!variable.isMutable) buffer.write('final ');
@@ -1048,21 +698,9 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
         ..writeln(' // ${variable.element.name}');
     }
 
-    // Slots are also passed down as variables
-    for (final slot in component.usedSlots) {
-      final name = _slotVariable(slot);
-      buffer.writeln('final $prefix.Fragment Function()? $name;');
-    }
-
-    // And DOM nodes
     writeCommonInstanceFields();
-
-    writeConstructor();
-
-    writeCreateMethod();
-    writeRemoveMethod();
-    writeUpdateMethod();
-    writePropertyAccessors();
+    writeInitState();
+    writeBuildMethod();
 
     // Write functions that were declared in the component
     for (final statement in component.instanceFunctions) {
@@ -1072,36 +710,11 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
     buffer.writeln('}');
   }
 
-  void writeConstructor() {
-    final zapPrefix = generator.imports.zapImport;
-
-    buffer.write('$name(');
-    final dartVariables =
-        component.scope.declaredVariables.whereType<DartCodeVariable>();
-
-    final properties = dartVariables.where((e) => e.isProperty);
-
-    for (final variable in properties) {
-      // Wrap properties in a ZapValue so that we can fallback to the default
-      // value otherwise. We can't use optional parameters as the default
-      // doesn't have to be a constant.
-      // todo: Don't do that if the parameter is non-nullable
-      final element = variable.element;
-      final innerType = dartTypeToString(element.type);
-      final type = '$zapPrefix.ZapValue<$innerType>?';
-      buffer
-        ..write(type)
-        ..write(r' $')
-        ..write(element.name)
-        ..write(',');
-    }
-
-    // Also write slots
-    for (final slot in component.usedSlots) {
-      buffer.write('this.${_slotVariable(slot)},');
-    }
-
-    buffer.writeln(') {');
+  void writeInitState() {
+    buffer
+      ..writeln(atOverride)
+      ..writeln('void initState() {')
+      ..writeln('super.initState();');
 
     for (final initializer in component.componentInitializers) {
       if (initializer is InitializeStatement) {
@@ -1143,12 +756,12 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
 
         buffer
           ..write(generator._nameForVar(variable))
-          ..write(r' = $')
+          ..write(r' = component.')
           ..write(element.name)
           ..write(' != null ? ')
-          ..write(r'$')
+          ..write(r'component.')
           ..write(element.name)
-          ..write('.value : (');
+          ..write('!.value : (');
 
         final declaration = variable.declaration;
         final defaultExpr =
@@ -1192,7 +805,7 @@ class _SubComponentWriter extends _ComponentOrSubcomponentWriter {
 
     final parent = component.parent!;
     final parentType = parent is Component
-        ? generator.component.componentName
+        ? generator.component.componentStateName
         : generator._nameForMisc(parent);
 
     final needsInitialization = <String>[];
@@ -1227,10 +840,7 @@ class _SubComponentWriter extends _ComponentOrSubcomponentWriter {
       ..writeln('$name($initializers);');
 
     writeCommonInstanceFields();
-    writeCreateMethod();
-    writeUpdateMethod();
-    writeRemoveMethod();
-    writePropertyAccessors();
+    writeBuildMethod();
 
     buffer.writeln('}');
   }
@@ -1544,14 +1154,12 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
     // Wrap the assignment in an $invalidateAssign block so that it can still
     // be used as an expression while also scheduling a node update!
     if (notifyUpdate) {
-      final updateCode = variable.updateBitmask;
-
       if (scope == rootScope) {
-        _replaceRange(node.offset, 0, '\$invalidateAssign($updateCode, ');
+        _replaceRange(node.offset, 0, '\$invalidateAssign(');
       } else {
         final prefix = _prefixFor(rootScope);
-        _replaceRange(node.offset, 0,
-            '$prefix.\$invalidateAssignSubcomponent(this, $updateCode, ');
+        _replaceRange(
+            node.offset, 0, '$prefix.\$invalidateAssignSubcomponent(this,');
       }
     }
 

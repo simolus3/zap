@@ -5,7 +5,7 @@ import 'dart.dart';
 import 'external_component.dart';
 import 'types/dom_types.dart';
 
-class DomFragment {
+final class DomFragment {
   final List<ReactiveNode> rootNodes;
   final ZapVariableScope resolvedScope;
 
@@ -18,7 +18,7 @@ class DomFragment {
   }
 }
 
-abstract class ReactiveNode {
+sealed class ReactiveNode {
   Iterable<ReactiveNode> get children;
 
   Iterable<ReactiveNode> get allDescendants {
@@ -30,7 +30,7 @@ abstract class ReactiveNode {
   }
 }
 
-class ReactiveElement extends ReactiveNode {
+final class ReactiveElement extends ReactiveNode {
   final String tagName;
   final KnownElementInfo? knownElement;
 
@@ -53,7 +53,7 @@ class ReactiveElement extends ReactiveNode {
 /// Mount a slot into the DOM of a component.
 ///
 /// Slots can be set by parent components.
-class MountSlot extends ReactiveNode {
+final class MountSlot extends ReactiveNode {
   /// If this refers to a named slot, this is that name.
   ///
   /// Otherwise, the unnamed slot is mounted here.
@@ -66,7 +66,7 @@ class MountSlot extends ReactiveNode {
   Iterable<ReactiveNode> get children => const Iterable.empty();
 }
 
-class ReactiveRawHtml extends ReactiveNode {
+final class ReactiveRawHtml extends ReactiveNode {
   final ResolvedDartExpression expression;
   final bool needsToString;
 
@@ -76,12 +76,12 @@ class ReactiveRawHtml extends ReactiveNode {
   Iterable<ReactiveNode> get children => const Iterable.empty();
 }
 
-abstract class ReactiveBlock extends ReactiveNode {
+sealed class ReactiveBlock extends ReactiveNode {
   @override
   Iterable<ReactiveNode> get children => const Iterable.empty();
 }
 
-class ReactiveIf extends ReactiveBlock {
+final class ReactiveIf extends ReactiveBlock {
   final List<ResolvedDartExpression> conditions;
   final List<DomFragment> whens;
   final DomFragment? otherwise;
@@ -89,7 +89,7 @@ class ReactiveIf extends ReactiveBlock {
   ReactiveIf(this.conditions, this.whens, this.otherwise);
 }
 
-class ReactiveFor extends ReactiveBlock {
+final class ReactiveFor extends ReactiveBlock {
   /// The iterable this for block is iterating over.
   final ResolvedDartExpression expression;
   final DartType elementType;
@@ -99,7 +99,7 @@ class ReactiveFor extends ReactiveBlock {
   ReactiveFor(this.expression, this.elementType, this.fragment);
 }
 
-class ReactiveAsyncBlock extends ReactiveBlock {
+final class ReactiveAsyncBlock extends ReactiveBlock {
   final bool isStream;
   final DartType type;
   final ResolvedDartExpression expression;
@@ -114,7 +114,7 @@ class ReactiveAsyncBlock extends ReactiveBlock {
   });
 }
 
-class ReactiveKeyBlock extends ReactiveBlock {
+final class ReactiveKeyBlock extends ReactiveBlock {
   final ResolvedDartExpression expression;
   final DomFragment fragment;
 
@@ -134,7 +134,7 @@ enum AttributeMode {
   setIfNotNullClearOtherwise,
 }
 
-class SubComponent extends ReactiveNode {
+final class SubComponent extends ReactiveNode {
   final ExternalComponent component;
   final Map<String, ResolvedDartExpression> expressions;
   final List<EventHandler> eventHandlers;
@@ -160,13 +160,13 @@ class SubComponent extends ReactiveNode {
 
 /// Renders the [expression], which should evaluate to a `ZapComponent`, as a
 /// subcomponent.
-class DynamicSubComponent extends ReactiveBlock {
+final class DynamicSubComponent extends ReactiveBlock {
   final ResolvedDartExpression expression;
 
   DynamicSubComponent(this.expression);
 }
 
-class ConstantText extends ReactiveNode {
+final class ConstantText extends ReactiveNode {
   final String text;
 
   ConstantText(this.text);
@@ -175,7 +175,7 @@ class ConstantText extends ReactiveNode {
   Iterable<ReactiveNode> get children => const Iterable.empty();
 }
 
-class ReactiveText extends ReactiveNode {
+final class ReactiveText extends ReactiveNode {
   final ResolvedDartExpression expression;
   final bool needsToString;
 

@@ -1,9 +1,6 @@
-import 'dart:html';
-
+import 'package:jaspr/browser.dart';
 import 'package:zap_docs/src/examples/scaffold/app.zap.dart';
 
 void main() {
-  final target = document.querySelector('main.container-fluid')!;
-  target.children.clear();
-  App().create(target);
+  runApp(App(), attachTo: 'main.container-fluid');
 }

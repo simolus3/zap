@@ -1,3 +1,4 @@
+import 'package:jaspr/jaspr.dart';
 import 'package:zap/zap.dart';
 
 import 'introduction/hello_world.zap.dart' as intro;
@@ -34,7 +35,7 @@ import 'examples.dart';
 
 final selectedComponent = WritableWatchable(examples.first.children.first);
 
-ZapComponent instantiate(ExampleComponent component) {
+Component instantiate(ExampleComponent component) {
   switch (component) {
     case helloWorld:
       return intro.HelloWorld();

@@ -5,63 +5,63 @@ import 'package:analyzer/dart/element/type.dart';
 const knownTags = {
   // Note: Skipping base, body, content, head, html, link, meta, script, shadow,
   // slot, style, template, title,
-  'a': KnownElementInfo('AnchorElement'),
-  'area': KnownElementInfo('AreaElement'),
-  'br': KnownElementInfo('BRElement'),
-  'button': KnownElementInfo('ButtonElement'),
-  'canvas': KnownElementInfo('CanvasElement'),
-  'data': KnownElementInfo('DataElement'),
-  'datalist': KnownElementInfo('DataListElement'),
-  'details': KnownElementInfo('DetailsElement'),
-  'dialog': KnownElementInfo('DialogElement'),
-  'div': KnownElementInfo('DivElement'),
-  'dl': KnownElementInfo('DListElement'),
-  'embed': KnownElementInfo('EmbedElement'),
-  'fieldset': KnownElementInfo('FieldSetElement'),
-  'form': KnownElementInfo('FormElement'),
-  'h1': KnownElementInfo('HeadingElement', constructorName: 'h1'),
-  'h2': KnownElementInfo('HeadingElement', constructorName: 'h2'),
-  'h3': KnownElementInfo('HeadingElement', constructorName: 'h3'),
-  'h4': KnownElementInfo('HeadingElement', constructorName: 'h4'),
-  'h5': KnownElementInfo('HeadingElement', constructorName: 'h5'),
-  'h6': KnownElementInfo('HeadingElement', constructorName: 'h6'),
-  'hr': KnownElementInfo('HRElement'),
-  'iframe': KnownElementInfo('IFrameElement'),
-  'image': KnownElementInfo('ImageElement'),
+  'a': KnownElementInfo('HTMLAnchorElement'),
+  'area': KnownElementInfo('HTMLAreaElement'),
+  'br': KnownElementInfo('HTMLBRElement'),
+  'button': KnownElementInfo('HTMLButtonElement'),
+  'canvas': KnownElementInfo('HTMLCanvasElement'),
+  'data': KnownElementInfo('HTMLDataElement'),
+  'datalist': KnownElementInfo('HTMLDataListElement'),
+  'details': KnownElementInfo('HTMLDetailsElement'),
+  'dialog': KnownElementInfo('HTMLDialogElement'),
+  'div': KnownElementInfo('HTMLDivElement'),
+  'dl': KnownElementInfo('HTMLDListElement'),
+  'embed': KnownElementInfo('HTMLEmbedElement'),
+  'fieldset': KnownElementInfo('HTMLFieldSetElement'),
+  'form': KnownElementInfo('HTMLFormElement'),
+  'h1': KnownElementInfo('HTMLHeadingElement', constructorName: 'h1'),
+  'h2': KnownElementInfo('HTMLHeadingElement', constructorName: 'h2'),
+  'h3': KnownElementInfo('HTMLHeadingElement', constructorName: 'h3'),
+  'h4': KnownElementInfo('HTMLHeadingElement', constructorName: 'h4'),
+  'h5': KnownElementInfo('HTMLHeadingElement', constructorName: 'h5'),
+  'h6': KnownElementInfo('HTMLHeadingElement', constructorName: 'h6'),
+  'hr': KnownElementInfo('HTMLHRElement'),
+  'iframe': KnownElementInfo('HTMLIFrameElement'),
+  'image': KnownElementInfo('HTMLImageElement'),
   'input': KnownElementInfo(
-      'InputElement'), // todo: Special case the different kinds?
-  'li': KnownElementInfo('LIElement'),
-  'label': KnownElementInfo('LabelElement'),
-  'legend': KnownElementInfo('LegendElement'),
-  'map': KnownElementInfo('MapElement'),
-  'media': KnownElementInfo('MediaElement'),
-  'menu': KnownElementInfo('MenuElement'),
-  'meter': KnownElementInfo('MeterElement'),
-  'del': KnownElementInfo('ModElement', instantiable: false),
-  'ins': KnownElementInfo('ModElement', instantiable: false),
-  'ol': KnownElementInfo('OListElement'),
-  'object': KnownElementInfo('Object'),
-  'optgroup': KnownElementInfo('OptGroupElement'),
-  'option': KnownElementInfo('OptionElement'),
-  'output': KnownElementInfo('OutputElement'),
-  'p': KnownElementInfo('ParagraphElement'),
-  'param': KnownElementInfo('ParamElement'),
-  'picture': KnownElementInfo('PictureElement', instantiable: false),
-  'pre': KnownElementInfo('PreElement'),
-  'progress': KnownElementInfo('ProgressElement'),
-  'q': KnownElementInfo('QuoteElement'),
-  'select': KnownElementInfo('SelectElement'),
-  'source': KnownElementInfo('SourceElement'),
-  'span': KnownElementInfo('SpanElement'),
-  'caption': KnownElementInfo('TableCaptionElement'),
-  'td': KnownElementInfo('TableCellElement'),
-  'col': KnownElementInfo('TableColElement'),
-  'table': KnownElementInfo('TableElement'),
-  'tr': KnownElementInfo('TableRowElement'),
-  'textarea': KnownElementInfo('TextAreaElement'),
-  'time': KnownElementInfo('TimeElement', instantiable: false),
-  'track': KnownElementInfo('TrackElement'),
-  'ul': KnownElementInfo('UListElement'),
+      'HTMLInputElement'), // todo: Special case the different kinds?
+  'li': KnownElementInfo('HTMLLIElement'),
+  'label': KnownElementInfo('HTMLLabelElement'),
+  'legend': KnownElementInfo('HTMLLegendElement'),
+  'map': KnownElementInfo('HTMLMapElement'),
+  'media': KnownElementInfo('HTMLMediaElement'),
+  'menu': KnownElementInfo('HTMLMenuElement'),
+  'meter': KnownElementInfo('HTMLMeterElement'),
+  'del': KnownElementInfo('HTMLModElement', instantiable: false),
+  'ins': KnownElementInfo('HTMLModElement', instantiable: false),
+  'ol': KnownElementInfo('HTMLOListElement'),
+  'object': KnownElementInfo('HTMLObjectElement'),
+  'optgroup': KnownElementInfo('HTMLOptGroupElement'),
+  'option': KnownElementInfo('HTMLOptionElement'),
+  'output': KnownElementInfo('HTMLOutputElement'),
+  'p': KnownElementInfo('HTMLParagraphElement'),
+  'param': KnownElementInfo('HTMLParamElement'),
+  'picture': KnownElementInfo('HTMLPictureElement', instantiable: false),
+  'pre': KnownElementInfo('HTMLPreElement'),
+  'progress': KnownElementInfo('HTMLProgressElement'),
+  'q': KnownElementInfo('HTMLQuoteElement'),
+  'select': KnownElementInfo('HTMLSelectElement'),
+  'source': KnownElementInfo('HTMLSourceElement'),
+  'span': KnownElementInfo('HTMLSpanElement'),
+  'caption': KnownElementInfo('HTMLTableCaptionElement'),
+  'td': KnownElementInfo('HTMLTableCellElement'),
+  'col': KnownElementInfo('HTMLTableColElement'),
+  'table': KnownElementInfo('HTMLTableElement'),
+  'tr': KnownElementInfo('HTMLTableRowElement'),
+  'textarea': KnownElementInfo('HTMLTextAreaElement'),
+  'time': KnownElementInfo('HTMLTimeElement'),
+  'track': KnownElementInfo('HTMLTrackElement'),
+  'ul': KnownElementInfo('HTMLUListElement'),
 };
 
 class KnownElementInfo {
@@ -84,7 +84,7 @@ class DomEventType {
 }
 
 class ResolvedDomTypes {
-  final LibraryElement dartHtml;
+  final LibraryElement packageWeb;
 
   final Map<String, InterfaceType> _types = {};
   final Map<String, DomEventType> knownEvents = {};
@@ -95,59 +95,38 @@ class ResolvedDomTypes {
   late final InterfaceType element =
       _nonNullableWithoutTypeParameters('Element');
 
-  ResolvedDomTypes(this.dartHtml) {
+  ResolvedDomTypes(this.packageWeb) {
     _readKnownInformation();
   }
 
-  /// Extracts known elements and events from the resolved `dart:html` library.
+  /// Extracts known elements and events from the resolved `package:web`
+  /// library.
   void _readKnownInformation() {
-    final typeSystem = dartHtml.typeSystem;
-    final baseEventProvider = typeSystem.instantiateInterfaceToBounds(
-      element: _class('EventStreamProvider'),
-      nullabilitySuffix: NullabilitySuffix.none,
-    );
+    final elementEventGetters =
+        packageWeb.exportNamespace.get('EventStreamProviders') as ClassElement;
+    for (final field in elementEventGetters.fields) {
+      final value = field.computeConstantValue();
+      if (value == null) continue;
 
-    void addEventsFromClass(ClassElement element) {
-      for (final field in element.fields) {
-        final value = field.computeConstantValue();
-        if (value == null) continue;
-
-        final type = value.type;
-        if (type is! InterfaceType ||
-            !typeSystem.isAssignableTo(type, baseEventProvider)) {
-          continue;
-        }
-
-        final String name;
-        // These two are using a dynamic name in the SDK and need to be special-
-        // cased.
-        if (field.name == 'mouseWheelEvent') {
-          name = 'wheel';
-        } else if (field.name == 'transitionEndEvent') {
-          name = 'transitionend';
-        } else {
-          name = value.getField('_eventType')!.toStringValue()!;
-        }
-
-        knownEvents[name] = DomEventType(
-          '${element.name}.${field.name}',
-          type.typeArguments.single as InterfaceType? ??
-              event.element.instantiate(
-                  typeArguments: const [],
-                  nullabilitySuffix: NullabilitySuffix.none),
-        );
+      final type = value.type;
+      if (type is! InterfaceType) {
+        continue;
       }
-    }
 
-    for (final child in dartHtml.topLevelElements) {
-      if (child.name == 'GlobalEventHandlers' || child.name == 'Element') {
-        addEventsFromClass(child as ClassElement);
-      }
+      final name = value.getField('_eventType')!.toStringValue()!;
+
+      knownEvents[name] = DomEventType(
+        '${element.name}.${field.name}',
+        type.typeArguments.single as InterfaceType? ??
+            event.element.instantiate(
+                typeArguments: const [],
+                nullabilitySuffix: NullabilitySuffix.none),
+      );
     }
   }
 
-  ClassElement _class(String name) {
-    return dartHtml.getClass(name)!;
+  InterfaceElement _class(String name) {
+    return packageWeb.exportNamespace.get(name) as InterfaceElement;
   }
 
   InterfaceType _nonNullableWithoutTypeParameters(String name) {

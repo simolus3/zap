@@ -7,14 +7,17 @@ environment:
   sdk: ^3.0.0
 
 dependencies:
-  js: ^0.6.3
+  jaspr: ^0.18.2
   meta: ^1.7.0
+  universal_web: ^1.1.0+2
+  web: ^1.1.0
 
 dev_dependencies:
   build_runner: ^2.1.5
   build_test: ^2.1.4
   build_web_compilers: ^4.0.3
-  lints: ^2.1.0
+  jaspr_test: ^0.18.2
+  lints: ^5.0.0
   test: ^1.16.0
   zap_dev:
 

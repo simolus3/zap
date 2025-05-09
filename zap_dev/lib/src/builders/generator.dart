@@ -79,14 +79,8 @@ class _BuildDartResolver implements DartResolver {
   _BuildDartResolver(this.resolver);
 
   @override
-  Future<LibraryElement> get dartHtml async {
-    await for (final library in resolver.libraries) {
-      if (library.name.contains('dart.') && library.name.contains('html')) {
-        return library;
-      }
-    }
-
-    throw StateError('Could not find `dart:html`?!');
+  Future<LibraryElement> get packageWeb async {
+    return resolver.libraryFor(AssetId('web', 'lib/web.dart'));
   }
 
   @override
