@@ -15,27 +15,24 @@ class ProviderWatchable<State> extends Stream<State>
   late Stream<State> _dartStream;
 
   ProviderWatchable(this._container, this._provider) {
-    _dartStream = Stream.multi(
-      (listener) {
-        void startListening() {
-          _listeners.add(listener);
-          _newListener();
-        }
+    _dartStream = Stream.multi((listener) {
+      void startListening() {
+        _listeners.add(listener);
+        _newListener();
+      }
 
-        void stopListening() {
-          if (_listeners.remove(listener)) {
-            _listenerStopped();
-          }
+      void stopListening() {
+        if (_listeners.remove(listener)) {
+          _listenerStopped();
         }
+      }
 
-        listener
-          ..onResume = startListening
-          ..onPause = stopListening
-          ..onCancel = stopListening;
-        startListening();
-      },
-      isBroadcast: true,
-    );
+      listener
+        ..onResume = startListening
+        ..onPause = stopListening
+        ..onCancel = stopListening;
+      startListening();
+    }, isBroadcast: true);
   }
 
   ProviderSubscription<State> _newListener() {
@@ -64,10 +61,18 @@ class ProviderWatchable<State> extends Stream<State>
   }
 
   @override
-  StreamSubscription<State> listen(void Function(State event)? onData,
-      {Function? onError, void Function()? onDone, bool? cancelOnError}) {
-    return _dartStream.listen(onData,
-        onError: onError, onDone: onDone, cancelOnError: cancelOnError);
+  StreamSubscription<State> listen(
+    void Function(State event)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
+    return _dartStream.listen(
+      onData,
+      onError: onError,
+      onDone: onDone,
+      cancelOnError: cancelOnError,
+    );
   }
 
   @override

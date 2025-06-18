@@ -62,8 +62,10 @@ class Element extends AstNode implements DomNode {
   Element(this.tagName, this.attributes, this.innerContent);
 
   @override
-  Iterable<AstNode> get children =>
-      [...attributes, if (innerContent != null) innerContent!];
+  Iterable<AstNode> get children => [
+    ...attributes,
+    if (innerContent != null) innerContent!,
+  ];
 
   @override
   Res accept<Arg, Res>(AstVisitor<Arg, Res> visitor, Arg arg) {
@@ -209,8 +211,10 @@ class IfBlock extends AstNode implements Block {
   IfBlock(this.conditions, this.otherwise);
 
   @override
-  Iterable<AstNode> get children =>
-      [...conditions, if (otherwise != null) otherwise!];
+  Iterable<AstNode> get children => [
+    ...conditions,
+    if (otherwise != null) otherwise!,
+  ];
 
   @override
   Res accept<Arg, Res>(AstVisitor<Arg, Res> visitor, Arg arg) {
@@ -252,7 +256,11 @@ class AwaitBlock extends AstNode implements Block {
   DomNode innerNodes;
 
   AwaitBlock(
-      this.isStream, this.variableName, this.futureOrStream, this.innerNodes);
+    this.isStream,
+    this.variableName,
+    this.futureOrStream,
+    this.innerNodes,
+  );
 
   @override
   Iterable<AstNode> get children => [futureOrStream, innerNodes];
@@ -276,8 +284,12 @@ class ForBlock extends AstNode implements Block {
   RawDartExpression iterable;
   DomNode body;
 
-  ForBlock(this.elementVariableName, this.indexVariableName, this.iterable,
-      this.body);
+  ForBlock(
+    this.elementVariableName,
+    this.indexVariableName,
+    this.iterable,
+    this.body,
+  );
 
   @override
   Iterable<AstNode> get children => [iterable, body];
@@ -423,19 +435,28 @@ class Transformer<Arg> extends GeneralizingVisitor<Arg, AstNode> {
 
 extension<Arg> on AstTransformer<Arg> {
   Node transformChild<Node extends AstNode>(
-      Node child, AstNode parent, Arg arg) {
+    Node child,
+    AstNode parent,
+    Arg arg,
+  ) {
     return child.accept<Arg, AstNode>(this, arg) as Node..parent = parent;
   }
 
   Node? transformNullableChild<Node extends AstNode>(
-      Node? child, AstNode parent, Arg arg) {
+    Node? child,
+    AstNode parent,
+    Arg arg,
+  ) {
     if (child != null) {
       return transformChild(child, parent, arg);
     }
   }
 
   List<Node> transformChildren<Node extends AstNode>(
-      List<Node> children, AstNode parent, Arg arg) {
+    List<Node> children,
+    AstNode parent,
+    Arg arg,
+  ) {
     return [for (final child in children) transformChild(child, parent, arg)];
   }
 }

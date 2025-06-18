@@ -34,8 +34,10 @@ class HtmlTag extends Fragment {
     _mountAnchor = anchor;
 
     // ignore: unsafe_html
-    _artificialParent.setInnerHtml(_rawHtml,
-        treeSanitizer: NodeTreeSanitizer.trusted);
+    _artificialParent.setInnerHtml(
+      _rawHtml,
+      treeSanitizer: NodeTreeSanitizer.trusted,
+    );
 
     // [Element.children] is a view, but we want a fixed snapshot of the current
     // children, so copy.

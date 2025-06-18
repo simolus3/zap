@@ -6,6 +6,7 @@ import 'package:build/build.dart' hide Resolver;
 import 'package:build/build.dart' as build;
 import 'package:dart_style/dart_style.dart';
 import 'package:path/path.dart' as p;
+import 'package:pub_semver/pub_semver.dart';
 
 import '../errors.dart';
 import '../generator/generator.dart';
@@ -30,15 +31,20 @@ class ZapBuilder implements Builder {
     final errorReporter = ErrorReporter(reportError);
 
     final prepResult = await prepare(
-        await buildStep.readAsString(input), input.uri, errorReporter);
+      await buildStep.readAsString(input),
+      input.uri,
+      errorReporter,
+    );
 
     final element = await buildStep.resolver.libraryFor(tempDart);
     // Todo: Use astNodeFor here, but we'll have to obtain a suitable element
     // first.
-    final result = await element.session.getResolvedLibraryByElement(element)
-        as ResolvedLibraryResult;
-    final componentName =
-        dartComponentName(p.url.basenameWithoutExtension(input.path));
+    final result =
+        await element.session.getResolvedLibraryByElement(element)
+            as ResolvedLibraryResult;
+    final componentName = dartComponentName(
+      p.url.basenameWithoutExtension(input.path),
+    );
 
     final resolver = Resolver(
       prepResult,
@@ -56,10 +62,12 @@ class ZapBuilder implements Builder {
 
     var output = generator.libraryScope.render();
     try {
-      output = DartFormatter().format(output);
+      output = DartFormatter(languageVersion: Version(3, 8, 0)).format(output);
     } on FormatterException {
-      log.warning('Could not format generated output, this is probably a bug '
-          'in zap_dev.');
+      log.warning(
+        'Could not format generated output, this is probably a bug '
+        'in zap_dev.',
+      );
     }
 
     await buildStep.writeAsString(outId, output);

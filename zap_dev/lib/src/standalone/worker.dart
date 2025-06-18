@@ -33,7 +33,7 @@ class ZapWorker {
       StreamController.broadcast();
 
   ZapWorker(this._underlyingProvider)
-      : _overlayFs = OverlayResourceProvider(_underlyingProvider) {
+    : _overlayFs = OverlayResourceProvider(_underlyingProvider) {
     _providerForDartAnalyzer = HideGeneratedBuildFolder(_overlayFs);
   }
 
@@ -70,8 +70,10 @@ class ZapWorker {
 
     final context = contextFor(path);
 
-    return _files[path] =
-        RegisteredFile(_underlyingProvider.getFile(path), context);
+    return _files[path] = RegisteredFile(
+      _underlyingProvider.getFile(path),
+      context,
+    );
   }
 
   void closeContext(ZapAnalysisContext context) {
@@ -89,7 +91,7 @@ class ZapWorker {
 
       // Also wait for all dependencies to be prepared.
       await Future.wait([
-        for (final dependency in file.imports) _prepareIfNeeded(dependency)
+        for (final dependency in file.imports) _prepareIfNeeded(dependency),
       ]);
 
       await _resolve(file);
@@ -126,31 +128,43 @@ class ZapWorker {
     file.prepareResult = result;
     file.imports = [
       for (final path in result.importedZapFiles)
-        this.file(urlConverter.uriToPath(ownUrl.resolve(path))!)
+        this.file(urlConverter.uriToPath(ownUrl.resolve(path))!),
     ];
 
     final now = DateTime.now().millisecondsSinceEpoch;
 
     // Write the hidden Dart file used to resolve DOM expressions into a
     // the overlay FS.
-    _overlayFs.setOverlay(file.temporaryDartPath,
-        content: result.temporaryDartFile.contents, modificationStamp: now);
+    _overlayFs.setOverlay(
+      file.temporaryDartPath,
+      content: result.temporaryDartFile.contents,
+      modificationStamp: now,
+    );
 
     // Now that the temporary file exists, we can resolve it to export the API
     // and read imports.
-    final unit = await dartContext.currentSession
-        .getResolvedUnit(file.temporaryDartPath);
+    final unit = await dartContext.currentSession.getResolvedUnit(
+      file.temporaryDartPath,
+    );
     if (unit is ResolvedUnitResult) {
-      final export =
-          file.file.provider.pathContext.basename(file.temporaryDartPath);
+      final export = file.file.provider.pathContext.basename(
+        file.temporaryDartPath,
+      );
 
-      final function =
-          unit.unit.declarations.whereType<FunctionDeclaration>().first;
+      final function = unit.unit.declarations
+          .whereType<FunctionDeclaration>()
+          .first;
 
       final api = writeApiForComponent(
-          function, result.temporaryDartFile.contents, export);
-      _overlayFs.setOverlay(file.apiDartPath,
-          content: api, modificationStamp: now);
+        function,
+        result.temporaryDartFile.contents,
+        export,
+      );
+      _overlayFs.setOverlay(
+        file.apiDartPath,
+        content: api,
+        modificationStamp: now,
+      );
     }
 
     file.state = ZapFileState.importsKnown;
@@ -160,12 +174,14 @@ class ZapWorker {
     final dartContext = file.context!.dartContext;
     final dartResolver = _RawResolver(dartContext);
 
-    final library =
-        await dartResolver.resolveUri(Uri.file(file.temporaryDartPath));
+    final library = await dartResolver.resolveUri(
+      Uri.file(file.temporaryDartPath),
+    );
     dartResolver.referenceLibrary = library;
 
-    final unit = await dartContext.currentSession
-        .getResolvedUnit(file.temporaryDartPath);
+    final unit = await dartContext.currentSession.getResolvedUnit(
+      file.temporaryDartPath,
+    );
     if (unit is! ResolvedUnitResult) {
       throw StateError('Could not resolve unit for $file');
     }
@@ -183,8 +199,11 @@ class ZapWorker {
 
     // Also map Dart analysis errors back to the zap structures that were
     // mapped to the intermediate Dart file.
-    MapDartErrorsInZapFile(file.prepareResult!, component, errorReporter)
-        .reportErrors(unit.errors);
+    MapDartErrorsInZapFile(
+      file.prepareResult!,
+      component,
+      errorReporter,
+    ).reportErrors(unit.errors);
 
     file.state = ZapFileState.analyzed;
     _finishedAnalysis.add(file);
@@ -205,7 +224,8 @@ class _RawResolver extends DartResolver {
   Future<LibraryElement> get dartHtml async {
     if (referenceLibrary == null) {
       throw StateError(
-          'Cannot resolve `dart:html` without a reference library');
+        'Cannot resolve `dart:html` without a reference library',
+      );
     }
 
     // Start crawling imports from the reference library
@@ -232,8 +252,9 @@ class _RawResolver extends DartResolver {
 
   @override
   Future<LibraryElement> resolveUri(Uri uri) async {
-    final result = await _originatingContext.currentSession
-        .getLibraryByUri(uri.toString());
+    final result = await _originatingContext.currentSession.getLibraryByUri(
+      uri.toString(),
+    );
 
     if (result is LibraryElementResult) {
       return result.element;

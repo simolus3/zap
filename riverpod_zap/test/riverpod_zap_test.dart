@@ -19,7 +19,7 @@ void main() {
     expect(testbed.innerHtml, 'The current value is 0.');
   });
 
-/*
+  /*
   test('disposes containers after the component is destroyed', () {
     expect(RiverpodBinding.debugInstance.containers, isEmpty);
 

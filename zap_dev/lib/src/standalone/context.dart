@@ -8,6 +8,8 @@ class ZapAnalysisContext {
 
   final bool analyzerKnowsAboutBuildWorkspace;
 
-  ZapAnalysisContext(this.dartContext,
-      {this.analyzerKnowsAboutBuildWorkspace = false});
+  ZapAnalysisContext(
+    this.dartContext, {
+    this.analyzerKnowsAboutBuildWorkspace = false,
+  });
 }

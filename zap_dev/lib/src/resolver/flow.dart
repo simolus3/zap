@@ -7,17 +7,15 @@ class Flow {
   final Set<HasUpdateMask> dependencies;
   final Action action;
 
-  Iterable<HasUpdateMask> get _mutableDependencies => dependencies.where(
-        (dep) {
-          if (dep is BaseZapVariable) {
-            return dep.isMutable;
-          } else if (dep is WatchedExpression) {
-            return true;
-          } else {
-            throw AssertionError('Uknown flow dependency');
-          }
-        },
-      );
+  Iterable<HasUpdateMask> get _mutableDependencies => dependencies.where((dep) {
+    if (dep is BaseZapVariable) {
+      return dep.isMutable;
+    } else if (dep is WatchedExpression) {
+      return true;
+    } else {
+      throw AssertionError('Uknown flow dependency');
+    }
+  });
 
   Flow(this.dependencies, this.action);
 
@@ -25,7 +23,9 @@ class Flow {
 
   int get bitmask {
     return _mutableDependencies.fold(
-        0, (prev, variable) => prev | variable.updateBitmask);
+      0,
+      (prev, variable) => prev | variable.updateBitmask,
+    );
   }
 }
 

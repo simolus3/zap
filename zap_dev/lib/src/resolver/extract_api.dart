@@ -7,9 +7,14 @@ import '../utils/dart.dart';
 import '../utils/zap.dart';
 
 String writeApiForComponent(
-    AstNode? functionNode, String temporaryDart, String uriOfTemporaryDart) {
-  final components = ScriptComponents.of(temporaryDart,
-      rewriteImports: ImportRewriteMode.none);
+  AstNode? functionNode,
+  String temporaryDart,
+  String uriOfTemporaryDart,
+) {
+  final components = ScriptComponents.of(
+    temporaryDart,
+    rewriteImports: ImportRewriteMode.none,
+  );
 
   var basename = url.basename(uriOfTemporaryDart);
   basename = basename.substring(0, basename.length - '.tmp.zap.dart'.length);
@@ -64,7 +69,8 @@ class _ApiInferrer extends RecursiveAstVisitor<void> {
       if (slots.isNotEmpty) {
         for (final slot in slots) {
           output.writeln(
-              '@Slot(${slot == null ? 'null' : dartStringLiteral(slot)})');
+            '@Slot(${slot == null ? 'null' : dartStringLiteral(slot)})',
+          );
         }
         output.writeln('void get slots;');
       }

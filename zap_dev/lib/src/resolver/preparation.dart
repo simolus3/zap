@@ -17,7 +17,10 @@ const zapPrefix = '__zap__';
 const componentFunctionWrapper = '${zapPrefix}_component';
 
 Future<PrepareResult> prepare(
-    String source, Uri sourceUri, ErrorReporter reporter) async {
+  String source,
+  Uri sourceUri,
+  ErrorReporter reporter,
+) async {
   final scanner = Scanner(source, sourceUri, reporter);
   final parser = Parser(scanner);
   var component = parser.parse();
@@ -37,12 +40,14 @@ Future<PrepareResult> prepare(
   ScriptComponents? splitScript;
 
   if (script != null) {
-    splitScript =
-        ScriptComponents.of(script, rewriteImports: ImportRewriteMode.zapToApi);
+    splitScript = ScriptComponents.of(
+      script,
+      rewriteImports: ImportRewriteMode.zapToApi,
+    );
 
     importedZapFiles = [
       for (final import in splitScript.originalImports)
-        if (url.extension(import) == '.zap') import
+        if (url.extension(import) == '.zap') import,
     ];
   }
 
@@ -59,13 +64,16 @@ Future<PrepareResult> prepare(
       ..finishNode();
   }
 
-  fileBuilder
-      .writeln('void $componentFunctionWrapper(ComponentOrPending self) {');
+  fileBuilder.writeln(
+    'void $componentFunctionWrapper(ComponentOrPending self) {',
+  );
 
   if (splitScript != null) {
     fileBuilder
-      ..startWritingNode(checker.script!.innerContent!,
-          offsetInNode: splitScript.offsetOfBody)
+      ..startWritingNode(
+        checker.script!.innerContent!,
+        offsetInNode: splitScript.offsetOfBody,
+      )
       ..writeln(splitScript.body)
       ..finishNode();
   }
@@ -78,8 +86,9 @@ Future<PrepareResult> prepare(
   // the slots defined by a component.
   if (findSlots.definedSlots.isNotEmpty) {
     for (final slot in findSlots.definedSlots) {
-      fileBuilder
-          .writeln('@Slot(${slot == null ? 'null' : dartStringLiteral(slot)})');
+      fileBuilder.writeln(
+        '@Slot(${slot == null ? 'null' : dartStringLiteral(slot)})',
+      );
     }
     fileBuilder.writeln('dynamic ${zapPrefix}__slots;');
   }
@@ -107,12 +116,16 @@ Future<PrepareResult> prepare(
   var resolvedStyle = '';
 
   final hash = utf8.encoder.fuse(sha1).convert(sourceUri.toString());
-  final hashText =
-      zbase32.convert(hash.bytes.sublist(0, min(hash.bytes.length, 8)));
+  final hashText = zbase32.convert(
+    hash.bytes.sublist(0, min(hash.bytes.length, 8)),
+  );
   className = 'zap-$hashText';
 
   resolvedStyle = componentScss(
-      rawStyle, className, splitScript?.originalImports ?? const []);
+    rawStyle,
+    className,
+    splitScript?.originalImports ?? const [],
+  );
 
   return PrepareResult._(
     splitScript?.directives ?? '',
@@ -181,11 +194,11 @@ class TemporaryDartFile {
   void startWritingNode(AstNode node, {int offsetInNode = 0}) {
     _startOffsetForPending = _buffer.length;
     _finishNode = (endOffset) => RegionInTemporaryDartFile(
-          _startOffsetForPending,
-          endOffset,
-          node,
-          startOffsetInNode: offsetInNode,
-        );
+      _startOffsetForPending,
+      endOffset,
+      node,
+      startOffsetInNode: offsetInNode,
+    );
   }
 
   void finishNode() {
@@ -226,8 +239,11 @@ class RegionInTemporaryDartFile {
   final int startOffsetInNode;
 
   RegionInTemporaryDartFile(
-      this.startOffset, this.endOffsetExclusive, this.createdForNode,
-      {this.startOffsetInNode = 0});
+    this.startOffset,
+    this.endOffsetExclusive,
+    this.createdForNode, {
+    this.startOffsetInNode = 0,
+  });
 }
 
 class _ComponentSanityChecker extends RecursiveVisitor<void, void> {
@@ -314,18 +330,26 @@ class _ComponentSanityChecker extends RecursiveVisitor<void, void> {
 
     void handleSpecial(Element? previous) {
       if (previous != null) {
-        errors.reportError(ZapError.onNode(
-            e, 'This component already declared a <$tagName> tag!'));
+        errors.reportError(
+          ZapError.onNode(
+            e,
+            'This component already declared a <$tagName> tag!',
+          ),
+        );
       } else if (_isInTag) {
-        errors.reportError(ZapError.onNode(
-            e, '<$tagName> tags must appear at the top of a Zap component!'));
+        errors.reportError(
+          ZapError.onNode(
+            e,
+            '<$tagName> tags must appear at the top of a Zap component!',
+          ),
+        );
       }
     }
 
     if (e.tagName == 'script') {
       final isModule =
           e.attributes.firstWhereOrNull((attr) => attr.key == 'context') !=
-              null;
+          null;
 
       if (isModule) {
         handleSpecial(moduleScript);
@@ -386,8 +410,9 @@ class _DartExpressionWriter {
     scope.blockName = name;
 
     if (scope is AsyncBlockVariableScope) {
-      final extractFunction =
-          scope.block.isStream ? 'extractFromStream' : 'extractFromFuture';
+      final extractFunction = scope.block.isStream
+          ? 'extractFromStream'
+          : 'extractFromFuture';
       final stream = scope.parent!
           .findExpression(scope.block.futureOrStream)
           .localVariableName;
@@ -395,19 +420,22 @@ class _DartExpressionWriter {
       target
         ..writeln('$name(ZapSnapshot<T> ${scope.block.variableName}) {')
         ..writeln(
-            'final ${scope.block.variableName} = $extractFunction($stream);');
+          'final ${scope.block.variableName} = $extractFunction($stream);',
+        );
 
       _writeExpressionsAndChildren(scope);
       target.writeln('}');
     } else if (scope is ForBlockVariableScope) {
-      final iterable =
-          scope.parent!.findExpression(scope.block.iterable).localVariableName;
+      final iterable = scope.parent!
+          .findExpression(scope.block.iterable)
+          .localVariableName;
       final indexVar = scope.block.indexVariableName;
 
       target
         ..writeln('$name() {')
         ..writeln(
-            'final ${scope.block.elementVariableName} = extractFromIterable($iterable);');
+          'final ${scope.block.elementVariableName} = extractFromIterable($iterable);',
+        );
 
       if (indexVar != null) {
         target.writeln('final int $indexVar;');
@@ -501,10 +529,10 @@ class _RewriteMixedDartExpressions extends Transformer<void> {
 
   DartExpression _textToExpression(Text e) {
     return DartExpression(
-      RawDartExpression("'${_dartStringLiteralFor(e)}'")
-        ..first = e.first
-        ..last = e.last,
-    )
+        RawDartExpression("'${_dartStringLiteralFor(e)}'")
+          ..first = e.first
+          ..last = e.last,
+      )
       ..first = e.first
       ..last = e.last;
   }
@@ -609,8 +637,12 @@ extension on Element {
     if (child is Text) {
       return child.content;
     } else {
-      reporter.reportError(ZapError.onNode(child ?? this,
-          'Expected a raw text string without Dart expressions or macros!'));
+      reporter.reportError(
+        ZapError.onNode(
+          child ?? this,
+          'Expected a raw text string without Dart expressions or macros!',
+        ),
+      );
       return null;
     }
   }

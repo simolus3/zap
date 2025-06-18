@@ -13,14 +13,15 @@ class ImportsTracker {
   final Map<Uri, Set<String>> _unaliasedImports = {};
 
   ImportsTracker(GenerationScope scope, this.expectedOutput)
-      : imports = scope.leaf();
+    : imports = scope.leaf();
 
   void ensureImportsAreWritten() {
     _unaliasedImports.forEach((import, shown) {
       final showCombinator = shown.join(', ');
 
       imports.writeln(
-          'import ${dartStringLiteral(import.toString())} show $showCombinator;');
+        'import ${dartStringLiteral(import.toString())} show $showCombinator;',
+      );
     });
   }
 
@@ -35,10 +36,12 @@ class ImportsTracker {
     // defined twice.
     if (url.extension(uri.path, 4) == '.tmp.zap.api.dart') {
       uri = uri.replace(
-          path: uri.path.replaceAll('.tmp.zap.api.dart', '.zap.dart'));
+        path: uri.path.replaceAll('.tmp.zap.api.dart', '.zap.dart'),
+      );
     } else if (url.extension(uri.path, 3) == '.tmp.zap.dart') {
-      uri =
-          uri.replace(path: uri.path.replaceAll('.tmp.zap.dart', '.zap.dart'));
+      uri = uri.replace(
+        path: uri.path.replaceAll('.tmp.zap.dart', '.zap.dart'),
+      );
     }
 
     if (uri.scheme == 'asset') {
@@ -50,7 +53,8 @@ class ImportsTracker {
       }
 
       return Uri.parse(
-          url.relative(asset.path, from: url.dirname(expectedOutput.path)));
+        url.relative(asset.path, from: url.dirname(expectedOutput.path)),
+      );
     }
     return uri;
   }

@@ -58,8 +58,7 @@ abstract class _AsyncBlockBase<T> extends Fragment {
 class FutureBlock<T> extends _AsyncBlockBase<T> {
   Future<T>? _future;
 
-  FutureBlock(Fragment fragment, void Function(Fragment, ZapSnapshot<T>) update)
-      : super(fragment, update);
+  FutureBlock(super.fragment, super.update);
 
   set future(FutureOr<T> future) {
     if (future is Future<T>) {
@@ -104,8 +103,7 @@ class StreamBlock<T> extends _AsyncBlockBase<T> {
 
   ZapSnapshot<T> _snapshot = const ZapSnapshot.unresolved();
 
-  StreamBlock(Fragment fragment, void Function(Fragment, ZapSnapshot<T>) update)
-      : super(fragment, update);
+  StreamBlock(super.fragment, super.update);
 
   set stream(Stream<T> stream) {
     _subscription?.cancel();

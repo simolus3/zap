@@ -15,11 +15,13 @@ class DebugTag extends Fragment {
   final List<Object?> _knownValues;
 
   DebugTag(this.sourceLocation, this.variableNames)
-      : _knownValues = List.filled(variableNames.length, null);
+    : _knownValues = List.filled(variableNames.length, null);
 
   set expressions(List<Object?> expressions) {
-    assert(expressions.length == variableNames.length,
-        'Unexpected length of expressions to check');
+    assert(
+      expressions.length == variableNames.length,
+      'Unexpected length of expressions to check',
+    );
 
     var different = false;
     for (var i = 0; i < expressions.length; i++) {

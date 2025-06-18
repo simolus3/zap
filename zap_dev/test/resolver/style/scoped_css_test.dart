@@ -4,7 +4,7 @@ import 'package:zap_dev/src/resolver/style/scoped_css.dart';
 void main() {
   test('adds class names to selectors', () {
     final result = componentScss(
-        '''
+      '''
 @use 'test';
 
 h1 {
@@ -13,8 +13,9 @@ h1 {
   }
 }
 ''',
-        'test-scoped',
-        []);
+      'test-scoped',
+      [],
+    );
 
     expect(result, '''
 @use 'test';
@@ -30,13 +31,14 @@ h1.test-scoped{
 
   test('does not add a second class for pseudo-selectors', () {
     final result = componentScss(
-        '''
+      '''
 h1:nth-child(2n) {
   color: blue;
 }
 ''',
-        'test-scoped',
-        []);
+      'test-scoped',
+      [],
+    );
 
     expect(result, '''
 h1.test-scoped:nth-child(2n){
@@ -48,13 +50,14 @@ h1.test-scoped:nth-child(2n){
 
   test('transforms multiple selectors', () {
     final result = componentScss(
-        '''
+      '''
 h1, h2, h3 {
   color: blue;
 }
 ''',
-        'test-scoped',
-        []);
+      'test-scoped',
+      [],
+    );
 
     expect(result, '''
 h1.test-scoped, h2.test-scoped, h3.test-scoped{

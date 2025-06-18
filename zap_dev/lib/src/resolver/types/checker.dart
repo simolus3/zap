@@ -34,28 +34,45 @@ class TypeChecker {
     return typeSystem.isAssignableTo(
       type,
       typeProvider.stringElement.instantiate(
-          typeArguments: const [],
-          nullabilitySuffix: NullabilitySuffix.question),
+        typeArguments: const [],
+        nullabilitySuffix: NullabilitySuffix.question,
+      ),
     );
   }
 
   DartType checkFuture(DartType shouldBeFuture, FileSpan? span) {
-    return _extractSingleType(shouldBeFuture, span, typeProvider.futureElement,
-        'This must be a future!');
+    return _extractSingleType(
+      shouldBeFuture,
+      span,
+      typeProvider.futureElement,
+      'This must be a future!',
+    );
   }
 
   DartType checkStream(DartType shouldBeStream, FileSpan? span) {
-    return _extractSingleType(shouldBeStream, span, typeProvider.streamElement,
-        'This must be a stream!');
+    return _extractSingleType(
+      shouldBeStream,
+      span,
+      typeProvider.streamElement,
+      'This must be a stream!',
+    );
   }
 
   DartType checkIterable(DartType shouldBeIterable, FileSpan? span) {
-    return _extractSingleType(shouldBeIterable, span,
-        typeProvider.iterableElement, 'This must be an iterable!');
+    return _extractSingleType(
+      shouldBeIterable,
+      span,
+      typeProvider.iterableElement,
+      'This must be an iterable!',
+    );
   }
 
   DartType _extractSingleType(
-      DartType type, FileSpan? span, ClassElement element, String description) {
+    DartType type,
+    FileSpan? span,
+    ClassElement element,
+    String description,
+  ) {
     final asStream = type.asInstanceOf(element);
     if (asStream == null) {
       errors.reportError(ZapError(description, span));
@@ -66,8 +83,11 @@ class TypeChecker {
   }
 
   EventCheckingResult checkEvent(
-      Attribute attribute, String eventName, Expression? expression,
-      {bool canBeCustom = false}) {
+    Attribute attribute,
+    String eventName,
+    Expression? expression, {
+    bool canBeCustom = false,
+  }) {
     final staticType = expression?.staticType ?? typeProvider.dynamicType;
     final event = domTypes.knownEvents[eventName];
 
@@ -79,9 +99,12 @@ class TypeChecker {
     }
 
     if (event == null && !canBeCustom) {
-      errors.reportError(ZapError(
+      errors.reportError(
+        ZapError(
           'Unknown event `$eventName`, this may cause runtime errors',
-          attribute.keyToken?.span));
+          attribute.keyToken?.span,
+        ),
+      );
     }
 
     if (staticType is! FunctionType) {
@@ -91,9 +114,12 @@ class TypeChecker {
 
     final parameters = staticType.parameters;
     if (parameters.length > 1) {
-      errors.reportError(ZapError(
+      errors.reportError(
+        ZapError(
           'Event handlers must have at most one parameter!',
-          attribute.value?.span));
+          attribute.value?.span,
+        ),
+      );
       return EventCheckingResult(true, event, eventType);
     }
 
@@ -104,25 +130,33 @@ class TypeChecker {
     final parameter = parameters.single;
     if (parameter.isNamed) {
       errors.reportError(
-        ZapError('The parameter on the callback must be positional',
-            attribute.value?.span),
+        ZapError(
+          'The parameter on the callback must be positional',
+          attribute.value?.span,
+        ),
       );
     }
 
     if (!typeSystem.isSubtypeOf(eventType, parameter.type)) {
       final expectedType = eventType.getDisplayString(withNullability: true);
 
-      errors.reportError(ZapError(
-        'The function must accept a `$expectedType` from `dart.html`',
-        attribute.value?.span,
-      ));
+      errors.reportError(
+        ZapError(
+          'The function must accept a `$expectedType` from `dart.html`',
+          attribute.value?.span,
+        ),
+      );
     }
 
     return EventCheckingResult(false, event, eventType);
   }
 
-  static Future<TypeChecker> checkerFor(TypeProvider provider, TypeSystem ts,
-      ErrorReporter errors, DartResolver resolver) async {
+  static Future<TypeChecker> checkerFor(
+    TypeProvider provider,
+    TypeSystem ts,
+    ErrorReporter errors,
+    DartResolver resolver,
+  ) async {
     return TypeChecker._(provider, ts, await _resolveTypes(resolver), errors);
   }
 

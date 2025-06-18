@@ -7,11 +7,7 @@ import 'package:analyzer/dart/element/type.dart';
 import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
 
-enum ImportRewriteMode {
-  none,
-  zapToApi,
-  apiToGenerated,
-}
+enum ImportRewriteMode { none, zapToApi, apiToGenerated }
 
 class ScriptComponents {
   final List<String> originalImports;
@@ -20,10 +16,16 @@ class ScriptComponents {
   final int offsetOfBody;
 
   ScriptComponents(
-      this.originalImports, this.directives, this.body, this.offsetOfBody);
+    this.originalImports,
+    this.directives,
+    this.body,
+    this.offsetOfBody,
+  );
 
-  factory ScriptComponents.of(String dartSource,
-      {ImportRewriteMode rewriteImports = ImportRewriteMode.none}) {
+  factory ScriptComponents.of(
+    String dartSource, {
+    ImportRewriteMode rewriteImports = ImportRewriteMode.none,
+  }) {
     final content = parseString(content: dartSource, throwIfDiagnostics: false);
     final unit = content.unit;
 
@@ -31,8 +33,10 @@ class ScriptComponents {
     if (directives.isEmpty) {
       return ScriptComponents([], '', dartSource, 0);
     } else {
-      final directiveRewriter =
-          _ZapToDartImportRewriter(dartSource, rewriteImports);
+      final directiveRewriter = _ZapToDartImportRewriter(
+        dartSource,
+        rewriteImports,
+      );
       for (final directive in directives) {
         directive.accept(directiveRewriter);
       }
@@ -79,7 +83,9 @@ Iterable<String?> readSlotAnnotations(Element element) {
 }
 
 Iterable<Uri> additionalZapExports(
-    Uri libraryUri, LibraryElement library) sync* {
+  Uri libraryUri,
+  LibraryElement library,
+) sync* {
   for (final meta in library.metadata) {
     final value = meta.computeConstantValue();
     if (value == null) continue;

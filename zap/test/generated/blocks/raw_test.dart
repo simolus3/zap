@@ -1,4 +1,6 @@
 @Tags(['browser'])
+library;
+
 import 'dart:html';
 
 import 'package:test/test.dart';
@@ -20,7 +22,7 @@ void main() {
 
     expect(testbed.text, 'GitHub');
     expect(testbed.children, [
-      isA<AnchorElement>().having((e) => e.href, 'href', 'https://github.com/')
+      isA<AnchorElement>().having((e) => e.href, 'href', 'https://github.com/'),
     ]);
   });
 }

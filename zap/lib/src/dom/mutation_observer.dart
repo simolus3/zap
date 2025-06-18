@@ -47,17 +47,14 @@ extension ObserveMutations on Node {
       }
     }
 
-    return Stream.multi(
-      (newListener) {
-        addListener(newListener);
+    return Stream.multi((newListener) {
+      addListener(newListener);
 
-        newListener
-          ..onResume = (() => addListener(newListener))
-          ..onPause = (() => removeListener(newListener))
-          ..onCancel = (() => removeListener(newListener));
-      },
-      isBroadcast: true,
-    );
+      newListener
+        ..onResume = (() => addListener(newListener))
+        ..onPause = (() => removeListener(newListener))
+        ..onCancel = (() => removeListener(newListener));
+    }, isBroadcast: true);
   }
 }
 
@@ -66,17 +63,14 @@ extension ObserveElementMutations on Element {
   ///
   /// The stream will start with the current value of the attribute.
   Stream<String?> watchAttribute(String key) {
-    return Stream.multi(
-      (listener) {
-        listener.add(attributes[key]);
+    return Stream.multi((listener) {
+      listener.add(attributes[key]);
 
-        final changedValues = observeMutations(
-          attributes: true,
-          attributeFilter: [key],
-        ).map((_) => attributes[key]);
-        listener.addStream(changedValues);
-      },
-      isBroadcast: true,
-    );
+      final changedValues = observeMutations(
+        attributes: true,
+        attributeFilter: [key],
+      ).map((_) => attributes[key]);
+      listener.addStream(changedValues);
+    }, isBroadcast: true);
   }
 }

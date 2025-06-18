@@ -5,8 +5,11 @@ import 'package:zap_dev/src/preparation/parser.dart';
 import 'package:zap_dev/src/preparation/scanner.dart';
 
 DomNode _parse(String source) {
-  final scanner = Scanner(source, Uri.parse('test:source'),
-      ErrorReporter((error) => fail('Unexpected errror $error')));
+  final scanner = Scanner(
+    source,
+    Uri.parse('test:source'),
+    ErrorReporter((error) => fail('Unexpected errror $error')),
+  );
   return Parser(scanner).parse();
 }
 
@@ -26,13 +29,10 @@ b
 {:else}
 c
 {/if}''',
-      IfBlock(
-        [
-          IfCondition(RawDartExpression(' dart_expression '), Text('\na\n')),
-          IfCondition(RawDartExpression('another_expression'), Text('\nb\n')),
-        ],
-        Text('\nc\n'),
-      ),
+      IfBlock([
+        IfCondition(RawDartExpression(' dart_expression '), Text('\na\n')),
+        IfCondition(RawDartExpression('another_expression'), Text('\nb\n')),
+      ], Text('\nc\n')),
     );
   });
 
@@ -48,37 +48,38 @@ c
 <button on:click={increase}>
   Clicked {counter} {counter == 1 ? 'time' : 'times' }
 </button>''',
-      AdjacentNodes(
-        [
-          Element('script', [], Text('''
+      AdjacentNodes([
+        Element(
+          'script',
+          [],
+          Text('''
 
   @Property()
   var counter = 0;
 
   void increase() => counter++;
-''')),
-          Text('\n'),
-          Element(
-            'button',
-            [
-              Attribute(
-                'on:click',
-                DartExpression(RawDartExpression('increase')),
-              ),
-            ],
-            AdjacentNodes(
-              [
-                Text('\n  Clicked '),
-                DartExpression(RawDartExpression('counter')),
-                Text(' '),
-                DartExpression(
-                    RawDartExpression("counter == 1 ? 'time' : 'times' ")),
-                Text('\n'),
-              ],
+'''),
+        ),
+        Text('\n'),
+        Element(
+          'button',
+          [
+            Attribute(
+              'on:click',
+              DartExpression(RawDartExpression('increase')),
             ),
-          ),
-        ],
-      ),
+          ],
+          AdjacentNodes([
+            Text('\n  Clicked '),
+            DartExpression(RawDartExpression('counter')),
+            Text(' '),
+            DartExpression(
+              RawDartExpression("counter == 1 ? 'time' : 'times' "),
+            ),
+            Text('\n'),
+          ]),
+        ),
+      ]),
     );
   });
 
@@ -95,23 +96,15 @@ c
         [],
         AdjacentNodes([
           Text('\n  '),
-          Element(
-            'slot',
-            [
-              Attribute('name', StringLiteral([Text('header')]))
-            ],
-            Text('No header was provided'),
-          ),
+          Element('slot', [
+            Attribute('name', StringLiteral([Text('header')])),
+          ], Text('No header was provided')),
           Text('\n  '),
           Element('p', [], Text('Some content between header and footer')),
           Text('\n  '),
-          Element(
-            'slot',
-            [
-              Attribute('name', StringLiteral([Text('footer')]))
-            ],
-            AdjacentNodes([]),
-          ),
+          Element('slot', [
+            Attribute('name', StringLiteral([Text('footer')])),
+          ], AdjacentNodes([])),
           Text('\n'),
         ]),
       ),
@@ -125,17 +118,16 @@ c
 </span>
 ''',
       AdjacentNodes([
-        Element(
-          'span',
-          [
-            Attribute(
-              'on:mousemove',
-              DartExpression(RawDartExpression(
-                  '(MouseEvent e) { x = event.client.x; y = event.client.y; }')),
+        Element('span', [
+          Attribute(
+            'on:mousemove',
+            DartExpression(
+              RawDartExpression(
+                '(MouseEvent e) { x = event.client.x; y = event.client.y; }',
+              ),
             ),
-          ],
-          Text('\n'),
-        ),
+          ),
+        ], Text('\n')),
         Text('\n'),
       ]),
     );
@@ -169,7 +161,9 @@ class _EqualityEnforcingVisitor extends AstVisitor<void, void> {
   void visitAwaitBlock(AwaitBlock e, void a) {
     final current = _currentAs<AwaitBlock>(e);
     _assert(
-        current.isStream == e.isStream && e.variableName == e.variableName, e);
+      current.isStream == e.isStream && e.variableName == e.variableName,
+      e,
+    );
     _checkChildren(e);
   }
 
@@ -267,14 +261,16 @@ class _EqualityEnforcingVisitor extends AstVisitor<void, void> {
       } else {
         // Current has more elements than other
         throw _NotEqualException(
-            "$_current and $other don't have an equal amount of children");
+          "$_current and $other don't have an equal amount of children",
+        );
       }
     }
 
     if (otherChildren.moveNext()) {
       // Other has more elements than current
       throw _NotEqualException(
-          "$_current and $other don't have an equal amount of children");
+        "$_current and $other don't have an equal amount of children",
+      );
     }
   }
 

@@ -12,8 +12,10 @@ class ApiExtractingBuilder implements Builder {
 
     final library = await buildStep.inputLibrary;
     final function = library.definingCompilationUnit.functions.first;
-    final functionNode =
-        await buildStep.resolver.astNodeFor(function, resolve: true);
+    final functionNode = await buildStep.resolver.astNodeFor(
+      function,
+      resolve: true,
+    );
 
     final api = writeApiForComponent(
       functionNode,
@@ -25,6 +27,6 @@ class ApiExtractingBuilder implements Builder {
 
   @override
   Map<String, List<String>> get buildExtensions => {
-        '.tmp.zap.dart': ['.tmp.zap.api.dart'],
-      };
+    '.tmp.zap.dart': ['.tmp.zap.api.dart'],
+  };
 }

@@ -62,9 +62,12 @@ class MapDartErrorsInZapFile {
         nodeSpan.start.offset + offsetRelativeToNode + region.startOffsetInNode;
 
     final errorSpan = nodeSpan.file.span(
-        offsetRelativeToSourceFile, offsetRelativeToSourceFile + error.length);
+      offsetRelativeToSourceFile,
+      offsetRelativeToSourceFile + error.length,
+    );
 
     reporter.reportError(
-        ZapError('${error.errorCode.uniqueName} ${error.message}', errorSpan));
+      ZapError('${error.errorCode.uniqueName} ${error.message}', errorSpan),
+    );
   }
 }

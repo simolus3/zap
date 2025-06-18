@@ -29,7 +29,8 @@ const knownTags = {
   'iframe': KnownElementInfo('IFrameElement'),
   'image': KnownElementInfo('ImageElement'),
   'input': KnownElementInfo(
-      'InputElement'), // todo: Special case the different kinds?
+    'InputElement',
+  ), // todo: Special case the different kinds?
   'li': KnownElementInfo('LIElement'),
   'label': KnownElementInfo('LabelElement'),
   'legend': KnownElementInfo('LegendElement'),
@@ -72,8 +73,11 @@ class KnownElementInfo {
   /// construct instances through `Element.tag`
   final bool instantiable;
 
-  const KnownElementInfo(this.className,
-      {this.constructorName = '', this.instantiable = true});
+  const KnownElementInfo(
+    this.className, {
+    this.constructorName = '',
+    this.instantiable = true,
+  });
 }
 
 class DomEventType {
@@ -90,10 +94,12 @@ class ResolvedDomTypes {
   final Map<String, DomEventType> knownEvents = {};
 
   late final InterfaceType event = _nonNullableWithoutTypeParameters('Event');
-  late final InterfaceType customEvent =
-      _nonNullableWithoutTypeParameters('CustomEvent');
-  late final InterfaceType element =
-      _nonNullableWithoutTypeParameters('Element');
+  late final InterfaceType customEvent = _nonNullableWithoutTypeParameters(
+    'CustomEvent',
+  );
+  late final InterfaceType element = _nonNullableWithoutTypeParameters(
+    'Element',
+  );
 
   ResolvedDomTypes(this.dartHtml) {
     _readKnownInformation();
@@ -133,8 +139,9 @@ class ResolvedDomTypes {
           '${element.name}.${field.name}',
           type.typeArguments.single as InterfaceType? ??
               event.element.instantiate(
-                  typeArguments: const [],
-                  nullabilitySuffix: NullabilitySuffix.none),
+                typeArguments: const [],
+                nullabilitySuffix: NullabilitySuffix.none,
+              ),
         );
       }
     }
@@ -153,7 +160,9 @@ class ResolvedDomTypes {
   InterfaceType _nonNullableWithoutTypeParameters(String name) {
     return _types.putIfAbsent(name, () {
       return _class(name).instantiate(
-          typeArguments: const [], nullabilitySuffix: NullabilitySuffix.none);
+        typeArguments: const [],
+        nullabilitySuffix: NullabilitySuffix.none,
+      );
     });
   }
 

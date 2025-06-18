@@ -1,4 +1,6 @@
 @Tags(['browser'])
+library;
+
 import 'dart:async';
 import 'dart:html';
 
@@ -13,9 +15,13 @@ void main() {
     addTearDown(controller.close);
 
     final component = gen.Stream(ZapValue(controller.stream));
-    expect(controller.hasListener, isFalse,
-        reason: 'Instantiating the component should not start a stream '
-            'subscription');
+    expect(
+      controller.hasListener,
+      isFalse,
+      reason:
+          'Instantiating the component should not start a stream '
+          'subscription',
+    );
 
     component.create(testbed);
     expect(testbed.innerText, contains('no data / no error'));

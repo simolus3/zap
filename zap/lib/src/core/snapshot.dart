@@ -9,25 +9,30 @@ class ZapSnapshot<T> {
   final StackTrace? _trace;
 
   ZapSnapshot._internal(
-      this._state, this.isDone, this._data, this._error, this._trace);
+    this._state,
+    this.isDone,
+    this._data,
+    this._error,
+    this._trace,
+  );
 
   const ZapSnapshot.unresolved()
-      : _state = _SnapshotState.unresolved,
-        isDone = false,
-        _data = null,
-        _error = null,
-        _trace = null;
+    : _state = _SnapshotState.unresolved,
+      isDone = false,
+      _data = null,
+      _error = null,
+      _trace = null;
 
   ZapSnapshot.withData(this._data)
-      : _state = _SnapshotState.data,
-        _error = null,
-        _trace = null,
-        isDone = false;
+    : _state = _SnapshotState.data,
+      _error = null,
+      _trace = null,
+      isDone = false;
 
   ZapSnapshot.withError(this._error, this._trace)
-      : _state = _SnapshotState.error,
-        _data = null,
-        isDone = false;
+    : _state = _SnapshotState.error,
+      _data = null,
+      isDone = false;
 
   bool get hasData => _state == _SnapshotState.data;
   bool get hasError => _state == _SnapshotState.error;

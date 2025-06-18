@@ -17,14 +17,11 @@ Builder zapBuilder(BuilderOptions options) {
 }
 
 PostProcessBuilder zapCleanup(BuilderOptions options) {
-  return FileDeletingBuilder(
-    const [
-      '.tmp.zap.dart',
-      '.tmp.zap.api.dart',
-      '.tmp.zap.css',
-      '.sass',
-      '.scss',
-    ],
-    isEnabled: !(options.config['dev'] as bool),
-  );
+  return FileDeletingBuilder(const [
+    '.tmp.zap.dart',
+    '.tmp.zap.api.dart',
+    '.tmp.zap.css',
+    '.sass',
+    '.scss',
+  ], isEnabled: !(options.config['dev'] as bool));
 }
