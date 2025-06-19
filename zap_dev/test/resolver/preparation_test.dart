@@ -25,7 +25,7 @@ void main() {
     expect(result.style, isNull);
 
     expect(result.temporaryDartFile.contents, '''
-import 'dart:html';
+import 'package:web/web.dart';
 import 'package:zap/internal/dsl.dart';
 
 void __zap___component(ComponentOrPending self) {
@@ -65,7 +65,7 @@ final __zap__1 = name;
     expect(result.style, isNull);
 
     expect(result.temporaryDartFile.contents, '''
-import 'dart:html';
+import 'package:web/web.dart';
 import 'package:zap/internal/dsl.dart';
 import 'dart:convert';
 void __zap___component(ComponentOrPending self) {

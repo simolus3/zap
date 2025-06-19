@@ -25,7 +25,8 @@ class ImportsTracker {
     });
   }
 
-  String get dartHtmlImport => importForUri(Uri.parse('dart:html'));
+  String get packageWebImport =>
+      importForUri(Uri.parse('package:web/web.dart'));
 
   String get zapImport => importForUri(Uri.parse('package:zap/zap.dart'));
 

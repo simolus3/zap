@@ -1,7 +1,8 @@
 import 'dart:async';
-import 'dart:html';
+import 'dart:js_interop';
 
 import 'package:meta/meta.dart';
+import 'package:web/web.dart';
 
 import 'context.dart';
 import 'fragment.dart';
@@ -31,7 +32,14 @@ abstract class ComponentOrPending {
 
 extension EmitCustomEvent on ComponentOrPending {
   void emitCustom(String type, [Object? detail]) {
-    emitEvent(CustomEvent(type, detail: detail));
+    emitEvent(
+      CustomEvent(
+        type,
+        // Note de-reference.
+        // ignore: invalid_runtime_check_with_js_interop_types
+        CustomEventInit(detail: detail?.toExternalReference as JSAny?),
+      ),
+    );
   }
 }
 
@@ -81,7 +89,8 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
 
   @internal
   Stream<T> componentEvents<T extends Event>(String type) {
-    return _eventEmitter.stream.where((e) => e is T && e.type == type).cast();
+    // Can't use e.isA<T>() here.
+    return _eventEmitter.stream.where((e) => e.type == type).cast();
   }
 
   @override

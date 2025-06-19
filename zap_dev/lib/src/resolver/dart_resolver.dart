@@ -6,7 +6,7 @@ import 'package:analyzer/dart/element/element.dart';
 /// This allows sharing the complex resolve logic between build steps and the
 /// CLI linter / analysis plugin.
 abstract class DartResolver {
-  Future<LibraryElement> get dartHtml;
+  Future<LibraryElement> get packageWeb;
 
   Future<LibraryElement> resolveUri(Uri uri);
 

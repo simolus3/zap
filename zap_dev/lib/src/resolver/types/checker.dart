@@ -14,7 +14,7 @@ import '../dart_resolver.dart';
 import 'dom_types.dart';
 
 class TypeChecker {
-  /// `dart:html` is the same for everyone and changes to the Dart SDK
+  /// `package:web/web.dart` is the same for everyone and changes to the Dart SDK
   /// invalidate the entire build. So, we can share information resolved from
   /// the SDK across build steps.
   static Completer<ResolvedDomTypes>? _domCompleter;
@@ -165,7 +165,7 @@ class TypeChecker {
       return _domCompleter!.future;
     } else {
       final completer = _domCompleter = Completer.sync()
-        ..complete(resolver.dartHtml.then(ResolvedDomTypes.new));
+        ..complete(resolver.packageWeb.then(ResolvedDomTypes.new));
 
       return completer.future;
     }

@@ -1,16 +1,15 @@
 @Tags(['browser'])
 library;
 
-import 'dart:html';
-
 import 'package:test/test.dart';
+import 'package:web/web.dart';
 import 'package:zap/zap.dart';
 
 import 'dynamic_component.zap.dart' as gen;
 
 void main() {
   test('renders subcomponents', () async {
-    final testbed = Element.div();
+    final testbed = HTMLDivElement();
     final originalChild = _FakeComponent();
     final nextChild = _FakeComponent();
 
@@ -19,7 +18,7 @@ void main() {
 
     component.create(testbed);
     expect(originalChild._isCreated, isTrue);
-    expect(testbed.text, '_FakeComponent');
+    expect(testbed.textContent, '_FakeComponent');
 
     // Swapping components should destroy the first one.
     component.component = nextChild;

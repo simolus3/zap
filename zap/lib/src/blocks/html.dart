@@ -1,4 +1,8 @@
-import 'dart:html';
+import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
+
+import 'package:sanitize_dom/sanitize_dom.dart';
+import 'package:web/web.dart';
 
 import '../core/fragment.dart';
 
@@ -10,7 +14,7 @@ class HtmlTag extends Fragment {
   ///
   /// We call `innerHtml` on this element to obtain the nodes that need to be
   /// inserted into the actual document.
-  final Element _artificialParent = Element.div();
+  final Element _artificialParent = HTMLDivElement();
   Element? _mountTarget;
   Node? _mountAnchor;
 
@@ -35,13 +39,13 @@ class HtmlTag extends Fragment {
 
     // ignore: unsafe_html
     _artificialParent.setInnerHtml(
-      _rawHtml,
+      _rawHtml ?? '',
       treeSanitizer: NodeTreeSanitizer.trusted,
     );
 
     // [Element.children] is a view, but we want a fixed snapshot of the current
     // children, so copy.
-    _children = _artificialParent.childNodes.toList();
+    _children = JSArray.from<Node>(_artificialParent.childNodes).toDart;
 
     final children = _children;
     if (children != null) {
@@ -59,7 +63,8 @@ class HtmlTag extends Fragment {
     final children = _children;
     if (children != null) {
       for (final child in children) {
-        child.remove();
+        assert(child.has('remove'));
+        (child as Element).remove();
       }
     }
     _children = null;

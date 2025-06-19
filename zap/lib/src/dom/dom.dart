@@ -1,24 +1,31 @@
 import 'dart:async';
-import 'dart:html';
+import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 
-import 'package:js/js_util.dart' as js;
+import 'package:web/web.dart';
 
 extension ZapText on Text {
+  @JS('__text')
+  external ExternalDartReference<String?> __text;
+
   set zapText(String value) {
-    if (wholeText != value) data = value;
+    if (__text.toDartObject != value) {
+      data = value;
+      __text = value.toExternalReference;
+    }
   }
 }
 
 extension ZapElement on Element {
   /// Adds an empty attribute [key] if [value] is true, removes it otherwise.
   void applyBooleanAttribute(String key, bool value) {
-    if (js.hasProperty(this, key)) {
-      js.setProperty(this, key, value);
+    if (has(key)) {
+      this[key] = value.toJS;
     } else {
       if (value) {
-        attributes[key] = 'true';
+        setAttribute(key, key);
       } else {
-        attributes.remove(key);
+        removeAttribute(key);
       }
     }
   }
@@ -27,18 +34,18 @@ extension ZapElement on Element {
   /// removes the attribute otherwise.
   void applyAttributeIfNotNull(String key, Object? value) {
     if (value == null) {
-      attributes.remove(key);
+      removeAttribute(key);
     } else {
-      attributes[key] = value.toString();
+      setAttribute(key, '$value');
     }
   }
 
   void addComponentClass(String className) {
-    classes.add(className);
+    classList.add(className);
   }
 
   void setClassAttribute(String scopedCssClass, String otherClasses) {
-    attributes['class'] = '$scopedCssClass $otherClasses';
+    setAttribute('class', '$scopedCssClass $otherClasses');
   }
 }
 
@@ -125,6 +132,6 @@ class _ModifierSink<T extends Event> implements EventSink<T> {
   }
 }
 
-T newElement<T extends HtmlElement>(String tagName) {
-  return Element.tag(tagName) as T;
+T newElement<T extends HTMLElement>(String tagName) {
+  return document.createElement(tagName) as T;
 }

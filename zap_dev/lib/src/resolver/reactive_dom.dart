@@ -32,7 +32,7 @@ abstract class ReactiveNode {
 
 class ReactiveElement extends ReactiveNode {
   final String tagName;
-  final KnownElementInfo? knownElement;
+  final String? knownElement;
 
   /// Constant attributes are expressed as Dart string literals.
   final Map<String, ReactiveAttribute> attributes;

@@ -39,7 +39,7 @@ class Generator {
   final Map<Object, String> _miscNames = {};
 
   String get zapPrefix => imports.zapImport;
-  String get htmlPrefix => imports.dartHtmlImport;
+  String get webPrefix => imports.packageWebImport;
 
   Generator(this.component, this.prepareResult, this.options, AssetId output) {
     imports = ImportsTracker(libraryScope.inner(), output);
@@ -185,17 +185,15 @@ abstract class _ComponentOrSubcomponentWriter {
   }
 
   String? dartTypeName(ReactiveNode node) {
-    final htmlPrefix = generator.imports.dartHtmlImport;
+    final webPrefix = generator.imports.packageWebImport;
     final zapPrefix = generator.imports.zapImport;
 
     if (node is ReactiveElement) {
       final known = node.knownElement;
 
-      return known != null
-          ? '$htmlPrefix.${known.className}'
-          : '$htmlPrefix.Element';
+      return known != null ? '$webPrefix.$known' : '$webPrefix.Element';
     } else if (node is ReactiveText || node is ConstantText) {
-      return '$htmlPrefix.Text';
+      return '$webPrefix.Text';
     } else if (node is ReactiveRawHtml) {
       return '$zapPrefix.HtmlTag';
     } else if (node is SubComponent) {
@@ -381,7 +379,7 @@ abstract class _ComponentOrSubcomponentWriter {
 
   void writeCreateMethod() {
     final name = component is Component ? 'createInternal' : 'create';
-    final prefix = generator.htmlPrefix;
+    final prefix = generator.webPrefix;
 
     buffer
       ..writeln(atOverride)
@@ -428,10 +426,8 @@ abstract class _ComponentOrSubcomponentWriter {
 
             switch (binder.specialMode) {
               case SpecialBindingMode.inputValue:
-                final import = generator.imports.dartHtmlImport;
                 buffer.write(
-                  '$import.GlobalEventHandlers.inputEvent'
-                  '.forElement($nodeName)'
+                  '$nodeName.onInput'
                   '.map((e) => $nodeName.value)'
                   '.transform(lifecycle())'
                   '.listen($callback);',
@@ -501,7 +497,7 @@ abstract class _ComponentOrSubcomponentWriter {
         // use .destroy() to unmount zap components
         buffer.write('.destroy();');
       } else {
-        // and .remove() to unmount `dart:html` elements.
+        // and .remove() to unmount `package:web/web.dart` elements.
         buffer.write('.remove();');
       }
     }
@@ -722,7 +718,7 @@ abstract class _ComponentOrSubcomponentWriter {
           '(${dartStringLiteral(handler.event)})',
         );
       } else {
-        buffer.write('${generator.imports.dartHtmlImport}.');
+        buffer.write('${generator.imports.packageWebImport}.');
 
         if (knownEvent != null) {
           buffer.write(knownEvent.providerExpression);
@@ -802,41 +798,25 @@ abstract class _ComponentOrSubcomponentWriter {
   }
 
   void createNode(ReactiveNode node) {
-    final htmlPrefix = generator.htmlPrefix;
+    final webPrefix = generator.webPrefix;
     final zapPrefix = generator.zapPrefix;
 
     if (node is ReactiveElement) {
       final known = node.knownElement;
-
+      buffer.write('$zapPrefix.newElement');
       if (known != null) {
-        final type = '$htmlPrefix.${known.className}';
-
-        if (known.instantiable) {
-          // Use a direct constructor provided by the Dart SDK
-          buffer.write(type);
-          if (known.constructorName.isNotEmpty) {
-            buffer.write('.${known.constructorName}');
-          }
-
-          buffer.write('()');
-        } else {
-          // Use the newElement helper method from zap
-          buffer.write(
-            '$zapPrefix.newElement<$type>(${dartStringLiteral(node.tagName)})',
-          );
-        }
-      } else {
-        buffer.write("$htmlPrefix.Element.tag('${node.tagName}')");
+        buffer.write('<$webPrefix.$known>');
       }
+      buffer.write('(${dartStringLiteral(node.tagName)})');
 
       final className = generator.component.cssClassName;
       if (className != null) {
         buffer.write("..addComponentClass('$className')");
       }
     } else if (node is ReactiveText) {
-      buffer.write("$htmlPrefix.Text('')");
+      buffer.write("$webPrefix.Text('')");
     } else if (node is ConstantText) {
-      buffer.write("$htmlPrefix.Text(${dartStringLiteral(node.text)})");
+      buffer.write("$webPrefix.Text(${dartStringLiteral(node.text)})");
     } else if (node is ReactiveRawHtml) {
       buffer.write('$zapPrefix.HtmlTag()');
     } else if (node is SubComponent) {

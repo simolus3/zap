@@ -4,14 +4,14 @@ version: 0.3.0
 homepage: https://simonbinder.eu/zap/
 
 environment:
-  sdk: ^3.8.0
+  sdk: ^3.8.1
 
 resolution: workspace
 
 dependencies:
   analyzer: ^7.4.5
   args: ^2.7.0
-  build: ^2.5.1
+  build: ^2.5.2
   build_version: ^2.1.1
   collection: ^1.19.1
   csslib: ^1.0.2
@@ -29,7 +29,7 @@ dependencies:
   zap: ^0.3.0
 
 dev_dependencies:
-  build_runner: ^2.5.1
+  build_runner: ^2.5.2
   charcode: ^1.4.0
   lints: ^6.0.0
   test: ^1.26.2

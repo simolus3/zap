@@ -1,6 +1,6 @@
-import 'dart:html';
-
+import 'package:sanitize_dom/sanitize_dom.dart';
 import 'package:test/test.dart';
+import 'package:web/web.dart';
 import 'package:zap/zap.dart';
 
 import 'components/default-scope.zap.dart';
@@ -9,7 +9,7 @@ import 'components/overrides.zap.dart';
 void main() {
   late Element testbed;
 
-  setUp(() => testbed = Element.div());
+  setUp(() => testbed = HTMLDivElement());
   tearDown(() => testbed.remove());
 
   test('creates and listens to simple provider', () {

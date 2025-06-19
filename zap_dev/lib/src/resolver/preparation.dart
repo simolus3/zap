@@ -54,8 +54,8 @@ Future<PrepareResult> prepare(
   // Analyze as script as if it were written in a function to allow
   // statements.
   fileBuilder
-    ..writeln("import 'dart:html';")
-    ..writeln("import 'package:zap/internal/dsl.dart';");
+    ..writeln("import 'package:zap/internal/dsl.dart';")
+    ..writeln("import 'package:web/web.dart';");
 
   if (splitScript != null) {
     fileBuilder

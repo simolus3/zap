@@ -221,10 +221,10 @@ class _RawResolver extends DartResolver {
   _RawResolver(this._originatingContext);
 
   @override
-  Future<LibraryElement> get dartHtml async {
+  Future<LibraryElement> get packageWeb async {
     if (referenceLibrary == null) {
       throw StateError(
-        'Cannot resolve `dart:html` without a reference library',
+        'Cannot resolve `package:web/web.dart` without a reference library',
       );
     }
 
@@ -247,7 +247,7 @@ class _RawResolver extends DartResolver {
       seen.addAll(toCrawl);
     }
 
-    throw StateError('Could not find `dart:html`.');
+    throw StateError('Could not find `package:web/web.dart`.');
   }
 
   @override

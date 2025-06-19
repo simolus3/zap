@@ -2,15 +2,15 @@
 library;
 
 import 'dart:async';
-import 'dart:html';
 
 import 'package:test/test.dart';
+import 'package:web/web.dart';
 import 'package:zap/zap.dart';
 import 'stream.zap.dart' as gen;
 
 void main() {
   test('single stream', () async {
-    final testbed = Element.div();
+    final testbed = HTMLDivElement();
     final controller = StreamController<String>();
     addTearDown(controller.close);
 

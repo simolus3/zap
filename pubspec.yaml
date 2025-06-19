@@ -1,8 +1,8 @@
-name: tools
+name: zap_workspace
 publish_to: none
 
 environment:
-  sdk: ^3.8.0
+  sdk: ^3.8.1
 
 # dependencies:
 #   simons_pub_uploader:
@@ -10,7 +10,7 @@ environment:
 #     version: ^1.1.0
 
 workspace:
-  # - docs
+  - docs
   - riverpod_zap
   - riverpod_zap/example
   - zap

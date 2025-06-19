@@ -1,5 +1,6 @@
-import 'dart:html';
 import 'dart:math';
+
+import 'package:web/web.dart';
 
 import '../core/fragment.dart';
 import '../core/internal.dart';

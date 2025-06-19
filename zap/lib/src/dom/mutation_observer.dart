@@ -1,5 +1,8 @@
 import 'dart:async';
-import 'dart:html';
+import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
+
+import 'package:web/web.dart';
 
 extension ObserveMutations on Node {
   Stream<MutationRecord> observeMutations({
@@ -13,27 +16,39 @@ extension ObserveMutations on Node {
   }) {
     final listeners = <MultiStreamController<MutationRecord>>[];
 
-    final observer = MutationObserver((mutations, observer) {
-      final typedMutations = mutations.cast<MutationRecord>();
+    final observer = MutationObserver(
+      (JSArray<MutationRecord> mutations, MutationObserver observer) {
+        final typedMutations = mutations.toDart;
 
-      for (final listener in listeners) {
-        typedMutations.forEach(listener.add);
-      }
-    });
+        for (final listener in listeners) {
+          typedMutations.forEach(listener.add);
+        }
+      }.toJS,
+    );
 
     void addListener(MultiStreamController<MutationRecord> listener) {
       if (listeners.isEmpty) {
+        final options = MutationObserverInit();
+
+        if (childList != null) options.childList = childList;
+        if (attributes != null) options.attributes = attributes;
+        if (characterData != null) options.characterData = characterData;
+        if (subtree != null) options.subtree = subtree;
+        if (attributeOldValue != null) {
+          options.attributeOldValue = attributeOldValue;
+        }
+        if (characterDataOldValue != null) {
+          options.characterDataOldValue = characterDataOldValue;
+        }
+        if (attributeFilter != null) {
+          options.attributeFilter = attributeFilter
+              .map((filter) => filter.toJS)
+              .toList()
+              .toJS;
+        }
+
         // Start listening
-        observer.observe(
-          this,
-          childList: childList,
-          attributes: attributes,
-          characterData: characterData,
-          subtree: subtree,
-          attributeOldValue: attributeOldValue,
-          characterDataOldValue: characterDataOldValue,
-          attributeFilter: attributeFilter,
-        );
+        observer.observe(this, options);
       }
 
       listeners.add(listener);
@@ -64,12 +79,12 @@ extension ObserveElementMutations on Element {
   /// The stream will start with the current value of the attribute.
   Stream<String?> watchAttribute(String key) {
     return Stream.multi((listener) {
-      listener.add(attributes[key]);
+      listener.add((attributes[key] as JSString?)?.toDart);
 
       final changedValues = observeMutations(
         attributes: true,
         attributeFilter: [key],
-      ).map((_) => attributes[key]);
+      ).map((_) => (attributes[key] as JSString?)?.toDart);
       listener.addStream(changedValues);
     }, isBroadcast: true);
   }
