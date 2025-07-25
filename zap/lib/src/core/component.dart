@@ -37,7 +37,7 @@ extension EmitCustomEvent on ComponentOrPending {
         type,
         // Note de-reference.
         // ignore: invalid_runtime_check_with_js_interop_types
-        CustomEventInit(detail: detail?.toExternalReference as JSAny?),
+        CustomEventInit(detail: detail?.toJSBox),
       ),
     );
   }

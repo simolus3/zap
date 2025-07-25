@@ -1,28 +1,37 @@
 import 'dart:convert';
-import 'dart:html';
+import 'dart:js_interop';
 
 import 'package:tar/tar.dart';
+import 'package:web/web.dart';
 import 'versions.dart' as v;
 
 void downloadExample(String packageName) {
   late List<int> tarFile;
 
   final writer = tarConverter.startChunkedConversion(
-      ByteConversionSink.withCallback((result) => tarFile = result));
+    ByteConversionSink.withCallback((result) => tarFile = result),
+  );
   _TemplateFiles(packageName).writeInto(writer);
   writer.close();
 
-  final blob = Blob([tarFile], 'application/x-tar');
-  final url = Url.createObjectUrlFromBlob(blob);
+  final jsArray = JSArray<JSNumber>.withLength(tarFile.length);
+
+  for (var i = 0; i < tarFile.length; i++) {
+    jsArray[i] = tarFile[i].toJS;
+  }
+
+  final blob = Blob([jsArray].toJS, BlobPropertyBag(type: 'application/x-tar'));
+  final url = URL.createObjectURL(blob);
 
   // To preserve the file name... https://stackoverflow.com/a/19328891/3260197
-  final element = AnchorElement(href: url)
+  final element = document.createElement('a') as HTMLAnchorElement
+    ..href = url
     ..download = '$packageName.tar'
     ..style.visibility = 'none';
   document.body?.append(element);
   element.click();
   element.remove();
-  Url.revokeObjectUrl(url);
+  URL.revokeObjectURL(url);
 }
 
 class _TemplateFiles {
@@ -72,9 +81,7 @@ pubspec.lock
   }
 
   SynchronousTarEntry get pubspec {
-    return _entry(
-      'pubspec.yaml',
-      '''
+    return _entry('pubspec.yaml', '''
 name: $packageName
 publish_to: none
 version: 0.1.0
@@ -94,19 +101,18 @@ dev_dependencies:
   sass_builder: ^2.2.1
   lints: ^2.1.0
   zap_dev: ^${v.zap_dev}
-''',
-    );
+''');
   }
 
   SynchronousTarEntry get analysisOptions {
     return _entry(
-        'analysis_options.yaml', 'include: package:lints/recommended.yaml\n');
+      'analysis_options.yaml',
+      'include: package:lints/recommended.yaml\n',
+    );
   }
 
   SynchronousTarEntry get readme {
-    return _entry(
-      'README.md',
-      '''
+    return _entry('README.md', '''
 # $packageName
 
 A simple web project based on zap.
@@ -118,8 +124,7 @@ To run this project, run `dart run build_runner serve --live-reload`.
 To build this project, simply run `dart run webdev build`.
 
 For more information on zap, please visit https://simonbinder.eu/zap/.
-''',
-    );
+''');
   }
 
   Iterable<SynchronousTarEntry> get lib sync* {

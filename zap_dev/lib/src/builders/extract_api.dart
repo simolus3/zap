@@ -11,9 +11,9 @@ class ApiExtractingBuilder implements Builder {
     final output = buildStep.allowedOutputs.single;
 
     final library = await buildStep.inputLibrary;
-    final function = library.definingCompilationUnit.functions.first;
+    final function = library.topLevelFunctions.first;
     final functionNode = await buildStep.resolver.astNodeFor(
-      function,
+      function.firstFragment,
       resolve: true,
     );
 

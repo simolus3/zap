@@ -1,34 +1,28 @@
 name: zap_docs
 publish_to: none
 
+resolution: workspace
+
 environment:
-  sdk: ^3.0.0
+  sdk: ^3.8.2
 
 dependencies:
-  js: ^0.6.4
-  picocss:
-    version: ^1.5.10
-    hosted: https://simonbinder.eu
-  tar: ^1.0.0
-  riverpod_zap:
-    version: ^0.1.1
-    hosted: https://simonbinder.eu
-  zap:
+  # picocss:
+  #   version: ^1.5.10
+  #   hosted: https://simonbinder.eu
+  tar: ^2.0.0
+  riverpod_zap: ^0.2.0
+    # version: ^0.1.1
+    # hosted: https://simonbinder.eu
+  web: ^1.1.1
+  zap: ^0.3.0
 
 dev_dependencies:
-  build: ^2.2.1
-  build_runner: ^2.1.7
-  build_web_compilers: ^4.0.0
-  pubspec_parse: ^1.2.0
-  zap_dev:
-  built_site:
-    version: ^0.2.9
-    hosted: https://simonbinder.eu
-
-dependency_overrides:
-  riverpod_zap:
-    path: ../riverpod_zap
-  zap:
-    path: ../zap
-  zap_dev:
-    path: ../zap_dev
+  build: ^3.0.0
+  build_runner: ^2.6.0
+  build_web_compilers: ^4.2.0
+  pubspec_parse: ^1.5.0
+  zap_dev: ^0.3.0
+  # built_site:
+  #   version: ^0.2.9
+  #   hosted: https://simonbinder.eu

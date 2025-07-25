@@ -1,6 +1,6 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
-import 'package:analyzer/dart/element/element.dart';
+import 'package:analyzer/dart/element/element2.dart';
 import 'package:path/path.dart' show url;
 
 import '../utils/dart.dart';
@@ -41,23 +41,23 @@ class _ApiInferrer extends RecursiveAstVisitor<void> {
 
   @override
   void visitVariableDeclaration(VariableDeclaration declaration) {
-    final element = declaration.declaredElement;
+    final element = declaration.declaredElement2;
 
-    if (element is LocalVariableElement) {
+    if (element is LocalVariableElement2) {
       if (isProp(element)) {
         // This variable denotes a property that can be set by other components.
-        final type = element.type.getDisplayString(withNullability: true);
+        final type = element.type.getDisplayString();
 
         output
           ..write(type)
           ..write(' get ')
-          ..write(element.name)
+          ..write(element.name3)
           ..writeln(';');
 
         if (!element.isFinal) {
           output
             ..write('set ')
-            ..write(element.name)
+            ..write(element.name3)
             ..write('(')
             ..write(type)
             ..writeln(' value);');

@@ -5,14 +5,8 @@ import 'dart:js_interop_unsafe';
 import 'package:web/web.dart';
 
 extension ZapText on Text {
-  @JS('__text')
-  external ExternalDartReference<String?> __text;
-
   set zapText(String value) {
-    if (__text.toDartObject != value) {
-      data = value;
-      __text = value.toExternalReference;
-    }
+    if (wholeText != value) data = value;
   }
 }
 

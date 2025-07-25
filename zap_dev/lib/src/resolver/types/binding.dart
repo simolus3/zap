@@ -26,7 +26,7 @@ extension CheckBindings on TypeChecker {
             ZapError.onNode(
               attribute,
               'Target of `this` binding must be of type '
-              '${type.getDisplayString(withNullability: true)}',
+              '${type.getDisplayString()}',
             ),
           );
         }

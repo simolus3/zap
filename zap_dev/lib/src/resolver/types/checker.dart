@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:analyzer/dart/element/element.dart';
+import 'package:analyzer/dart/element/element2.dart';
 import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:analyzer/dart/element/type_provider.dart';
@@ -33,7 +33,7 @@ class TypeChecker {
   bool isNullableString(DartType type) {
     return typeSystem.isAssignableTo(
       type,
-      typeProvider.stringElement.instantiate(
+      typeProvider.stringElement2.instantiate(
         typeArguments: const [],
         nullabilitySuffix: NullabilitySuffix.question,
       ),
@@ -44,7 +44,7 @@ class TypeChecker {
     return _extractSingleType(
       shouldBeFuture,
       span,
-      typeProvider.futureElement,
+      typeProvider.futureElement2,
       'This must be a future!',
     );
   }
@@ -53,7 +53,7 @@ class TypeChecker {
     return _extractSingleType(
       shouldBeStream,
       span,
-      typeProvider.streamElement,
+      typeProvider.streamElement2,
       'This must be a stream!',
     );
   }
@@ -62,7 +62,7 @@ class TypeChecker {
     return _extractSingleType(
       shouldBeIterable,
       span,
-      typeProvider.iterableElement,
+      typeProvider.iterableElement2,
       'This must be an iterable!',
     );
   }
@@ -70,10 +70,10 @@ class TypeChecker {
   DartType _extractSingleType(
     DartType type,
     FileSpan? span,
-    ClassElement element,
+    ClassElement2 element,
     String description,
   ) {
-    final asStream = type.asInstanceOf(element);
+    final asStream = type.asInstanceOf2(element);
     if (asStream == null) {
       errors.reportError(ZapError(description, span));
       return typeProvider.dynamicType;
@@ -91,8 +91,9 @@ class TypeChecker {
     final staticType = expression?.staticType ?? typeProvider.dynamicType;
     final event = domTypes.knownEvents[eventName];
 
-    final defaultType = canBeCustom ? domTypes.customEvent : domTypes.event;
-    final eventType = event?.eventType ?? defaultType;
+    final eventType = canBeCustom
+        ? domTypes.customEvent
+        : (event?.eventType ?? domTypes.event);
 
     if (expression == null) {
       return EventCheckingResult(false, event, eventType);
@@ -112,7 +113,7 @@ class TypeChecker {
       return EventCheckingResult(true, event, eventType);
     }
 
-    final parameters = staticType.parameters;
+    final parameters = staticType.formalParameters;
     if (parameters.length > 1) {
       errors.reportError(
         ZapError(
@@ -138,7 +139,7 @@ class TypeChecker {
     }
 
     if (!typeSystem.isSubtypeOf(eventType, parameter.type)) {
-      final expectedType = eventType.getDisplayString(withNullability: true);
+      final expectedType = eventType.getDisplayString();
 
       errors.reportError(
         ZapError(

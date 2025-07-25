@@ -38,7 +38,7 @@ class MapDartErrorsInZapFile {
         // If this warning refers to a `@prop` variable, it will be initialized.
         final refersToProperty = component.component.scope.declaredVariables
             .where((v) => v is DartCodeVariable && v.isProperty)
-            .any((v) => error.message.contains("'${v.element.name}'"));
+            .any((v) => error.message.contains("'${v.element.name3}'"));
         return !refersToProperty;
     }
 

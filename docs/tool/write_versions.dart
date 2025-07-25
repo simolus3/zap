@@ -11,8 +11,8 @@ class WriteVersions implements Builder {
 
   Future<void> build(BuildStep step) async {
     const packages = [
-      'zap',
       'riverpod_zap',
+      'zap',
       'zap_dev',
     ];
 

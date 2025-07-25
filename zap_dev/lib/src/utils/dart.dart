@@ -2,7 +2,7 @@ import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/dart/constant/value.dart';
-import 'package:analyzer/dart/element/element.dart';
+import 'package:analyzer/dart/element/element2.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
@@ -53,7 +53,7 @@ class ScriptComponents {
 
 const _dslLibrary = 'zap.internal.dsl';
 
-bool isProp(VariableElement element) {
+bool isProp(LocalVariableElement2 element) {
   return _findDslAnnotation(element, 'Property') != null;
 }
 
@@ -61,7 +61,7 @@ bool isProp(VariableElement element) {
 ///
 /// This annotation is generated in the API-extracting builder for components
 /// defined in a zap file.
-String? componentTagName(Element element) {
+String? componentTagName(ClassElement2 element) {
   final annotation = _findDslAnnotation(element, r'$ComponentMarker');
 
   if (annotation != null) {
@@ -70,7 +70,7 @@ String? componentTagName(Element element) {
   return null;
 }
 
-Iterable<String?> readSlotAnnotations(Element element) {
+Iterable<String?> readSlotAnnotations(Annotatable element) {
   return _findDslAnnotations(element, 'Slot').map((e) {
     final name = e.getField('name');
 
@@ -84,14 +84,14 @@ Iterable<String?> readSlotAnnotations(Element element) {
 
 Iterable<Uri> additionalZapExports(
   Uri libraryUri,
-  LibraryElement library,
+  LibraryElement2 library,
 ) sync* {
-  for (final meta in library.metadata) {
+  for (final meta in library.metadata2.annotations) {
     final value = meta.computeConstantValue();
     if (value == null) continue;
 
     final type = value.type;
-    if (type is! InterfaceType || type.element.name != 'pragma') {
+    if (type is! InterfaceType || type.element3.name3 != 'pragma') {
       continue;
     }
 
@@ -104,31 +104,34 @@ Iterable<Uri> additionalZapExports(
   }
 }
 
-Iterable<DartObject> _findDslAnnotations(Element element, String className) {
-  return element.metadata.map((annotation) {
+Iterable<DartObject> _findDslAnnotations(
+  Annotatable element,
+  String className,
+) {
+  return element.metadata2.annotations.map((annotation) {
     final value = annotation.computeConstantValue();
     if (value == null) return null;
 
     final type = value.type;
     if (type is! InterfaceType) return null;
 
-    final backingClass = type.element;
-    if (backingClass.name == className &&
-        backingClass.library.name == _dslLibrary) {
+    final backingClass = type.element3;
+    if (backingClass.name3 == className &&
+        backingClass.library2.name3 == _dslLibrary) {
       return value;
     }
   }).whereType();
 }
 
-DartObject? _findDslAnnotation(Element element, String className) {
+DartObject? _findDslAnnotation(Annotatable element, String className) {
   return _findDslAnnotations(element, className).firstOrNull;
 }
 
 bool isWatchFunctionFromDslLibrary(Identifier identifier) {
-  final static = identifier.staticElement;
+  final static = identifier.element;
   if (static == null) return false;
 
-  return static.library?.name == _dslLibrary && static.name == 'watch';
+  return static.library2?.name3 == _dslLibrary && static.name3 == 'watch';
 }
 
 class _ZapToDartImportRewriter extends GeneralizingAstVisitor<void> {

@@ -1,5 +1,5 @@
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:analyzer/dart/element/element.dart';
+import 'package:analyzer/dart/element/element2.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:collection/collection.dart';
 
@@ -59,8 +59,8 @@ abstract class BaseZapVariable implements HasUpdateMask {
   /// The synthetic Dart construct backing this variable.
   AstNode get declaration;
 
-  /// The [Element] created by the [declaration].
-  PromotableElement get element;
+  /// The [Element2] created by the [declaration].
+  VariableElement2 get element;
 
   /// The resolved type of this variable.
   DartType get type => element.type;
@@ -92,7 +92,7 @@ class DartCodeVariable extends BaseZapVariable {
   @override
   final VariableDeclaration declaration;
   @override
-  final LocalVariableElement element;
+  final LocalVariableElement2 element;
 
   /// Whether this variable was declared as a `@prop` that can be set by outer
   /// components.
@@ -129,7 +129,7 @@ class SubcomponentVariable extends BaseZapVariable {
   @override
   final AstNode declaration;
   @override
-  final LocalVariableElement element;
+  final LocalVariableElement2 element;
   final SubcomponentVariableKind kind;
 
   @override
@@ -149,7 +149,7 @@ class SelfReference extends BaseZapVariable {
   @override
   final FormalParameter declaration;
   @override
-  final ParameterElement element;
+  final VariableElement2 element;
 
   SelfReference(super.scope, this.declaration, this.element) : super._();
 }
