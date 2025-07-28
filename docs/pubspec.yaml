@@ -7,9 +7,9 @@ environment:
   sdk: ^3.8.2
 
 dependencies:
-  # picocss:
-  #   version: ^1.5.10
-  #   hosted: https://simonbinder.eu
+  picocss:
+    version: ^1.5.10
+    hosted: https://simonbinder.eu
   tar: ^2.0.0
   riverpod_zap: ^0.2.0
     # version: ^0.1.1
