@@ -1,0 +1,12 @@
+targets:
+  $default:
+    builders:
+      build_web_compilers:entrypoint:
+        release_options:
+          compilers:
+            dart2js:
+              args:
+                - -O4
+            dart2wasm:
+              args:
+                - -O4
