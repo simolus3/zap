@@ -11,9 +11,11 @@ dependencies:
   riverpod: ^2.6.1
   uuid: ^4.5.1
   picocss:
-    hosted: https://simonbinder.eu
-    version: ^1.5.10
-  riverpod_zap: ^0.2.0
+    hosted: https://pub-simonbinder-eu.fsn1.your-objectstorage.com
+    version: ^2.0.6+1
+  riverpod_zap:
+    hosted: https://pub-simonbinder-eu.fsn1.your-objectstorage.com
+    version: ^0.2.0
   web: ^1.1.1
   zap: ^0.3.0
 

@@ -92,7 +92,7 @@ environment:
 dependencies:
   zap: ^${v.zap}
   riverpod_zap:
-    hosted: https://simonbinder.eu
+    hosted: https://pub-simonbinder-eu.fsn1.your-objectstorage.com
     version: ^${v.riverpod_zap}
 
 dev_dependencies:
