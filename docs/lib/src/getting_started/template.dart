@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:js_interop';
 
 import 'package:tar/tar.dart';
 import 'package:web/web.dart';
@@ -14,24 +13,16 @@ void downloadExample(String packageName) {
   _TemplateFiles(packageName).writeInto(writer);
   writer.close();
 
-  final jsArray = JSArray<JSNumber>.withLength(tarFile.length);
-
-  for (var i = 0; i < tarFile.length; i++) {
-    jsArray[i] = tarFile[i].toJS;
-  }
-
-  final blob = Blob([jsArray].toJS, BlobPropertyBag(type: 'application/x-tar'));
-  final url = URL.createObjectURL(blob);
+  final url = Uri.dataFromBytes(tarFile, mimeType: 'application/x-tar');
 
   // To preserve the file name... https://stackoverflow.com/a/19328891/3260197
   final element = document.createElement('a') as HTMLAnchorElement
-    ..href = url
+    ..href = url.toString()
     ..download = '$packageName.tar'
     ..style.visibility = 'none';
   document.body?.append(element);
   element.click();
   element.remove();
-  URL.revokeObjectURL(url);
 }
 
 class _TemplateFiles {
@@ -87,19 +78,20 @@ publish_to: none
 version: 0.1.0
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: '>=3.8.2 <4.0.0'
 
 dependencies:
-  zap: ^${v.zap}
   riverpod_zap:
     hosted: https://pub-simonbinder-eu.fsn1.your-objectstorage.com
     version: ^${v.riverpod_zap}
+  web: ^1.1.1
+  zap: ^${v.zap}
 
 dev_dependencies:
-  build_runner: ^2.1.7
-  build_web_compilers: ^4.0.0
-  sass_builder: ^2.2.1
-  lints: ^2.1.0
+  build_runner: ^2.6.0
+  build_web_compilers: ^4.2.0
+  sass_builder: ^2.2.2-dev.0
+  lints: ^6.0.0
   zap_dev: ^${v.zap_dev}
 ''');
   }
@@ -204,7 +196,7 @@ class Counter extends StateNotifier<int> {
 ''');
 
     yield _entry('web/main.dart', '''
-import 'dart:html';
+import 'package:web/web.dart';
 
 // This import will be available after running the build once.
 import 'package:$packageName/app.zap.dart';
