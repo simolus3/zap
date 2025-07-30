@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:js_interop';
+import 'dart:typed_data';
 
 import 'package:tar/tar.dart';
 import 'package:web/web.dart';
@@ -13,16 +15,21 @@ void downloadExample(String packageName) {
   _TemplateFiles(packageName).writeInto(writer);
   writer.close();
 
-  final url = Uri.dataFromBytes(tarFile, mimeType: 'application/x-tar');
+  final blob = Blob(
+    [(tarFile as Uint8List).toJS].toJS,
+    BlobPropertyBag(type: 'application/x-tar'),
+  );
+  final url = URL.createObjectURL(blob);
 
   // To preserve the file name... https://stackoverflow.com/a/19328891/3260197
   final element = document.createElement('a') as HTMLAnchorElement
-    ..href = url.toString()
+    ..href = url
     ..download = '$packageName.tar'
     ..style.visibility = 'none';
   document.body?.append(element);
   element.click();
   element.remove();
+  URL.revokeObjectURL(url);
 }
 
 class _TemplateFiles {
