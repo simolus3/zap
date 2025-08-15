@@ -4,7 +4,7 @@ import 'package:analyzer/dart/analysis/analysis_context.dart';
 import 'package:analyzer/dart/analysis/analysis_context_collection.dart';
 import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:analyzer/dart/element/element2.dart';
+import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/file_system/file_system.dart';
 import 'package:analyzer/file_system/overlay_file_system.dart';
 import 'package:pool/pool.dart';
@@ -203,7 +203,7 @@ class ZapWorker {
       file.prepareResult!,
       component,
       errorReporter,
-    ).reportErrors(unit.errors);
+    ).reportErrors(unit.diagnostics);
 
     file.state = ZapFileState.analyzed;
     _finishedAnalysis.add(file);
@@ -216,12 +216,12 @@ class ZapWorker {
 
 class _RawResolver extends DartResolver {
   final AnalysisContext _originatingContext;
-  LibraryElement2? referenceLibrary;
+  LibraryElement? referenceLibrary;
 
   _RawResolver(this._originatingContext);
 
   @override
-  Future<LibraryElement2> get packageWeb async {
+  Future<LibraryElement> get packageWeb async {
     if (referenceLibrary == null) {
       throw StateError(
         'Cannot resolve `package:web/web.dart` without a reference library',
@@ -229,22 +229,20 @@ class _RawResolver extends DartResolver {
     }
 
     // Start crawling imports from the reference library
-    final seen = <LibraryElement2>{referenceLibrary!};
-    final toVisit = <LibraryElement2>[referenceLibrary!];
+    final seen = <LibraryElement>{referenceLibrary!};
+    final toVisit = <LibraryElement>[referenceLibrary!];
 
     while (toVisit.isNotEmpty) {
       final current = toVisit.removeLast();
 
-      if (current.name3!.contains('dart.') && current.name3!.contains('html')) {
+      if (current.name!.contains('dart.') && current.name!.contains('html')) {
         return current;
       }
 
-      final toCrawl = current.firstFragment.libraryImports2
-          .map((i) => i.importedLibrary2!)
+      final toCrawl = current.firstFragment.libraryImports
+          .map((i) => i.importedLibrary!)
           .followedBy(
-            current.firstFragment.libraryExports2.map(
-              (i) => i.exportedLibrary2!,
-            ),
+            current.firstFragment.libraryExports.map((i) => i.exportedLibrary!),
           )
           .where((l) => !seen.contains(l))
           .toSet();
@@ -256,20 +254,20 @@ class _RawResolver extends DartResolver {
   }
 
   @override
-  Future<LibraryElement2> resolveUri(Uri uri) async {
+  Future<LibraryElement> resolveUri(Uri uri) async {
     final result = await _originatingContext.currentSession.getLibraryByUri(
       uri.toString(),
     );
 
     if (result is LibraryElementResult) {
-      return result.element2;
+      return result.element;
     }
 
     throw StateError('Could not resolve $uri to a library: $result');
   }
 
   @override
-  Future<Uri> uriForElement(Element2 element) async {
-    return element.library2!.uri;
+  Future<Uri> uriForElement(Element element) async {
+    return element.library!.uri;
   }
 }

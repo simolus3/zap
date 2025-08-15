@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:analyzer/dart/analysis/results.dart';
-import 'package:analyzer/dart/element/element2.dart';
+import 'package:analyzer/dart/element/element.dart';
 import 'package:build/build.dart' hide Resolver;
 import 'package:build/build.dart' as build;
 import 'package:dart_style/dart_style.dart';
@@ -40,7 +40,7 @@ class ZapBuilder implements Builder {
     // Todo: Use astNodeFor here, but we'll have to obtain a suitable element
     // first.
     final result =
-        await element.session.getResolvedLibraryByElement2(element)
+        await element.session.getResolvedLibraryByElement(element)
             as ResolvedLibraryResult;
     final componentName = dartComponentName(
       p.url.basenameWithoutExtension(input.path),
@@ -87,17 +87,17 @@ class _BuildDartResolver implements DartResolver {
   _BuildDartResolver(this.resolver);
 
   @override
-  Future<LibraryElement2> get packageWeb {
+  Future<LibraryElement> get packageWeb {
     return resolver.libraryFor(AssetId('web', 'lib/web.dart'));
   }
 
   @override
-  Future<LibraryElement2> resolveUri(Uri uri) {
+  Future<LibraryElement> resolveUri(Uri uri) {
     return resolver.libraryFor(AssetId.resolve(uri));
   }
 
   @override
-  Future<Uri> uriForElement(Element2 element) async {
+  Future<Uri> uriForElement(Element element) async {
     return (await resolver.assetIdForElement(element)).uri;
   }
 }

@@ -4,7 +4,7 @@ publish_to: none
 resolution: workspace
 
 environment:
-  sdk: ^3.8.2
+  sdk: ^3.9.0
 
 dependencies:
   picocss:
@@ -18,9 +18,9 @@ dependencies:
   zap: ^0.3.0
 
 dev_dependencies:
-  build: ^3.0.0
-  build_runner: ^2.6.0
-  build_web_compilers: ^4.2.0
+  build: ^3.0.1
+  build_runner: ^2.6.1
+  build_web_compilers: ^4.2.1
   pubspec_parse: ^1.5.0
   zap_dev: ^0.3.0
   built_site:

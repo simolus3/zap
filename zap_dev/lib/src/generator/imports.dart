@@ -1,4 +1,4 @@
-import 'package:analyzer/dart/element/element2.dart';
+import 'package:analyzer/dart/element/element.dart';
 import 'package:build/build.dart';
 import 'package:zap_dev/src/generator/tree.dart';
 import 'package:path/path.dart' show url;
@@ -65,7 +65,7 @@ class ImportsTracker {
   /// This is used to import extension members with reasonable safety, as
   /// rewriting them to explicitly refer to the extension used is hard to do for
   /// cascade expressions.
-  void importWithoutAlias(LibraryElement2 element, String show) {
+  void importWithoutAlias(LibraryElement element, String show) {
     final uri = _normalizeUri(_uriFor(element));
 
     final shownElements = _unaliasedImports.putIfAbsent(uri, () => {});
@@ -83,16 +83,16 @@ class ImportsTracker {
     });
   }
 
-  Uri _uriFor(LibraryElement2 element) {
+  Uri _uriFor(LibraryElement element) {
     if (element.isInSdk) {
-      final name = element.name3!.split('.').last;
+      final name = element.name!.split('.').last;
       return Uri.parse('dart:$name');
     }
 
     return element.uri;
   }
 
-  String importForLibrary(LibraryElement2 element) {
+  String importForLibrary(LibraryElement element) {
     return importForUri(_uriFor(element));
   }
 }

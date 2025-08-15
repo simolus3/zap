@@ -13,8 +13,9 @@ final _identifier = RegExp(r'^[_$a-z]+(\d[_a-z\d]*)?$', caseSensitive: false);
 // * followed by a sequence of lower-case letters, digits and underscores,
 // * with no two adjacent underscores,
 // * and not ending in an underscore.
-final _lowerCaseUnderScoreWithLeadingUnderscores =
-    RegExp(r'^_*[a-z](?:_?[a-z\d])*$');
+final _lowerCaseUnderScoreWithLeadingUnderscores = RegExp(
+  r'^_*[a-z](?:_?[a-z\d])*$',
+);
 
 /// Returns `true` if this [name] is a legal Dart identifier.
 bool isIdentifier(String name) => _identifier.hasMatch(name);
@@ -61,11 +62,7 @@ const reservedWords = [
   'var',
   'void',
   'while',
-  'with'
+  'with',
 ];
 
-const badPackageNames = [
-  'zap',
-  'zap_dev',
-  'riverpod_zap',
-];
+const badPackageNames = ['zap', 'zap_dev', 'riverpod_zap'];

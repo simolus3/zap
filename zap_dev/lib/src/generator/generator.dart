@@ -2,7 +2,7 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/syntactic_entity.dart';
 import 'package:analyzer/dart/ast/token.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
-import 'package:analyzer/dart/element/element2.dart';
+import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:analyzer/dart/element/type_visitor.dart';
@@ -35,7 +35,7 @@ class Generator {
 
   final Map<BaseZapVariable, String> _varNames = {};
   final Map<ReactiveNode, String> _nodeNames = {};
-  final Map<ExecutableElement2, String> _functionNames = {};
+  final Map<ExecutableElement, String> _functionNames = {};
   final Map<Object, String> _miscNames = {};
 
   String get zapPrefix => imports.zapImport;
@@ -57,8 +57,8 @@ class Generator {
     });
   }
 
-  String _nameForFunction(ExecutableElement2 fun) {
-    return _functionNames.putIfAbsent(fun, () => '${_prefix}fun_${fun.name3}');
+  String _nameForFunction(ExecutableElement fun) {
+    return _functionNames.putIfAbsent(fun, () => '${_prefix}fun_${fun.name!}');
   }
 
   String _nameForMisc(Object key) {
@@ -200,9 +200,9 @@ abstract class _ComponentOrSubcomponentWriter {
       // The import tracker will rewrite imports from the intermediate library
       // to the final `.zap.dart` file.
       final prefix = generator.imports.importForLibrary(
-        node.component.temporaryApiClass.library2,
+        node.component.temporaryApiClass.library,
       );
-      return '$prefix.${node.component.temporaryApiClass.name3}';
+      return '$prefix.${node.component.temporaryApiClass.name!}';
     } else if (node is DynamicSubComponent) {
       return '$zapPrefix.DynamicComponent';
     } else if (node is ReactiveIf) {
@@ -906,7 +906,7 @@ abstract class _ComponentOrSubcomponentWriter {
       final name = node.fragment.resolvedScope
           .findForSubcomponent(SubcomponentVariableKind.asyncSnapshot)!
           .element
-          .name3;
+          .name!;
 
       final create = _createSubFragment(childComponent, 'this');
       // If the component was optimized to a static html string, we don't have
@@ -948,10 +948,10 @@ abstract class _ComponentOrSubcomponentWriter {
         buffer
           ..write(', (fragment, element, index) => ')
           ..write('(fragment as $childClass)')
-          ..write('..${elementVariable.element.name3} = element');
+          ..write('..${elementVariable.element.name!} = element');
 
         if (indexVariable != null) {
-          buffer.write('..${indexVariable.element.name3} = index');
+          buffer.write('..${indexVariable.element.name!} = index');
         }
       }
 
@@ -1000,7 +1000,7 @@ abstract class _ComponentOrSubcomponentWriter {
       buffer
         ..write(type)
         ..write(' get ')
-        ..write(element.name3)
+        ..write(element.name!)
         ..write(' => ')
         ..write(name)
         ..writeln(';');
@@ -1013,7 +1013,7 @@ abstract class _ComponentOrSubcomponentWriter {
         //   }
         // }
         buffer
-          ..writeln('set ${element.name3} ($type value) {')
+          ..writeln('set ${element.name!} ($type value) {')
           ..writeln('  if (value != $name) {')
           ..writeln('    $name = value;');
         if (variable.needsUpdateTracking) {
@@ -1098,7 +1098,7 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
         ..write(' ')
         ..write(name)
         ..write(';')
-        ..writeln(' // ${variable.element.name3}');
+        ..writeln(' // ${variable.element.name!}');
     }
 
     // Slots are also passed down as variables
@@ -1145,7 +1145,7 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
       buffer
         ..write(type)
         ..write(r' $')
-        ..write(element.name3)
+        ..write(element.name!)
         ..write(',');
     }
 
@@ -1198,10 +1198,10 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
         buffer
           ..write(generator._nameForVar(variable))
           ..write(r' = $')
-          ..write(element.name3)
+          ..write(element.name!)
           ..write(' != null ? ')
           ..write(r'$')
-          ..write(element.name3)
+          ..write(element.name!)
           ..write('.value : (');
 
         final declaration = variable.declaration;
@@ -1220,7 +1220,7 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
           // No initializer and no value set -> error
           final argumentError = prefixIdentifier('ArgumentError');
           buffer.write(
-            'throw $argumentError(${dartStringLiteral('Parameter ${element.name3} is required!')})',
+            'throw $argumentError(${dartStringLiteral('Parameter ${element.name!} is required!')})',
           );
         }
 
@@ -1266,13 +1266,13 @@ class _SubComponentWriter extends _ComponentOrSubcomponentWriter {
       switch (variable.kind) {
         case SubcomponentVariableKind.asyncSnapshot:
           buffer.writeln(
-            '$type $name = const $zapPrefix.ZapSnapshot.unresolved(); // ${variable.element.name3}',
+            '$type $name = const $zapPrefix.ZapSnapshot.unresolved(); // ${variable.element.name!}',
           );
           break;
         case SubcomponentVariableKind.forBlockElement:
         case SubcomponentVariableKind.forBlockIndex:
           needsInitialization.add(name);
-          buffer.writeln('$type $name; // ${variable.element.name3}');
+          buffer.writeln('$type $name; // ${variable.element.name!}');
           break;
       }
     }
@@ -1314,8 +1314,8 @@ class _DartTypeWriter extends UnifyingTypeVisitor<void> {
     }
   }
 
-  void _writeElement(Element2 element, String name) {
-    final library = element.library2;
+  void _writeElement(Element element, String name) {
+    final library = element.library;
     if (library != null && library != generator.component.resolvedTmpLibrary) {
       final import = generator.imports.importForLibrary(library);
       buffer.write('$import.');
@@ -1349,7 +1349,7 @@ class _DartTypeWriter extends UnifyingTypeVisitor<void> {
           buffer.write(', ');
         }
 
-        buffer.write(arg.name3);
+        buffer.write(arg.name!);
         final bound = arg.bound;
         if (bound != null) {
           buffer.write(' extends ');
@@ -1387,7 +1387,7 @@ class _DartTypeWriter extends UnifyingTypeVisitor<void> {
 
       parameter.type.accept(this);
       if (parameter.isNamed) {
-        buffer.write(' ${parameter.name3}');
+        buffer.write(' ${parameter.name!}');
       }
       i++;
     }
@@ -1404,9 +1404,9 @@ class _DartTypeWriter extends UnifyingTypeVisitor<void> {
   void visitInterfaceType(InterfaceType type) {
     final alias = type.alias;
     if (alias != null) {
-      _writeElement(alias.element2, alias.element2.name3!);
+      _writeElement(alias.element, alias.element.name!);
     } else {
-      _writeElement(type.element3, type.element3.name3!);
+      _writeElement(type.element, type.element.name!);
     }
 
     if (type.typeArguments.isNotEmpty) {
@@ -1475,7 +1475,7 @@ class _DartTypeWriter extends UnifyingTypeVisitor<void> {
 
   @override
   void visitTypeParameterType(TypeParameterType type) {
-    buffer.write(type.element3.name3);
+    buffer.write(type.element.name!);
     _writeSuffix(type.nullabilitySuffix);
   }
 
@@ -1549,7 +1549,7 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
     _replaceRange(node.offset, node.length, newContent);
   }
 
-  BaseZapVariable? _variableFor(Element2? element) {
+  BaseZapVariable? _variableFor(Element? element) {
     ZapVariableScope? scope = this.scope;
 
     while (scope != null) {
@@ -1606,7 +1606,7 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
   }
 
   void _visitCompoundAssignmentExpression(CompoundAssignmentExpression node) {
-    final target = node.writeElement2;
+    final target = node.writeElement;
     final variable = _variableFor(target);
     final notifyUpdate = variable != null && variable.needsUpdateTracking;
 
@@ -1640,34 +1640,34 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
   void _handleTarget(Expression? left, Token? operator) {
     if (left is SimpleIdentifier) {
       final target = left.element;
-      if (target is PrefixElement2 && operator != null) {
+      if (target is PrefixElement && operator != null) {
         _replaceNode(left, '');
         _replaceNode(operator, '');
       }
     }
   }
 
-  void _patchIdentifier(SyntacticEntity entity, Element2? target) {
-    final targetLibrary = target?.library2;
+  void _patchIdentifier(SyntacticEntity entity, Element? target) {
+    final targetLibrary = target?.library;
 
     if (targetLibrary != generator.component.resolvedTmpLibrary) {
       // Referencing an element from an import, add necessary import prefix.
       final isTopLevel =
-          targetLibrary != null && targetLibrary.children2.contains(target);
+          targetLibrary != null && targetLibrary.children.contains(target);
 
       if (isTopLevel) {
         final importPrefix = generator.imports.importForLibrary(targetLibrary);
         _replaceRange(entity.offset, 0, '$importPrefix.');
-      } else if (target is ExecutableElement2 &&
+      } else if (target is ExecutableElement &&
           !target.isStatic &&
-          target.enclosingElement2 is ExtensionElement2) {
-        final extension = target.enclosingElement2 as ExtensionElement2;
-        final name = extension.name3;
+          target.enclosingElement is ExtensionElement) {
+        final extension = target.enclosingElement as ExtensionElement;
+        final name = extension.name;
 
         // Target is from an extension, import that extension without an alias
         // so that the extension invocation continues to work.
         if (name != null) {
-          generator.imports.importWithoutAlias(extension.library2, name);
+          generator.imports.importWithoutAlias(extension.library, name);
         }
       }
       return;
@@ -1697,7 +1697,7 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
       final prefix = _prefixFor(variable.scope);
       final name = generator._nameForVar(variable);
 
-      final replacement = '$prefix$name /* ${target?.name3} */';
+      final replacement = '$prefix$name /* ${target?.name} */';
       _replaceNode(entity, replacement);
     }
   }
@@ -1778,7 +1778,7 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
   @override
   void visitPrefixedIdentifier(PrefixedIdentifier node) {
     final targetOfPrefix = node.prefix.element;
-    if (targetOfPrefix is PrefixElement2) {
+    if (targetOfPrefix is PrefixElement) {
       _handleTarget(node.prefix, node.period);
       visitSimpleIdentifier(node.identifier);
     } else {
@@ -1798,7 +1798,7 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
       // patchIdentifier will add the right identifier if needed.
       _replaceNode(prefix, '');
     }
-    _patchIdentifier(node.name2, node.element2);
+    _patchIdentifier(node.name, node.element);
 
     node.typeArguments?.accept(this);
   }

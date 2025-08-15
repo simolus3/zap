@@ -10,7 +10,7 @@ class IndexExamples implements Builder {
 
   Map<String, List<String>> get buildExtensions {
     return const {
-      r'lib/src/examples/examples.dart': ['web/examples/sources.json']
+      r'lib/src/examples/examples.dart': ['web/examples/sources.json'],
     };
   }
 
@@ -25,7 +25,8 @@ class IndexExamples implements Builder {
                 {
                   'name': p.basename(file),
                   'contents': await step.readAsString(
-                      AssetId.resolve(Uri.parse(file), from: step.inputId)),
+                    AssetId.resolve(Uri.parse(file), from: step.inputId),
+                  ),
                 },
             ],
           },

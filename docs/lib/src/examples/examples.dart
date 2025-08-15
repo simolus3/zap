@@ -12,8 +12,11 @@ class ExampleComponent {
   final String id;
   final List<String> files;
 
-  const ExampleComponent(
-      {required this.title, required this.id, required this.files});
+  const ExampleComponent({
+    required this.title,
+    required this.id,
+    required this.files,
+  });
 }
 
 const helloWorld = ExampleComponent(
@@ -29,10 +32,7 @@ const styling = ExampleComponent(
 const nested = ExampleComponent(
   title: 'Nested components',
   id: 'simple-nested',
-  files: [
-    'introduction/nested/index.zap',
-    'introduction/nested/nested.zap',
-  ],
+  files: ['introduction/nested/index.zap', 'introduction/nested/nested.zap'],
 );
 const rawHtml = ExampleComponent(
   title: '@html tags',
@@ -155,37 +155,16 @@ const riverpodExample = ExampleComponent(
 const examples = <ExampleGroup>[
   ExampleGroup(
     title: 'Introduction',
-    children: [
-      helloWorld,
-      styling,
-      nested,
-      rawHtml,
-    ],
+    children: [helloWorld, styling, nested, rawHtml],
   ),
   ExampleGroup(
     title: 'Reactivity',
-    children: [
-      reactiveAssignments,
-      reactiveDeclarations,
-      reactiveStatements,
-    ],
+    children: [reactiveAssignments, reactiveDeclarations, reactiveStatements],
   ),
-  ExampleGroup(
-    title: 'Props',
-    children: [
-      declaringProps,
-      defaultValues,
-    ],
-  ),
+  ExampleGroup(title: 'Props', children: [declaringProps, defaultValues]),
   ExampleGroup(
     title: 'Logic',
-    children: [
-      ifBlocks,
-      elseBlocks,
-      elseIfBlocks,
-      awaitBlocks,
-      eachBlocks,
-    ],
+    children: [ifBlocks, elseBlocks, elseIfBlocks, awaitBlocks, eachBlocks],
   ),
   ExampleGroup(
     title: 'Events',
@@ -198,17 +177,8 @@ const examples = <ExampleGroup>[
       domEventForwarding,
     ],
   ),
-  ExampleGroup(
-    title: 'Watchables',
-    children: [
-      watchRead,
-      watchWrite,
-    ],
-  ),
-  ExampleGroup(
-    title: 'Riverpod',
-    children: [riverpodExample],
-  ),
+  ExampleGroup(title: 'Watchables', children: [watchRead, watchWrite]),
+  ExampleGroup(title: 'Riverpod', children: [riverpodExample]),
 ];
 
 ExampleComponent? componentFromId(String id) {

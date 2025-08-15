@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:analyzer/dart/element/element2.dart';
+import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:analyzer/dart/element/type_provider.dart';
@@ -33,7 +33,7 @@ class TypeChecker {
   bool isNullableString(DartType type) {
     return typeSystem.isAssignableTo(
       type,
-      typeProvider.stringElement2.instantiate(
+      typeProvider.stringElement.instantiate(
         typeArguments: const [],
         nullabilitySuffix: NullabilitySuffix.question,
       ),
@@ -44,7 +44,7 @@ class TypeChecker {
     return _extractSingleType(
       shouldBeFuture,
       span,
-      typeProvider.futureElement2,
+      typeProvider.futureElement,
       'This must be a future!',
     );
   }
@@ -53,7 +53,7 @@ class TypeChecker {
     return _extractSingleType(
       shouldBeStream,
       span,
-      typeProvider.streamElement2,
+      typeProvider.streamElement,
       'This must be a stream!',
     );
   }
@@ -62,7 +62,7 @@ class TypeChecker {
     return _extractSingleType(
       shouldBeIterable,
       span,
-      typeProvider.iterableElement2,
+      typeProvider.iterableElement,
       'This must be an iterable!',
     );
   }
@@ -70,10 +70,10 @@ class TypeChecker {
   DartType _extractSingleType(
     DartType type,
     FileSpan? span,
-    ClassElement2 element,
+    ClassElement element,
     String description,
   ) {
-    final asStream = type.asInstanceOf2(element);
+    final asStream = type.asInstanceOf(element);
     if (asStream == null) {
       errors.reportError(ZapError(description, span));
       return typeProvider.dynamicType;

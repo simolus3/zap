@@ -1,4 +1,4 @@
-import 'package:analyzer/dart/element/element2.dart';
+import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:analyzer/dart/element/type.dart';
 
@@ -138,7 +138,7 @@ class DomEventType {
 }
 
 class ResolvedDomTypes {
-  final LibraryElement2 packageWeb;
+  final LibraryElement packageWeb;
 
   final Map<String, InterfaceType> _types = {};
   final Map<String, DomEventType> knownEvents = {};
@@ -160,15 +160,15 @@ class ResolvedDomTypes {
   void _readKnownInformation() {
     final eventStreamProviders = _class('EventStreamProviders');
 
-    for (final field in eventStreamProviders.fields2) {
+    for (final field in eventStreamProviders.fields) {
       final value = field.computeConstantValue();
       if (value == null) continue;
 
       final name = value.getField('_eventType')!.toStringValue()!;
       knownEvents[name] = DomEventType(
-        'EventStreamProviders.${field.name3}',
+        'EventStreamProviders.${field.name!}',
         (field.type as InterfaceType).typeArguments.single as InterfaceType? ??
-            event.element3.instantiate(
+            event.element.instantiate(
               typeArguments: const [],
               nullabilitySuffix: NullabilitySuffix.none,
             ),
@@ -176,12 +176,12 @@ class ResolvedDomTypes {
     }
   }
 
-  ClassElement2 _class(String name) {
-    return packageWeb.exportNamespace.get2(name) as ClassElement2;
+  ClassElement _class(String name) {
+    return packageWeb.exportNamespace.get2(name) as ClassElement;
   }
 
-  ExtensionTypeElement2 _extension(String name) {
-    return packageWeb.exportNamespace.get2(name) as ExtensionTypeElement2;
+  ExtensionTypeElement _extension(String name) {
+    return packageWeb.exportNamespace.get2(name) as ExtensionTypeElement;
   }
 
   InterfaceType _nonNullableWithoutTypeParameters(String name) {

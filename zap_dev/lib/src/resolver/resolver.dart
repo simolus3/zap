@@ -1,6 +1,6 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
-import 'package:analyzer/dart/element/element2.dart';
+import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:analyzer/dart/element/type_provider.dart';
 import 'package:analyzer/dart/element/type_system.dart';
@@ -26,7 +26,7 @@ const _reactiveUpdatesLabel = r'$';
 
 class Resolver {
   final PrepareResult prepare;
-  final LibraryElement2 preparedLibrary;
+  final LibraryElement preparedLibrary;
   final CompilationUnit preparedUnit;
   final ErrorReporter errorReporter;
   final String componentName;
@@ -102,7 +102,7 @@ class Resolver {
   }
 
   Future<void> _findExternalComponents(DartResolver resolver) async {
-    void scanNamespace(LibraryElement2 lib) {
+    void scanNamespace(LibraryElement lib) {
       for (final element in lib.classes) {
         final tagName = componentTagName(element);
 
@@ -112,7 +112,7 @@ class Resolver {
       }
     }
 
-    for (final imported in preparedLibrary.firstFragment.importedLibraries2) {
+    for (final imported in preparedLibrary.firstFragment.importedLibraries) {
       scanNamespace(imported);
 
       // Also consider libraries added with the `zap:additional_export` pragma.
@@ -126,7 +126,7 @@ class Resolver {
       } catch (e, s) {
         // It's expected that we can't recover the asset id of SDK libraries,
         // so don't log that.
-        if (!imported.name3!.startsWith('dart.')) {
+        if (!imported.name!.startsWith('dart.')) {
           log.fine('Could not recover asset id of ${imported.uri}', e, s);
         }
 
@@ -137,7 +137,7 @@ class Resolver {
         final import = Uri.parse(
           rewriteUri(additional.toString(), ImportRewriteMode.zapToApi),
         );
-        LibraryElement2 included;
+        LibraryElement included;
         try {
           included = await resolver.resolveUri(import);
         } catch (e, s) {
@@ -154,12 +154,12 @@ class Resolver {
     }
   }
 
-  ExternalComponent _readComponent(String tagName, ClassElement2 element) {
+  ExternalComponent _readComponent(String tagName, ClassElement element) {
     final parameters = <MapEntry<String, DartType>>[];
     var slots = <String?>[];
 
-    for (final accessor in element.fields2) {
-      final getter = accessor.getter2;
+    for (final accessor in element.fields) {
+      final getter = accessor.getter;
       final annotations = getter == null
           ? null
           : readSlotAnnotations(getter).toList();
@@ -168,7 +168,7 @@ class Resolver {
         // This is the getter introduced to represent slots
         slots = annotations;
       } else {
-        parameters.add(MapEntry(accessor.name3!, accessor.type));
+        parameters.add(MapEntry(accessor.name!, accessor.type));
       }
     }
 
@@ -198,7 +198,7 @@ class _ScopeInformation {
   final PreparedVariableScope root;
 
   final Map<PreparedVariableScope, ZapVariableScope> scopes = {};
-  final Map<VariableElement2, BaseZapVariable> variables = {};
+  final Map<VariableElement, BaseZapVariable> variables = {};
 
   final Map<zap.RawDartExpression, ScopedDartExpression> expressionToScope = {};
   final Map<zap.RawDartExpression, ResolvedDartExpression> resolvedExpressions =
@@ -234,7 +234,7 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
   final Resolver resolver;
 
   final _ScopeInformation scopes;
-  final List<ExecutableElement2> definedFunctions = [];
+  final List<ExecutableElement> definedFunctions = [];
   final List<LocalFunctionElement> userDefinedFunctions = [];
 
   _AnalyzeVariablesAndScopes(this.resolver)
@@ -243,11 +243,11 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
 
   ZapVariableScope get zapScope => scopes.scopes[scope]!;
 
-  BaseZapVariable? _variableFor(Element2 element) {
+  BaseZapVariable? _variableFor(Element element) {
     return scopes.variables[element];
   }
 
-  void _markMutable(Element2? target) {
+  void _markMutable(Element? target) {
     if (target != null) {
       _variableFor(target)?.isMutable = true;
     }
@@ -384,14 +384,14 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
 
       _isInReactiveRead = old;
     } else {
-      final resolved = node.declaredElement2;
+      final resolved = node.declaredElement;
 
-      if (resolved is LocalVariableElement2) {
+      if (resolved is LocalVariableElement) {
         final currentScope = scope;
         BaseZapVariable variable;
 
         if (currentScope is ForBlockVariableScope &&
-            resolved.name3 == currentScope.block.elementVariableName) {
+            resolved.name == currentScope.block.elementVariableName) {
           variable = SubcomponentVariable(
             scope: zapScope,
             declaration: node,
@@ -400,7 +400,7 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
             kind: SubcomponentVariableKind.forBlockElement,
           )..isMutable = true;
         } else if (currentScope is ForBlockVariableScope &&
-            resolved.name3 == currentScope.block.indexVariableName) {
+            resolved.name == currentScope.block.indexVariableName) {
           variable = SubcomponentVariable(
             scope: zapScope,
             declaration: node,
@@ -409,7 +409,7 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
             kind: SubcomponentVariableKind.forBlockIndex,
           )..isMutable = true;
         } else if (currentScope is AsyncBlockVariableScope &&
-            resolved.name3 == currentScope.block.variableName) {
+            resolved.name == currentScope.block.variableName) {
           variable = SubcomponentVariable(
             scope: zapScope,
             declaration: node,
@@ -442,19 +442,19 @@ class _AnalyzeVariablesAndScopes extends RecursiveAstVisitor<void> {
 
   @override
   void visitAssignmentExpression(AssignmentExpression node) {
-    _markMutable(node.writeElement2);
+    _markMutable(node.writeElement);
     super.visitAssignmentExpression(node);
   }
 
   @override
   void visitPostfixExpression(PostfixExpression node) {
-    _markMutable(node.writeElement2);
+    _markMutable(node.writeElement);
     super.visitPostfixExpression(node);
   }
 
   @override
   void visitPrefixExpression(PrefixExpression node) {
-    _markMutable(node.writeElement2);
+    _markMutable(node.writeElement);
     super.visitPrefixExpression(node);
   }
 
@@ -971,7 +971,7 @@ class _FindComponents {
   }
 
   _FlowAndCategorizedStatements _findFlowUpdates(
-    Map<Element2, BaseZapVariable> variables,
+    Map<Element, BaseZapVariable> variables,
     DomFragment fragment,
     List<Statement> statements,
   ) {
@@ -982,7 +982,7 @@ class _FindComponents {
 
     Set<HasUpdateMask> findDependencies(
       ResolvedDartExpression expression, [
-      Map<Element2, BaseZapVariable>? localVariables,
+      Map<Element, BaseZapVariable>? localVariables,
     ]) {
       final found = <HasUpdateMask>{};
       found.addAll(
@@ -1039,7 +1039,7 @@ class _FindComponents {
             if (variable.name.lexeme.startsWith(zapPrefix)) {
               continue outer;
             }
-            final zapVariable = variables[variable.declaredElement2];
+            final zapVariable = variables[variable.declaredElement];
             if (zapVariable is DartCodeVariable) {
               initialized = zapVariable;
 
@@ -1251,14 +1251,14 @@ class _FindComponents {
 }
 
 class _FindReadVariables extends GeneralizingAstVisitor<void> {
-  final Map<Element2, BaseZapVariable> variables;
+  final Map<Element, BaseZapVariable> variables;
   final Set<BaseZapVariable> found = {};
 
   _FindReadVariables(this.variables);
 
   static Set<BaseZapVariable> find(
     AstNode node,
-    Map<Element2, BaseZapVariable> variables,
+    Map<Element, BaseZapVariable> variables,
   ) {
     final visitor = _FindReadVariables(variables);
     node.accept(visitor);
@@ -1319,7 +1319,7 @@ class ResolvedComponent {
 
   final OptimizationResults optimization;
 
-  final LibraryElement2 resolvedTmpLibrary;
+  final LibraryElement resolvedTmpLibrary;
   final CompilationUnit _resolvedTmpUnit;
 
   TypeSystem get typeSystem => resolvedTmpLibrary.typeSystem;
