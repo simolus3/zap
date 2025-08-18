@@ -10,7 +10,7 @@ dependencies:
     version: ^1.2.1
 
 workspace:
-  # - docs
+  - docs
   - riverpod_zap
   - riverpod_zap/example
   - zap
