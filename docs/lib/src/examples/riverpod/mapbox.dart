@@ -103,7 +103,10 @@ Future<MapboxModule> load() {
       final completer = Completer<MapboxModule>();
       final jsModules = JSArray<JSString>.withLength(1)
         ..[0] = 'https://api.mapbox.com/mapbox-gl-js/v2.7.0/mapbox-gl.js'.toJS;
-      _require(jsModules, completer.complete.toJS);
+      _require(
+        jsModules,
+        (completer.complete as void Function(MapboxModule)).toJS,
+      );
       module = await completer.future;
     } else {
       final script = HTMLScriptElement()

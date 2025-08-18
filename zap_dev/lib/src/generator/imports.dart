@@ -66,7 +66,7 @@ class ImportsTracker {
   /// rewriting them to explicitly refer to the extension used is hard to do for
   /// cascade expressions.
   void importWithoutAlias(LibraryElement element, String show) {
-    final uri = _normalizeUri(_uriFor(element));
+    final uri = _normalizeUri(element.uri);
 
     final shownElements = _unaliasedImports.putIfAbsent(uri, () => {});
     shownElements.add(show);
@@ -83,16 +83,7 @@ class ImportsTracker {
     });
   }
 
-  Uri _uriFor(LibraryElement element) {
-    if (element.isInSdk) {
-      final name = element.name!.split('.').last;
-      return Uri.parse('dart:$name');
-    }
-
-    return element.uri;
-  }
-
   String importForLibrary(LibraryElement element) {
-    return importForUri(_uriFor(element));
+    return importForUri(element.uri);
   }
 }

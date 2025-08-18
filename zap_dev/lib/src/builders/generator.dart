@@ -98,6 +98,9 @@ class _BuildDartResolver implements DartResolver {
 
   @override
   Future<Uri> uriForElement(Element element) async {
+    if (element is LibraryElement) {
+      return element.uri;
+    }
     return (await resolver.assetIdForElement(element)).uri;
   }
 }
