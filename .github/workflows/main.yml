@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: dart-lang/setup-dart@v1
       - uses: ./.github/actions/cache_pub
       - name: Get dependencies
@@ -28,7 +28,7 @@ jobs:
         working-directory: zap
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: dart-lang/setup-dart@v1
       - uses: ./.github/actions/cache_pub
 
@@ -54,7 +54,7 @@ jobs:
         working-directory: riverpod_zap
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: dart-lang/setup-dart@v1
       - uses: ./.github/actions/cache_pub
 
@@ -87,7 +87,7 @@ jobs:
         working-directory: zap_dev
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: dart-lang/setup-dart@v1
       - uses: ./.github/actions/cache_pub
 

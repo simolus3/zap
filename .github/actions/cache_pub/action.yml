@@ -5,7 +5,7 @@ runs:
   using: composite
   steps:
    - name: Cache pub dependencies
-     uses: actions/cache@v2
+     uses: actions/cache@v4
      with:
        path: /home/runner/.pub-cache
        key: pub-dependencies-${{ hashFiles('**/pubspec.yaml') }}
