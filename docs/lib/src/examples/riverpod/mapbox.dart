@@ -93,7 +93,7 @@ Future<MapboxModule> load() {
       ..rel = 'stylesheet'
       ..href = 'https://api.mapbox.com/mapbox-gl-js/v2.7.0/mapbox-gl.css';
 
-    document.head!.children.add(css);
+    document.head!.appendChild(css);
     await css.onLoad.first;
 
     MapboxModule module;
@@ -111,7 +111,7 @@ Future<MapboxModule> load() {
     } else {
       final script = HTMLScriptElement()
         ..src = 'https://api.mapbox.com/mapbox-gl-js/v2.7.0/mapbox-gl.js';
-      document.head!.children.add(script);
+      document.head!.appendChild(script);
       await script.onLoad.first;
 
       // Load it from the globals then.
