@@ -18,11 +18,11 @@ dependencies:
   zap: ^0.3.0
 
 dev_dependencies:
-  build: ^3.0.2
-  build_runner: ^2.7.0
-  build_web_compilers: ^4.2.2
+  build: ^4.0.0
+  build_runner: ^2.8.0
+  build_web_compilers: ^4.2.3
   pubspec_parse: ^1.5.0
   zap_dev: ^0.3.0
   built_site:
     hosted: https://pub-simonbinder-eu.fsn1.your-objectstorage.com
-    version: ^0.2.22
+    version: ^0.2.23
