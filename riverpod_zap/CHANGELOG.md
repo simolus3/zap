@@ -1,3 +1,3 @@
-## 1.0.0
+## 0.2.0
 
-- Initial version.
+- Update to zap 0.3.0

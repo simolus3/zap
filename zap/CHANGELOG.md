@@ -1,3 +1,7 @@
+## 0.3.0
+
+- Update to `package:web`.
+
 ## 0.2.1
 
 - Support the latest versions of all dependencies

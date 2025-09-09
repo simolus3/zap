@@ -1,3 +1,7 @@
+## 0.3.0
+
+- Update to `package:web` and latest dependencies.
+
 ## 0.2.4
 
 - Fix invalid generated code for variable references in string interpolations.
