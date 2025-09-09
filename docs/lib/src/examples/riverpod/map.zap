@@ -1,4 +1,6 @@
 <script>
+  import 'dart:js_interop';
+
   import 'package:riverpod_zap/riverpod.dart';
   import 'mapbox.dart' as mapbox;
 
@@ -18,9 +20,9 @@
     module = loaded;
     map = loaded.newMap(mapbox.MapOptions(
       container: container,
-      style: 'mapbox://styles/mapbox/streets-v9',
-      center: [lon, lat],
-      zoom: zoom,
+      style: 'mapbox://styles/mapbox/streets-v9'.toJS,
+      center: [lon.toJS, lat.toJS].toJS,
+      zoom: zoom.toJS,
     ));
   });
 

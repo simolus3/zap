@@ -1,24 +1,31 @@
 @Tags(['browser'])
-import 'dart:html';
+library;
 
 import 'package:test/test.dart';
+import 'package:web/web.dart';
 import 'package:zap/zap.dart';
 
 import 'interpolation.zap.dart';
 
 void main() {
   test('string interpolation', () async {
-    final testbed = Element.div();
+    final testbed = HTMLDivElement();
     final component = Interpolation(ZapValue('test'))..create(testbed);
 
-    expect(testbed.text, 'interpolated=test, wrapped=test, isNull=false');
+    expect(
+      testbed.textContent,
+      'interpolated=test, wrapped=test, isNull=false',
+    );
 
     component.val = 'updated';
     await component.tick;
-    expect(testbed.text, 'interpolated=updated, wrapped=updated, isNull=false');
+    expect(
+      testbed.textContent,
+      'interpolated=updated, wrapped=updated, isNull=false',
+    );
 
     component.val = null;
     await component.tick;
-    expect(testbed.text, 'interpolated=null, wrapped=null, isNull=true');
+    expect(testbed.textContent, 'interpolated=null, wrapped=null, isNull=true');
   });
 }

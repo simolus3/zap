@@ -13,7 +13,9 @@ class Optimizer {
   }
 
   void _visitComponent(
-      ComponentOrSubcomponent component, OptimizationResults results) {
+    ComponentOrSubcomponent component,
+    OptimizationResults results,
+  ) {
     if (component.children.isNotEmpty) {
       for (final child in component.children) {
         _visitComponent(child, results);

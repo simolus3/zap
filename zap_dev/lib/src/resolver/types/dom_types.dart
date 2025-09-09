@@ -2,79 +2,133 @@ import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:analyzer/dart/element/type.dart';
 
+// Note: Skipping base, body, head, html, link, meta, script, slot, style,
+// template, title,
 const knownTags = {
-  // Note: Skipping base, body, content, head, html, link, meta, script, shadow,
-  // slot, style, template, title,
-  'a': KnownElementInfo('AnchorElement'),
-  'area': KnownElementInfo('AreaElement'),
-  'br': KnownElementInfo('BRElement'),
-  'button': KnownElementInfo('ButtonElement'),
-  'canvas': KnownElementInfo('CanvasElement'),
-  'data': KnownElementInfo('DataElement'),
-  'datalist': KnownElementInfo('DataListElement'),
-  'details': KnownElementInfo('DetailsElement'),
-  'dialog': KnownElementInfo('DialogElement'),
-  'div': KnownElementInfo('DivElement'),
-  'dl': KnownElementInfo('DListElement'),
-  'embed': KnownElementInfo('EmbedElement'),
-  'fieldset': KnownElementInfo('FieldSetElement'),
-  'form': KnownElementInfo('FormElement'),
-  'h1': KnownElementInfo('HeadingElement', constructorName: 'h1'),
-  'h2': KnownElementInfo('HeadingElement', constructorName: 'h2'),
-  'h3': KnownElementInfo('HeadingElement', constructorName: 'h3'),
-  'h4': KnownElementInfo('HeadingElement', constructorName: 'h4'),
-  'h5': KnownElementInfo('HeadingElement', constructorName: 'h5'),
-  'h6': KnownElementInfo('HeadingElement', constructorName: 'h6'),
-  'hr': KnownElementInfo('HRElement'),
-  'iframe': KnownElementInfo('IFrameElement'),
-  'image': KnownElementInfo('ImageElement'),
-  'input': KnownElementInfo(
-      'InputElement'), // todo: Special case the different kinds?
-  'li': KnownElementInfo('LIElement'),
-  'label': KnownElementInfo('LabelElement'),
-  'legend': KnownElementInfo('LegendElement'),
-  'map': KnownElementInfo('MapElement'),
-  'media': KnownElementInfo('MediaElement'),
-  'menu': KnownElementInfo('MenuElement'),
-  'meter': KnownElementInfo('MeterElement'),
-  'del': KnownElementInfo('ModElement', instantiable: false),
-  'ins': KnownElementInfo('ModElement', instantiable: false),
-  'ol': KnownElementInfo('OListElement'),
-  'object': KnownElementInfo('Object'),
-  'optgroup': KnownElementInfo('OptGroupElement'),
-  'option': KnownElementInfo('OptionElement'),
-  'output': KnownElementInfo('OutputElement'),
-  'p': KnownElementInfo('ParagraphElement'),
-  'param': KnownElementInfo('ParamElement'),
-  'picture': KnownElementInfo('PictureElement', instantiable: false),
-  'pre': KnownElementInfo('PreElement'),
-  'progress': KnownElementInfo('ProgressElement'),
-  'q': KnownElementInfo('QuoteElement'),
-  'select': KnownElementInfo('SelectElement'),
-  'source': KnownElementInfo('SourceElement'),
-  'span': KnownElementInfo('SpanElement'),
-  'caption': KnownElementInfo('TableCaptionElement'),
-  'td': KnownElementInfo('TableCellElement'),
-  'col': KnownElementInfo('TableColElement'),
-  'table': KnownElementInfo('TableElement'),
-  'tr': KnownElementInfo('TableRowElement'),
-  'textarea': KnownElementInfo('TextAreaElement'),
-  'time': KnownElementInfo('TimeElement', instantiable: false),
-  'track': KnownElementInfo('TrackElement'),
-  'ul': KnownElementInfo('UListElement'),
+  'a': 'HTMLAnchorElement',
+  'abbr': 'HTMLElement',
+  'acronym': 'HTMLElement', // Deprecated
+  'address': 'HTMLElement',
+  'applet': 'HTMLAppletElement', // Deprecated
+  'area': 'HTMLAreaElement',
+  'article': 'HTMLElement',
+  'aside': 'HTMLElement',
+  'audio': 'HTMLAudioElement',
+  'b': 'HTMLElement',
+  // 'base': 'HTMLBaseElement',
+  'basefont': 'HTMLElement', // Deprecated
+  'bdi': 'HTMLElement',
+  'bdo': 'HTMLElement',
+  'blockquote': 'HTMLQuoteElement',
+  // 'body': 'HTMLBodyElement',
+  'br': 'HTMLBRElement',
+  'button': 'HTMLButtonElement',
+  'canvas': 'HTMLCanvasElement',
+  'caption': 'HTMLTableCaptionElement',
+  'center': 'HTMLElement', // Deprecated
+  'cite': 'HTMLElement',
+  'code': 'HTMLElement',
+  'col': 'HTMLTableColElement',
+  'colgroup': 'HTMLTableColElement',
+  'data': 'HTMLDataElement',
+  'datalist': 'HTMLDataListElement',
+  'dd': 'HTMLElement',
+  'del': 'HTMLModElement',
+  'details': 'HTMLDetailsElement',
+  'dfn': 'HTMLElement',
+  'dialog': 'HTMLDialogElement',
+  'dir': 'HTMLDirectoryElement', // Deprecated
+  'div': 'HTMLDivElement',
+  'dl': 'HTMLDListElement',
+  'dt': 'HTMLElement',
+  'em': 'HTMLElement',
+  'embed': 'HTMLEmbedElement',
+  'fieldset': 'HTMLFieldSetElement',
+  'figcaption': 'HTMLElement',
+  'figure': 'HTMLElement',
+  'font': 'HTMLFontElement', // Deprecated
+  'footer': 'HTMLElement',
+  'form': 'HTMLFormElement',
+  'frame': 'HTMLFrameElement', // Deprecated
+  'frameset': 'HTMLFrameSetElement', // Deprecated
+  'h1': 'HTMLHeadingElement',
+  'h2': 'HTMLHeadingElement',
+  'h3': 'HTMLHeadingElement',
+  'h4': 'HTMLHeadingElement',
+  'h5': 'HTMLHeadingElement',
+  'h6': 'HTMLHeadingElement',
+  // 'head': 'HTMLHeadElement',
+  'header': 'HTMLElement',
+  'hr': 'HTMLHRElement',
+  // 'html': 'HTMLHtmlElement',
+  'i': 'HTMLElement',
+  'iframe': 'HTMLIFrameElement',
+  'img': 'HTMLImageElement',
+  'input': 'HTMLInputElement', // todo: Special case the different kinds?
+  'ins': 'HTMLModElement',
+  'kbd': 'HTMLElement',
+  'label': 'HTMLLabelElement',
+  'legend': 'HTMLLegendElement',
+  'li': 'HTMLLIElement',
+  // 'link': 'HTMLLinkElement',
+  'main': 'HTMLElement',
+  'map': 'HTMLMapElement',
+  'mark': 'HTMLElement',
+  'marquee': 'HTMLMarqueeElement', // Deprecated
+  'menu': 'HTMLMenuElement',
+  // 'meta': 'HTMLMetaElement',
+  'meter': 'HTMLMeterElement',
+  'nav': 'HTMLElement',
+  'noframes': 'HTMLElement', // Deprecated
+  'noscript': 'HTMLElement',
+  'object': 'HTMLObjectElement',
+  'ol': 'HTMLOListElement',
+  'optgroup': 'HTMLOptGroupElement',
+  'option': 'HTMLOptionElement',
+  'output': 'HTMLOutputElement',
+  'p': 'HTMLParagraphElement',
+  'param': 'HTMLParamElement',
+  'picture': 'HTMLPictureElement',
+  'pre': 'HTMLPreElement',
+  'progress': 'HTMLProgressElement',
+  'q': 'HTMLQuoteElement',
+  'rp': 'HTMLElement',
+  'rt': 'HTMLElement',
+  'ruby': 'HTMLElement',
+  's': 'HTMLElement',
+  'samp': 'HTMLElement',
+  // 'script': 'HTMLScriptElement',
+  'section': 'HTMLElement',
+  'select': 'HTMLSelectElement',
+  'slot': 'HTMLSlotElement',
+  'small': 'HTMLElement',
+  'source': 'HTMLSourceElement',
+  'span': 'HTMLSpanElement',
+  'strike': 'HTMLElement', // Deprecated
+  'strong': 'HTMLElement',
+  // 'style': 'HTMLStyleElement',
+  'sub': 'HTMLElement',
+  'summary': 'HTMLElement',
+  'sup': 'HTMLElement',
+  'table': 'HTMLTableElement',
+  'tbody': 'HTMLTableSectionElement',
+  'td': 'HTMLTableCellElement',
+  // 'template': 'HTMLTemplateElement',
+  'textarea': 'HTMLTextAreaElement',
+  'tfoot': 'HTMLTableSectionElement',
+  'th': 'HTMLTableCellElement',
+  'thead': 'HTMLTableSectionElement',
+  'time': 'HTMLTimeElement',
+  // 'title': 'HTMLTitleElement',
+  'tr': 'HTMLTableRowElement',
+  'track': 'HTMLTrackElement',
+  'tt': 'HTMLElement', // Deprecated
+  'u': 'HTMLElement',
+  'ul': 'HTMLUListElement',
+  'var': 'HTMLElement',
+  'video': 'HTMLVideoElement',
+  'wbr': 'HTMLElement',
 };
-
-class KnownElementInfo {
-  final String className;
-  final String constructorName;
-
-  /// Whether this element has a Dart constructor, or whether we need to
-  /// construct instances through `Element.tag`
-  final bool instantiable;
-
-  const KnownElementInfo(this.className,
-      {this.constructorName = '', this.instantiable = true});
-}
 
 class DomEventType {
   final String providerExpression;
@@ -84,76 +138,58 @@ class DomEventType {
 }
 
 class ResolvedDomTypes {
-  final LibraryElement dartHtml;
+  final LibraryElement packageWeb;
 
   final Map<String, InterfaceType> _types = {};
   final Map<String, DomEventType> knownEvents = {};
 
   late final InterfaceType event = _nonNullableWithoutTypeParameters('Event');
-  late final InterfaceType customEvent =
-      _nonNullableWithoutTypeParameters('CustomEvent');
-  late final InterfaceType element =
-      _nonNullableWithoutTypeParameters('Element');
+  late final InterfaceType customEvent = _nonNullableWithoutTypeParameters(
+    'CustomEvent',
+  );
+  late final InterfaceType element = _nonNullableWithoutTypeParameters(
+    'Element',
+  );
 
-  ResolvedDomTypes(this.dartHtml) {
+  ResolvedDomTypes(this.packageWeb) {
     _readKnownInformation();
   }
 
-  /// Extracts known elements and events from the resolved `dart:html` library.
+  /// Extracts known elements and events from the resolved
+  /// `package:web/web.dart` library.
   void _readKnownInformation() {
-    final typeSystem = dartHtml.typeSystem;
-    final baseEventProvider = typeSystem.instantiateInterfaceToBounds(
-      element: _class('EventStreamProvider'),
-      nullabilitySuffix: NullabilitySuffix.none,
-    );
+    final eventStreamProviders = _class('EventStreamProviders');
 
-    void addEventsFromClass(ClassElement element) {
-      for (final field in element.fields) {
-        final value = field.computeConstantValue();
-        if (value == null) continue;
+    for (final field in eventStreamProviders.fields) {
+      final value = field.computeConstantValue();
+      if (value == null) continue;
 
-        final type = value.type;
-        if (type is! InterfaceType ||
-            !typeSystem.isAssignableTo(type, baseEventProvider)) {
-          continue;
-        }
-
-        final String name;
-        // These two are using a dynamic name in the SDK and need to be special-
-        // cased.
-        if (field.name == 'mouseWheelEvent') {
-          name = 'wheel';
-        } else if (field.name == 'transitionEndEvent') {
-          name = 'transitionend';
-        } else {
-          name = value.getField('_eventType')!.toStringValue()!;
-        }
-
-        knownEvents[name] = DomEventType(
-          '${element.name}.${field.name}',
-          type.typeArguments.single as InterfaceType? ??
-              event.element.instantiate(
-                  typeArguments: const [],
-                  nullabilitySuffix: NullabilitySuffix.none),
-        );
-      }
-    }
-
-    for (final child in dartHtml.topLevelElements) {
-      if (child.name == 'GlobalEventHandlers' || child.name == 'Element') {
-        addEventsFromClass(child as ClassElement);
-      }
+      final name = value.getField('_eventType')!.toStringValue()!;
+      knownEvents[name] = DomEventType(
+        'EventStreamProviders.${field.name!}',
+        (field.type as InterfaceType).typeArguments.single as InterfaceType? ??
+            event.element.instantiate(
+              typeArguments: const [],
+              nullabilitySuffix: NullabilitySuffix.none,
+            ),
+      );
     }
   }
 
   ClassElement _class(String name) {
-    return dartHtml.getClass(name)!;
+    return packageWeb.exportNamespace.get2(name) as ClassElement;
+  }
+
+  ExtensionTypeElement _extension(String name) {
+    return packageWeb.exportNamespace.get2(name) as ExtensionTypeElement;
   }
 
   InterfaceType _nonNullableWithoutTypeParameters(String name) {
     return _types.putIfAbsent(name, () {
-      return _class(name).instantiate(
-          typeArguments: const [], nullabilitySuffix: NullabilitySuffix.none);
+      return _extension(name).instantiate(
+        typeArguments: const [],
+        nullabilitySuffix: NullabilitySuffix.none,
+      );
     });
   }
 
@@ -161,7 +197,7 @@ class ResolvedDomTypes {
     final known = knownTags[tagName.toLowerCase()];
 
     if (known != null) {
-      return _nonNullableWithoutTypeParameters(known.className);
+      return _nonNullableWithoutTypeParameters(known);
     }
   }
 }

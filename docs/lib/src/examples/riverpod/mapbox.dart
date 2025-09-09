@@ -1,48 +1,52 @@
 import 'dart:async';
-import 'dart:html';
-import 'dart:js';
+import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 
-import 'package:js/js.dart';
-import 'package:js/js_util.dart';
 import 'package:riverpod/riverpod.dart';
+import 'package:web/web.dart';
 
-final Provider<MapboxModule> module =
-    Provider((ref) => throw StateError('module must be provided.'));
+final Provider<MapboxModule> module = Provider(
+  (ref) => throw StateError('module must be provided.'),
+);
 
-final Provider<MapBoxMap> map =
-    Provider((ref) => throw StateError('Map must be provided.'));
+final Provider<MapBoxMap> map = Provider(
+  (ref) => throw StateError('Map must be provided.'),
+);
 
 @JS('require')
-external void _require(List<String> modules, Function(Object) callback);
+external void _require(JSArray<JSString> modules, JSFunction callback);
 
 @JS('mapboxgl')
 external MapboxModule get _mapboxgl;
 
 @JS()
-@anonymous
-abstract class MapboxModule {
-  external String accessToken;
+extension type MapboxModule._(JSObject _) implements JSObject {
+  external JSString accessToken;
 
-  Function get Map;
-  Function get Popup;
-  Function get Marker;
-}
+  @JS('Map')
+  external JSFunction get _map;
 
-extension Constructors on MapboxModule {
+  @JS('Popup')
+  external JSFunction get _popup;
+
+  @JS('Marker')
+  external JSFunction get _marker;
+
   MapBoxMap newMap(MapOptions options) {
-    return callConstructor(this.Map, [options]);
+    return _map.callAsConstructor<MapBoxMap>(options);
   }
 
   Popup newPopup(PopupOptions options) {
-    return callConstructor(this.Popup, [options]);
+    return _popup.callAsConstructor(options);
   }
 
-  Marker newMarker() => callConstructor(this.Marker, null);
+  Marker newMarker() {
+    return _marker.callAsConstructor();
+  }
 }
 
 @JS()
-@anonymous
-class MapBoxMap {
+extension type MapBoxMap._(JSObject _) implements JSObject {
   external MapBoxMap(MapOptions initializer);
 
   external void remove();
@@ -50,33 +54,34 @@ class MapBoxMap {
 
 @JS()
 @anonymous
-class MapOptions {
+extension type MapOptions._(JSObject _) implements JSObject {
   external factory MapOptions({
-    dynamic container,
-    String? style,
-    List<num>? center,
-    num? zoom,
+    JSAny? container,
+    JSString? style,
+    JSArray<JSNumber>? center,
+    JSNumber? zoom,
   });
 }
 
 @JS()
-@anonymous
-class Popup {
+extension type Popup._(JSObject _) implements JSObject {
   external Popup(PopupOptions options);
+
   external void setText(String label);
 }
 
 @JS()
 @anonymous
-class PopupOptions {
+extension type PopupOptions._(JSObject _) implements JSObject {
   external factory PopupOptions({int offset});
 }
 
 @JS()
-@anonymous
-class Marker {
-  external void setLngLat(List<num> position);
+extension type Marker._(JSObject _) implements JSObject {
+  external void setLngLat(JSArray<JSNumber> position);
+
   external void setPopup(Popup popup);
+
   external void addTo(MapBoxMap map);
 }
 
@@ -84,25 +89,29 @@ Future<MapboxModule>? _module;
 
 Future<MapboxModule> load() {
   return _module ??= Future.sync(() async {
-    final css = LinkElement()
+    final css = HTMLLinkElement()
       ..rel = 'stylesheet'
       ..href = 'https://api.mapbox.com/mapbox-gl-js/v2.7.0/mapbox-gl.css';
 
-    document.head!.children.add(css);
+    document.head!.appendChild(css);
     await css.onLoad.first;
 
     MapboxModule module;
 
-    if (context.hasProperty('require')) {
+    if (globalContext.has('require')) {
       // require.js is available, load the module through that.
       final completer = Completer<MapboxModule>();
-      _require(['https://api.mapbox.com/mapbox-gl-js/v2.7.0/mapbox-gl.js'],
-          allowInterop((module) => completer.complete(module as MapboxModule)));
+      final jsModules = JSArray<JSString>.withLength(1)
+        ..[0] = 'https://api.mapbox.com/mapbox-gl-js/v2.7.0/mapbox-gl.js'.toJS;
+      _require(
+        jsModules,
+        (completer.complete as void Function(MapboxModule)).toJS,
+      );
       module = await completer.future;
     } else {
-      final script = ScriptElement()
+      final script = HTMLScriptElement()
         ..src = 'https://api.mapbox.com/mapbox-gl-js/v2.7.0/mapbox-gl.js';
-      document.head!.children.add(script);
+      document.head!.appendChild(script);
       await script.onLoad.first;
 
       // Load it from the globals then.
@@ -110,7 +119,9 @@ Future<MapboxModule> load() {
     }
 
     return module
-      ..accessToken = const String.fromEnvironment('MAPBOX_TOKEN',
-          defaultValue: 'token not set');
+      ..accessToken = const String.fromEnvironment(
+        'MAPBOX_TOKEN',
+        defaultValue: 'token not set',
+      ).toJS;
   });
 }

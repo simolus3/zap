@@ -5,7 +5,7 @@
   var uncompleted = watch(self.use(uncompletedTodosCount));
   var filterMode = watch(self.use(todoListFilter));
 
-  TextInputElement? text;
+  HTMLInputElement? text;
 
   void applyFilter(TodoListFilter filter) {
     self.read(todoListFilter.notifier).state = filter;

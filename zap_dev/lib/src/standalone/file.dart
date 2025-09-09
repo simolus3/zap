@@ -36,7 +36,7 @@ class ZapFile extends RegisteredFile {
   ResolvedComponent? resolvedComponent;
   List<ZapError> errors = [];
 
-  ZapFile._(File file, ZapAnalysisContext? context) : super._(file, context);
+  ZapFile._(super.file, super.context) : super._();
 
   @override
   bool get isZapFile => true;
@@ -52,9 +52,4 @@ class ZapFile extends RegisteredFile {
   }
 }
 
-enum ZapFileState {
-  dirty,
-  importsKnown,
-  analyzed,
-  error,
-}
+enum ZapFileState { dirty, importsKnown, analyzed, error }

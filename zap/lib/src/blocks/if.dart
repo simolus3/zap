@@ -1,4 +1,4 @@
-import 'dart:html';
+import 'package:web/web.dart';
 
 import '../core/fragment.dart';
 
@@ -19,7 +19,7 @@ class IfBlock extends Fragment {
   /// it at the correct location. The easiest way to do this is to insert a
   /// small text node at the location requested by [create] and then use that
   /// as an anchor for the child component.
-  final Node _anchor = Text('');
+  final Text _anchor = Text('');
 
   Fragment? _current;
   int _currentCaseNumber = -1;
@@ -39,7 +39,7 @@ class IfBlock extends Fragment {
 
       if (newBlock != null) {
         if (_isMounted) {
-          newBlock.create(_anchor.parent!, _anchor);
+          newBlock.create(_anchor.parentElement!, _anchor);
         }
       }
     }

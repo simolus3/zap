@@ -10,11 +10,7 @@ abstract class GenerationNode {
   }
 }
 
-enum ScopeLevel {
-  library,
-  $class,
-  member,
-}
+enum ScopeLevel { library, $class, member }
 
 class GenerationScope extends GenerationNode {
   final ScopeLevel level;

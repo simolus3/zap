@@ -1,4 +1,4 @@
-import 'dart:html';
+import 'package:web/web.dart';
 
 /// A zap-managed fragment in the DOM tree with lifecycle callbacks.
 abstract class Fragment {

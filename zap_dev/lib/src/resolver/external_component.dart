@@ -8,5 +8,9 @@ class ExternalComponent {
   final List<String?> slotNames;
 
   ExternalComponent(
-      this.temporaryApiClass, this.tagName, this.parameters, this.slotNames);
+    this.temporaryApiClass,
+    this.tagName,
+    this.parameters,
+    this.slotNames,
+  );
 }

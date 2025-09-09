@@ -1,6 +1,7 @@
 // When this library is imported from a zap component, also make the
 // riverpod-scope component available.
 @pragma('zap:additional_export', ['src/riverpod-scope.zap'])
+// ignore: unnecessary_library_name
 library riverpod_zap;
 
 import 'package:riverpod/riverpod.dart';

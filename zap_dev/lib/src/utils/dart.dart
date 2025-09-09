@@ -7,11 +7,7 @@ import 'package:analyzer/dart/element/type.dart';
 import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
 
-enum ImportRewriteMode {
-  none,
-  zapToApi,
-  apiToGenerated,
-}
+enum ImportRewriteMode { none, zapToApi, apiToGenerated }
 
 class ScriptComponents {
   final List<String> originalImports;
@@ -20,10 +16,16 @@ class ScriptComponents {
   final int offsetOfBody;
 
   ScriptComponents(
-      this.originalImports, this.directives, this.body, this.offsetOfBody);
+    this.originalImports,
+    this.directives,
+    this.body,
+    this.offsetOfBody,
+  );
 
-  factory ScriptComponents.of(String dartSource,
-      {ImportRewriteMode rewriteImports = ImportRewriteMode.none}) {
+  factory ScriptComponents.of(
+    String dartSource, {
+    ImportRewriteMode rewriteImports = ImportRewriteMode.none,
+  }) {
     final content = parseString(content: dartSource, throwIfDiagnostics: false);
     final unit = content.unit;
 
@@ -31,8 +33,10 @@ class ScriptComponents {
     if (directives.isEmpty) {
       return ScriptComponents([], '', dartSource, 0);
     } else {
-      final directiveRewriter =
-          _ZapToDartImportRewriter(dartSource, rewriteImports);
+      final directiveRewriter = _ZapToDartImportRewriter(
+        dartSource,
+        rewriteImports,
+      );
       for (final directive in directives) {
         directive.accept(directiveRewriter);
       }
@@ -49,7 +53,7 @@ class ScriptComponents {
 
 const _dslLibrary = 'zap.internal.dsl';
 
-bool isProp(VariableElement element) {
+bool isProp(LocalVariableElement element) {
   return _findDslAnnotation(element, 'Property') != null;
 }
 
@@ -57,7 +61,7 @@ bool isProp(VariableElement element) {
 ///
 /// This annotation is generated in the API-extracting builder for components
 /// defined in a zap file.
-String? componentTagName(Element element) {
+String? componentTagName(ClassElement element) {
   final annotation = _findDslAnnotation(element, r'$ComponentMarker');
 
   if (annotation != null) {
@@ -79,8 +83,10 @@ Iterable<String?> readSlotAnnotations(Element element) {
 }
 
 Iterable<Uri> additionalZapExports(
-    Uri libraryUri, LibraryElement library) sync* {
-  for (final meta in library.metadata) {
+  Uri libraryUri,
+  LibraryElement library,
+) sync* {
+  for (final meta in library.metadata.annotations) {
     final value = meta.computeConstantValue();
     if (value == null) continue;
 
@@ -99,7 +105,7 @@ Iterable<Uri> additionalZapExports(
 }
 
 Iterable<DartObject> _findDslAnnotations(Element element, String className) {
-  return element.metadata.map((annotation) {
+  return element.metadata.annotations.map((annotation) {
     final value = annotation.computeConstantValue();
     if (value == null) return null;
 
@@ -119,7 +125,7 @@ DartObject? _findDslAnnotation(Element element, String className) {
 }
 
 bool isWatchFunctionFromDslLibrary(Identifier identifier) {
-  final static = identifier.staticElement;
+  final static = identifier.element;
   if (static == null) return false;
 
   return static.library?.name == _dslLibrary && static.name == 'watch';

@@ -13,8 +13,10 @@ void main() {
 }
 ''');
 
-      expect(component.directives,
-          "import 'dart:async';import 'package:foo/bar.dart';");
+      expect(
+        component.directives,
+        "import 'dart:async';import 'package:foo/bar.dart';",
+      );
       expect(component.body, '''
 
 
@@ -41,8 +43,7 @@ void main() {
   });
 
   test('rewrites .zap imports', () {
-    final component = ScriptComponents.of(
-      '''
+    final component = ScriptComponents.of('''
 import 'test.zap';
 import 'package:foo/bar.dart';
 import 'package:another/component.zap';
@@ -50,15 +51,14 @@ import 'package:another/component.zap';
 void main() {
   print('test');
 }
-''',
-      rewriteImports: ImportRewriteMode.zapToApi,
-    );
+''', rewriteImports: ImportRewriteMode.zapToApi);
 
     expect(
-        component.directives,
-        "import 'test.tmp.zap.api.dart';"
-        "import 'package:foo/bar.dart';"
-        "import 'package:another/component.tmp.zap.api.dart';");
+      component.directives,
+      "import 'test.tmp.zap.api.dart';"
+      "import 'package:foo/bar.dart';"
+      "import 'package:another/component.tmp.zap.api.dart';",
+    );
     expect(component.body, '''
 
 

@@ -19,8 +19,9 @@ class Parser {
     }
 
     if (_openedNodes.isNotEmpty) {
-      scanner.errors
-          .reportError(ZapError('Some elements were not closed', null));
+      scanner.errors.reportError(
+        ZapError('Some elements were not closed', null),
+      );
     }
 
     return _builder.build()..accept(_SetParentVisitor(), null);
@@ -35,10 +36,12 @@ class Parser {
 
     switch (token.type) {
       case TokenType.text:
-        _finishNode(Text((token as TextToken).value)
-          ..token = token
-          ..first = token
-          ..last = token);
+        _finishNode(
+          Text((token as TextToken).value)
+            ..token = token
+            ..first = token
+            ..last = token,
+        );
         break;
       case TokenType.lbrace:
         _finishNode(_parseDartExpression(token));
@@ -105,11 +108,13 @@ class Parser {
         value = _parseAttributeValue();
       }
 
-      attributes.add(Attribute(key, value)
-        ..keyToken = attributeKey
-        ..equalsToken = equalsSign
-        ..first = attributeKey
-        ..last = value != null ? value.last : attributeKey);
+      attributes.add(
+        Attribute(key, value)
+          ..keyToken = attributeKey
+          ..equalsToken = equalsSign
+          ..first = attributeKey
+          ..last = value != null ? value.last : attributeKey,
+      );
       scanner.skipWhitespaceInTag();
     }
 
@@ -118,9 +123,11 @@ class Parser {
 
     if (endOfFirstTag.type == TokenType.slashRightAngle ||
         isVoidElement(tagNameContents)) {
-      _finishNode(Element(tagName.lexeme, attributes, null)
-        ..first = langle
-        ..last = endOfFirstTag);
+      _finishNode(
+        Element(tagName.lexeme, attributes, null)
+          ..first = langle
+          ..last = endOfFirstTag,
+      );
     } else if (tagNameContents == 'script' || tagNameContents == 'style') {
       Token? firstForContent, lastForContent;
 
@@ -147,12 +154,15 @@ class Parser {
       scanner
         ..skipWhitespaceInTag()
         ..rightAngle();
-      _finishNode(Element(
+      _finishNode(
+        Element(
           tagNameContents,
           attributes,
           Text(contents.toString())
             ..first = firstForContent
-            ..last = lastForContent));
+            ..last = lastForContent,
+        ),
+      );
     } else {
       _openedNodes.add(_PendingElement(langle, tagName.lexeme, attributes));
     }
@@ -180,7 +190,10 @@ class Parser {
 
         final remaining = scanner.rawUntilRightBrace();
         block = _PendingAsyncBlock(
-            isStream, RawDartExpression.fromToken(remaining.raw), name.lexeme);
+          isStream,
+          RawDartExpression.fromToken(remaining.raw),
+          name.lexeme,
+        );
         break;
       case 'for':
         scanner.skipWhitespaceInTag();
@@ -196,8 +209,11 @@ class Parser {
         scanner.skipWhitespaceInTag();
 
         final remaining = scanner.rawUntilRightBrace();
-        block = _PendingForBlock(element.lexeme, indexName,
-            RawDartExpression.fromToken(remaining.raw));
+        block = _PendingForBlock(
+          element.lexeme,
+          indexName,
+          RawDartExpression.fromToken(remaining.raw),
+        );
         break;
       case 'key':
         scanner.skipWhitespaceInTag();
@@ -235,11 +251,11 @@ class Parser {
   DartExpression _parseDartExpression(Token leftBrace) {
     final range = scanner.rawUntilRightBrace();
     return DartExpression(
-      RawDartExpression(range.raw.lexeme)
-        ..content = range.raw
-        ..first = range.raw
-        ..last = range.raw,
-    )
+        RawDartExpression(range.raw.lexeme)
+          ..content = range.raw
+          ..first = range.raw
+          ..last = range.raw,
+      )
       ..first = leftBrace
       ..last = range.end;
   }
@@ -256,10 +272,12 @@ class Parser {
       } else if (next.type == TokenType.lbrace) {
         parts.add(_parseDartExpression(next));
       } else {
-        parts.add(Text(next.lexeme)
-          ..token = next
-          ..first = next
-          ..last = next);
+        parts.add(
+          Text(next.lexeme)
+            ..token = next
+            ..first = next
+            ..last = next,
+        );
       }
     }
 
@@ -306,13 +324,17 @@ class _PendingElement extends _PendingNode {
   DomNode finish(Parser parser, Token startOfClosing) {
     if (startOfClosing.type != TokenType.leftAngleSlash) {
       parser._errorOnToken(
-          startOfClosing, 'Expected $tagName to close here instead');
+        startOfClosing,
+        'Expected $tagName to close here instead',
+      );
     }
 
     final closingName = parser.scanner.tagName();
     if (closingName.lexeme != tagName) {
       parser._errorOnToken(
-          closingName, 'Expected $tagName to close here instead');
+        closingName,
+        'Expected $tagName to close here instead',
+      );
     }
 
     final last = parser.scanner.rightAngle();
@@ -357,10 +379,14 @@ class _PendingIfStatement extends _PendingBlock {
       scanner.skipWhitespaceInTag();
 
       final rest = scanner.rawUntilRightBrace();
-      pendingElse.add(_PendingElse(RawDartExpression(rest.raw.lexeme)
-        ..content = rest.raw
-        ..first = rest.raw
-        ..last = rest.raw));
+      pendingElse.add(
+        _PendingElse(
+          RawDartExpression(rest.raw.lexeme)
+            ..content = rest.raw
+            ..first = rest.raw
+            ..last = rest.raw,
+        ),
+      );
     } else {
       pendingElse.add(_PendingElse(null));
       scanner.rightBrace();
@@ -425,7 +451,9 @@ abstract class _PendingBlockWithoutParts extends _PendingBlock {
   @override
   void handlePart(Parser parser, Token braceColon) {
     parser._errorOnToken(
-        braceColon, 'Unexpected option for an $_endTag block.');
+      braceColon,
+      'Unexpected option for an $_endTag block.',
+    );
   }
 }
 
@@ -435,7 +463,7 @@ class _PendingAsyncBlock extends _PendingBlockWithoutParts {
   final String snapshotName;
 
   _PendingAsyncBlock(this.isStream, this.expression, this.snapshotName)
-      : super('await');
+    : super('await');
 
   @override
   DomNode create(DomNode children) {
@@ -449,7 +477,7 @@ class _PendingForBlock extends _PendingBlockWithoutParts {
   final RawDartExpression expression;
 
   _PendingForBlock(this.elementName, this.indexName, this.expression)
-      : super('for');
+    : super('for');
 
   @override
   DomNode create(DomNode children) {

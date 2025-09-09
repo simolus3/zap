@@ -7,9 +7,14 @@ import '../utils/dart.dart';
 import '../utils/zap.dart';
 
 String writeApiForComponent(
-    AstNode? functionNode, String temporaryDart, String uriOfTemporaryDart) {
-  final components = ScriptComponents.of(temporaryDart,
-      rewriteImports: ImportRewriteMode.none);
+  AstNode? functionNode,
+  String temporaryDart,
+  String uriOfTemporaryDart,
+) {
+  final components = ScriptComponents.of(
+    temporaryDart,
+    rewriteImports: ImportRewriteMode.none,
+  );
 
   var basename = url.basename(uriOfTemporaryDart);
   basename = basename.substring(0, basename.length - '.tmp.zap.dart'.length);
@@ -41,18 +46,18 @@ class _ApiInferrer extends RecursiveAstVisitor<void> {
     if (element is LocalVariableElement) {
       if (isProp(element)) {
         // This variable denotes a property that can be set by other components.
-        final type = element.type.getDisplayString(withNullability: true);
+        final type = element.type.getDisplayString();
 
         output
           ..write(type)
           ..write(' get ')
-          ..write(element.name)
+          ..write(element.name!)
           ..writeln(';');
 
         if (!element.isFinal) {
           output
             ..write('set ')
-            ..write(element.name)
+            ..write(element.name!)
             ..write('(')
             ..write(type)
             ..writeln(' value);');
@@ -64,7 +69,8 @@ class _ApiInferrer extends RecursiveAstVisitor<void> {
       if (slots.isNotEmpty) {
         for (final slot in slots) {
           output.writeln(
-              '@Slot(${slot == null ? 'null' : dartStringLiteral(slot)})');
+            '@Slot(${slot == null ? 'null' : dartStringLiteral(slot)})',
+          );
         }
         output.writeln('void get slots;');
       }

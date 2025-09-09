@@ -1,5 +1,5 @@
 // zap_dev will create .zap.dart files for each .zap component.
-import 'dart:html';
+import 'package:web/web.dart';
 
 import 'counter.zap.dart';
 

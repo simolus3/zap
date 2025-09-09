@@ -1,7 +1,8 @@
 import 'dart:async';
-import 'dart:html';
+import 'dart:js_interop';
 
 import 'package:meta/meta.dart';
+import 'package:web/web.dart';
 
 import 'context.dart';
 import 'fragment.dart';
@@ -31,7 +32,14 @@ abstract class ComponentOrPending {
 
 extension EmitCustomEvent on ComponentOrPending {
   void emitCustom(String type, [Object? detail]) {
-    emitEvent(CustomEvent(type, detail: detail));
+    emitEvent(
+      CustomEvent(
+        type,
+        // Note de-reference.
+        // ignore: invalid_runtime_check_with_js_interop_types
+        CustomEventInit(detail: detail?.toJSBox),
+      ),
+    );
   }
 }
 
@@ -81,14 +89,17 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
 
   @internal
   Stream<T> componentEvents<T extends Event>(String type) {
-    return _eventEmitter.stream.where((e) => e is T && e.type == type).cast();
+    // Can't use e.isA<T>() here.
+    return _eventEmitter.stream.where((e) => e.type == type).cast();
   }
 
   @override
   void onMount(void Function() callback) {
     if (_isAlive) {
-      throw StateError('onMount() may only be called before a component is '
-          'initialized!');
+      throw StateError(
+        'onMount() may only be called before a component is '
+        'initialized!',
+      );
     }
 
     _onMountListeners.add(callback);
@@ -175,8 +186,10 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
     remove();
   }
 
-  void _invalidate(
-      {required void Function() set, required void Function() add}) {
+  void _invalidate({
+    required void Function() set,
+    required void Function() add,
+  }) {
     if (!_isAlive) return;
 
     if (_isRunningUpdate) {
@@ -216,7 +229,9 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
   @protected
   void $invalidate(int flags) {
     _invalidate(
-        set: () => _updateBitmask = flags, add: () => _updateBitmask |= flags);
+      set: () => _updateBitmask = flags,
+      add: () => _updateBitmask |= flags,
+    );
   }
 
   @protected
@@ -277,8 +292,10 @@ abstract class ZapComponent implements ComponentOrPending, Fragment {
         $invalidate(1 << updateFlag);
       });
 
-      _activeWatchables[updateFlag] =
-          _SubscribedWatchable(watchable, subscription);
+      _activeWatchables[updateFlag] = _SubscribedWatchable(
+        watchable,
+        subscription,
+      );
     }
 
     if (previousWatchable != null) {
@@ -309,35 +326,32 @@ class _LifecycleTransformer<T> extends StreamTransformerBase<T, T> {
 
   @override
   Stream<T> bind(Stream<T> stream) {
-    return Stream.multi(
-      (listener) {
-        StreamSubscription<T>? subscription;
+    return Stream.multi((listener) {
+      StreamSubscription<T>? subscription;
 
-        void unmountListener() {
-          subscription?.cancel();
-        }
+      void unmountListener() {
+        subscription?.cancel();
+      }
 
-        void listenNow() {
-          subscription = stream.listen(
-            listener.addSync,
-            onError: listener.addErrorSync,
-            onDone: () {
-              component._unmountListeners.remove(unmountListener);
-              subscription = null;
-              listener.closeSync();
-            },
-          );
+      void listenNow() {
+        subscription = stream.listen(
+          listener.addSync,
+          onError: listener.addErrorSync,
+          onDone: () {
+            component._unmountListeners.remove(unmountListener);
+            subscription = null;
+            listener.closeSync();
+          },
+        );
 
-          component._unmountListeners.add(unmountListener);
-        }
+        component._unmountListeners.add(unmountListener);
+      }
 
-        if (component._isAlive) {
-          listenNow();
-        } else {
-          component.onMount(listenNow);
-        }
-      },
-      isBroadcast: stream.isBroadcast,
-    );
+      if (component._isAlive) {
+        listenNow();
+      } else {
+        component.onMount(listenNow);
+      }
+    }, isBroadcast: stream.isBroadcast);
   }
 }

@@ -22,11 +22,13 @@ extension CheckBindings on TypeChecker {
             domTypes.dartTypeForElement(elementTagName) ?? domTypes.element;
 
         if (!typeSystem.isAssignableTo(type, targetVariable.type)) {
-          errors.reportError(ZapError.onNode(
-            attribute,
-            'Target of `this` binding must be of type '
-            '${type.getDisplayString(withNullability: true)}',
-          ));
+          errors.reportError(
+            ZapError.onNode(
+              attribute,
+              'Target of `this` binding must be of type '
+              '${type.getDisplayString()}',
+            ),
+          );
         }
 
         return BindThis(targetVariable);
@@ -41,7 +43,8 @@ extension CheckBindings on TypeChecker {
           specialMode = SpecialBindingMode.inputValue;
           if (!isNullableString(targetVariable.type)) {
             errors.reportError(
-                ZapError.onNode(attribute, 'Must be a string variable'));
+              ZapError.onNode(attribute, 'Must be a string variable'),
+            );
           }
           break;
       }

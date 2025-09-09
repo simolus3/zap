@@ -35,11 +35,11 @@ class Generator {
 
   final Map<BaseZapVariable, String> _varNames = {};
   final Map<ReactiveNode, String> _nodeNames = {};
-  final Map<FunctionElement, String> _functionNames = {};
+  final Map<ExecutableElement, String> _functionNames = {};
   final Map<Object, String> _miscNames = {};
 
   String get zapPrefix => imports.zapImport;
-  String get htmlPrefix => imports.dartHtmlImport;
+  String get webPrefix => imports.packageWebImport;
 
   Generator(this.component, this.prepareResult, this.options, AssetId output) {
     imports = ImportsTracker(libraryScope.inner(), output);
@@ -57,13 +57,15 @@ class Generator {
     });
   }
 
-  String _nameForFunction(FunctionElement fun) {
-    return _functionNames.putIfAbsent(fun, () => '${_prefix}fun_${fun.name}');
+  String _nameForFunction(ExecutableElement fun) {
+    return _functionNames.putIfAbsent(fun, () => '${_prefix}fun_${fun.name!}');
   }
 
   String _nameForMisc(Object key) {
     return _miscNames.putIfAbsent(
-        key, () => '_${_prefix}t${_miscNames.length}');
+      key,
+      () => '_${_prefix}t${_miscNames.length}',
+    );
   }
 
   void write() {
@@ -73,11 +75,13 @@ class Generator {
     // Write top-level members declared outside of the component (in a
     // `<script context="module">` scope).
     for (final declaration in component.declarationsFromModuleScope) {
-      libraryScope.leaf().write(_DartSourceRewriter.patchDartReferences(
-            dartCode: declaration,
-            generator: this,
-            patchSelf: false, // Not in a component, can't use `self`.
-          ));
+      libraryScope.leaf().write(
+        _DartSourceRewriter.patchDartReferences(
+          dartCode: declaration,
+          generator: this,
+          patchSelf: false, // Not in a component, can't use `self`.
+        ),
+      );
     }
 
     imports.ensureImportsAreWritten();
@@ -90,7 +94,11 @@ class Generator {
 
     if (component is Component) {
       writer = _ComponentWriter(
-          component, this.component.componentName, this, scope);
+        component,
+        this.component.componentName,
+        this,
+        scope,
+      );
     } else {
       // Instead of writing a full class, we can write this fragment as a static
       // node.
@@ -99,8 +107,11 @@ class Generator {
         return;
       }
 
-      writer =
-          _SubComponentWriter(component as ResolvedSubComponent, this, scope);
+      writer = _SubComponentWriter(
+        component as ResolvedSubComponent,
+        this,
+        scope,
+      );
     }
 
     writer.write();
@@ -113,8 +124,10 @@ class Generator {
     final writer = NodeWriter();
     component.fragment.rootNodes.forEach(writer.writeNode);
 
-    libraryScope.leaf().write('final $name = $zapPrefix.HtmlTag'
-        '(${dartStringLiteral(writer.buffer.toString())});');
+    libraryScope.leaf().write(
+      'final $name = $zapPrefix.HtmlTag'
+      '(${dartStringLiteral(writer.buffer.toString())});',
+    );
   }
 }
 
@@ -126,7 +139,7 @@ abstract class _ComponentOrSubcomponentWriter {
   ComponentOrSubcomponent get component;
 
   _ComponentOrSubcomponentWriter(this.generator, this.classScope)
-      : buffer = classScope.leaf();
+    : buffer = classScope.leaf();
 
   bool _rendersSubcomponents(ReactiveNode node) =>
       node is SubComponent || node is ReactiveBlock || node is MountSlot;
@@ -147,8 +160,13 @@ abstract class _ComponentOrSubcomponentWriter {
       return 'this';
     } else {
       return _DartSourceRewriter(
-              generator, component.scope, 0, '', true, const {})
-          ._prefixFor(generator.component.component.scope, trailingDot: false);
+        generator,
+        component.scope,
+        0,
+        '',
+        true,
+        const {},
+      )._prefixFor(generator.component.component.scope, trailingDot: false);
     }
   }
 
@@ -167,25 +185,24 @@ abstract class _ComponentOrSubcomponentWriter {
   }
 
   String? dartTypeName(ReactiveNode node) {
-    final htmlPrefix = generator.imports.dartHtmlImport;
+    final webPrefix = generator.imports.packageWebImport;
     final zapPrefix = generator.imports.zapImport;
 
     if (node is ReactiveElement) {
       final known = node.knownElement;
 
-      return known != null
-          ? '$htmlPrefix.${known.className}'
-          : '$htmlPrefix.Element';
+      return known != null ? '$webPrefix.$known' : '$webPrefix.Element';
     } else if (node is ReactiveText || node is ConstantText) {
-      return '$htmlPrefix.Text';
+      return '$webPrefix.Text';
     } else if (node is ReactiveRawHtml) {
       return '$zapPrefix.HtmlTag';
     } else if (node is SubComponent) {
       // The import tracker will rewrite imports from the intermediate library
       // to the final `.zap.dart` file.
-      final prefix = generator.imports
-          .importForLibrary(node.component.temporaryApiClass.library);
-      return '$prefix.${node.component.temporaryApiClass.name}';
+      final prefix = generator.imports.importForLibrary(
+        node.component.temporaryApiClass.library,
+      );
+      return '$prefix.${node.component.temporaryApiClass.name!}';
     } else if (node is DynamicSubComponent) {
       return '$zapPrefix.DynamicComponent';
     } else if (node is ReactiveIf) {
@@ -216,7 +233,9 @@ abstract class _ComponentOrSubcomponentWriter {
   }
 
   String _createSubFragment(
-      ComponentOrSubcomponent subComponent, String constructorArguments) {
+    ComponentOrSubcomponent subComponent,
+    String constructorArguments,
+  ) {
     final name = generator._nameForMisc(subComponent);
 
     if (_componentIsOptimizedAway(subComponent)) {
@@ -228,10 +247,17 @@ abstract class _ComponentOrSubcomponentWriter {
   }
 
   String _statementsToChangeVariable(
-      BaseZapVariable variable, String expression) {
-    final prefix =
-        _DartSourceRewriter(generator, component.scope, 0, '', true, const {})
-            ._prefixFor(variable.scope);
+    BaseZapVariable variable,
+    String expression,
+  ) {
+    final prefix = _DartSourceRewriter(
+      generator,
+      component.scope,
+      0,
+      '',
+      true,
+      const {},
+    )._prefixFor(variable.scope);
     final variableName = generator._nameForVar(variable);
 
     final result = StringBuffer();
@@ -247,9 +273,14 @@ abstract class _ComponentOrSubcomponentWriter {
     final ownScope = component.scope;
     final expressionScope = expression.scope;
 
-    final prefix =
-        _DartSourceRewriter(generator, ownScope, 0, '', true, const {})
-            ._prefixFor(expressionScope);
+    final prefix = _DartSourceRewriter(
+      generator,
+      ownScope,
+      0,
+      '',
+      true,
+      const {},
+    )._prefixFor(expressionScope);
 
     return '$prefix${generator._nameForMisc(expression)}';
   }
@@ -312,7 +343,7 @@ abstract class _ComponentOrSubcomponentWriter {
         // generate for `<x>` instead of duplicating the source code.
         watchedExpressions: {
           for (final expr in usedExpression.watched)
-            expr.expression.expression: expr
+            expr.expression.expression: expr,
         },
       );
       buffer.writeln(';');
@@ -332,8 +363,9 @@ abstract class _ComponentOrSubcomponentWriter {
 
       // Mutable stream subscriptions are stored as instance variables too
       if (!flow.isOneOffAction && action is RegisterEventHandler) {
-        final dartAsync =
-            generator.imports.importForUri(Uri.parse('dart:async'));
+        final dartAsync = generator.imports.importForUri(
+          Uri.parse('dart:async'),
+        );
         final type = dartTypeToString(action.handler.dartEventType);
 
         buffer
@@ -347,7 +379,7 @@ abstract class _ComponentOrSubcomponentWriter {
 
   void writeCreateMethod() {
     final name = component is Component ? 'createInternal' : 'create';
-    final prefix = generator.htmlPrefix;
+    final prefix = generator.webPrefix;
 
     buffer
       ..writeln(atOverride)
@@ -370,15 +402,21 @@ abstract class _ComponentOrSubcomponentWriter {
         for (final binder in node.binders) {
           final target = binder.target;
           final prefix = _DartSourceRewriter(
-                  generator, component.scope, 0, '', true, const {})
-              ._prefixFor(target.scope);
+            generator,
+            component.scope,
+            0,
+            '',
+            true,
+            const {},
+          )._prefixFor(target.scope);
           final variableName = generator._nameForVar(target);
           final nodeName = generator._nameForNode(node);
 
           if (binder is BindThis) {
             buffer.write(_statementsToChangeVariable(target, nodeName));
           } else if (binder is BindProperty) {
-            final callback = '''
+            final callback =
+                '''
                 (value) {
                   if (value != $prefix$variableName) {
                     ${_statementsToChangeVariable(target, 'value')}
@@ -388,12 +426,12 @@ abstract class _ComponentOrSubcomponentWriter {
 
             switch (binder.specialMode) {
               case SpecialBindingMode.inputValue:
-                final import = generator.imports.dartHtmlImport;
-                buffer.write('$import.GlobalEventHandlers.inputEvent'
-                    '.forElement($nodeName)'
-                    '.map((e) => $nodeName.value)'
-                    '.transform(lifecycle())'
-                    '.listen($callback);');
+                buffer.write(
+                  '$nodeName.onInput'
+                  '.map((e) => $nodeName.value)'
+                  '.transform(lifecycle())'
+                  '.listen($callback);',
+                );
                 break;
               case null:
                 buffer
@@ -459,7 +497,7 @@ abstract class _ComponentOrSubcomponentWriter {
         // use .destroy() to unmount zap components
         buffer.write('.destroy();');
       } else {
-        // and .remove() to unmount `dart:html` elements.
+        // and .remove() to unmount `package:web/web.dart` elements.
         buffer.write('.remove();');
       }
     }
@@ -467,8 +505,9 @@ abstract class _ComponentOrSubcomponentWriter {
     // We can unmount the root nodes to remove this component from the DOM tree.
     // However, we should still explicitly destroy() child components so that
     // they can clean up resources.
-    for (final node
-        in component.fragment.rootNodes.expand((node) => node.allDescendants)) {
+    for (final node in component.fragment.rootNodes.expand(
+      (node) => node.allDescendants,
+    )) {
       if (_rendersSubcomponents(node)) {
         buffer.write(generator._nameForNode(node));
 
@@ -554,11 +593,11 @@ abstract class _ComponentOrSubcomponentWriter {
           } else {
             // Just emit node.attributes[key] = value.toString()
             buffer
-              ..write(".attributes['")
+              ..write(".setAttribute('")
               ..write(action.name)
-              ..write("'] = ")
+              ..write("', ")
               ..write(referenceExpression(attribute.backingExpression))
-              ..write('.toString();');
+              ..write('.toString());');
           }
 
           break;
@@ -584,21 +623,30 @@ abstract class _ComponentOrSubcomponentWriter {
       final target = generator._nameForNode(action.subcomponent);
       final expr = action.subcomponent.expressions[action.property]!;
 
-      buffer
-          .write('$target.${action.property} = ${referenceExpression(expr)};');
+      buffer.write(
+        '$target.${action.property} = ${referenceExpression(expr)};',
+      );
     } else if (action is UpdateWatchable) {
       final expr = referenceExpression(action.watched.expression);
       buffer.writeln(
-          '\$watchImpl($expr, ${action.watched.updateSlot!}); // track update');
+        '\$watchImpl($expr, ${action.watched.updateSlot!}); // track update',
+      );
     } else if (action is ReEvaluateVariableWithWatchInitializer) {
       final setter = generator._nameForVar(action.variable);
       final expression = referenceExpression(action.variable.initializer!);
 
       buffer.write('$setter = $expression;');
       if (action.variable.needsUpdateTracking) {
-        buffer.write(_DartSourceRewriter(
-                generator, component.scope, 0, '', false, const {})
-            .invalidateExpression('${action.variable.updateBitmask}'));
+        buffer.write(
+          _DartSourceRewriter(
+            generator,
+            component.scope,
+            0,
+            '',
+            false,
+            const {},
+          ).invalidateExpression('${action.variable.updateBitmask}'),
+        );
       }
     } else if (action is UpdateBlockExpression) {
       final block = action.block;
@@ -615,8 +663,9 @@ abstract class _ComponentOrSubcomponentWriter {
 
         final setter = block.isStream ? 'stream' : 'future';
         final prefix = generator.zapPrefix;
-        final wrapper =
-            block.isStream ? '$prefix.\$safeStream' : '$prefix.\$safeFuture';
+        final wrapper = block.isStream
+            ? '$prefix.\$safeStream'
+            : '$prefix.\$safeFuture';
         final type = dartTypeToString(block.type);
 
         buffer
@@ -664,10 +713,12 @@ abstract class _ComponentOrSubcomponentWriter {
       // Write the `Stream` expression for this event handler.
       if (parent is SubComponent) {
         final type = dartTypeToString(handler.dartEventType);
-        buffer.write('$node.componentEvents<$type>'
-            '(${dartStringLiteral(handler.event)})');
+        buffer.write(
+          '$node.componentEvents<$type>'
+          '(${dartStringLiteral(handler.event)})',
+        );
       } else {
-        buffer.write('${generator.imports.dartHtmlImport}.');
+        buffer.write('${generator.imports.packageWebImport}.');
 
         if (knownEvent != null) {
           buffer.write(knownEvent.providerExpression);
@@ -747,40 +798,25 @@ abstract class _ComponentOrSubcomponentWriter {
   }
 
   void createNode(ReactiveNode node) {
-    final htmlPrefix = generator.htmlPrefix;
+    final webPrefix = generator.webPrefix;
     final zapPrefix = generator.zapPrefix;
 
     if (node is ReactiveElement) {
       final known = node.knownElement;
-
+      buffer.write('$zapPrefix.newElement');
       if (known != null) {
-        final type = '$htmlPrefix.${known.className}';
-
-        if (known.instantiable) {
-          // Use a direct constructor provided by the Dart SDK
-          buffer.write(type);
-          if (known.constructorName.isNotEmpty) {
-            buffer.write('.${known.constructorName}');
-          }
-
-          buffer.write('()');
-        } else {
-          // Use the newElement helper method from zap
-          buffer.write(
-              '$zapPrefix.newElement<$type>(${dartStringLiteral(node.tagName)})');
-        }
-      } else {
-        buffer.write("$htmlPrefix.Element.tag('${node.tagName}')");
+        buffer.write('<$webPrefix.$known>');
       }
+      buffer.write('(${dartStringLiteral(node.tagName)})');
 
       final className = generator.component.cssClassName;
       if (className != null) {
         buffer.write("..addComponentClass('$className')");
       }
     } else if (node is ReactiveText) {
-      buffer.write("$htmlPrefix.Text('')");
+      buffer.write("$webPrefix.Text('')");
     } else if (node is ConstantText) {
-      buffer.write("$htmlPrefix.Text(${dartStringLiteral(node.text)})");
+      buffer.write("$webPrefix.Text(${dartStringLiteral(node.text)})");
     } else if (node is ReactiveRawHtml) {
       buffer.write('$zapPrefix.HtmlTag()');
     } else if (node is SubComponent) {
@@ -816,7 +852,8 @@ abstract class _ComponentOrSubcomponentWriter {
             buffer.write('null');
           } else {
             buffer.write(
-                '() => ${_createSubFragment(child.owningComponent!, 'this')}');
+              '() => ${_createSubFragment(child.owningComponent!, 'this')}',
+            );
           }
 
           buffer.write(',');
@@ -850,13 +887,15 @@ abstract class _ComponentOrSubcomponentWriter {
         final component = node.whens[i].owningComponent!;
 
         buffer.writeln(
-            'case $i: return ${_createSubFragment(component, 'this')};');
+          'case $i: return ${_createSubFragment(component, 'this')};',
+        );
       }
 
       final defaultCase = node.otherwise?.owningComponent;
       if (defaultCase != null) {
         buffer.writeln(
-            'default: return ${_createSubFragment(defaultCase, 'this')};');
+          'default: return ${_createSubFragment(defaultCase, 'this')};',
+        );
       } else {
         buffer.writeln('default: return null;');
       }
@@ -867,7 +906,7 @@ abstract class _ComponentOrSubcomponentWriter {
       final name = node.fragment.resolvedScope
           .findForSubcomponent(SubcomponentVariableKind.asyncSnapshot)!
           .element
-          .name;
+          .name!;
 
       final create = _createSubFragment(childComponent, 'this');
       // If the component was optimized to a static html string, we don't have
@@ -875,18 +914,20 @@ abstract class _ComponentOrSubcomponentWriter {
       final update = _componentIsOptimizedAway(childComponent)
           ? '(_, __) {}'
           : '(fragment, snapshot) => '
-              '(fragment as ${generator._nameForMisc(childComponent)})'
-              '.$name = snapshot';
+                '(fragment as ${generator._nameForMisc(childComponent)})'
+                '.$name = snapshot';
 
       final className = node.isStream ? 'StreamBlock' : 'FutureBlock';
       buffer.writeln('$zapPrefix.$className($create, $update)');
     } else if (node is ReactiveFor) {
       final subComponent = node.fragment.owningComponent!;
 
-      final elementVariable = node.fragment.resolvedScope
-          .findForSubcomponent(SubcomponentVariableKind.forBlockElement)!;
-      final indexVariable = node.fragment.resolvedScope
-          .findForSubcomponent(SubcomponentVariableKind.forBlockIndex);
+      final elementVariable = node.fragment.resolvedScope.findForSubcomponent(
+        SubcomponentVariableKind.forBlockElement,
+      )!;
+      final indexVariable = node.fragment.resolvedScope.findForSubcomponent(
+        SubcomponentVariableKind.forBlockIndex,
+      );
 
       buffer.writeln('$zapPrefix.ForBlock(');
 
@@ -907,31 +948,35 @@ abstract class _ComponentOrSubcomponentWriter {
         buffer
           ..write(', (fragment, element, index) => ')
           ..write('(fragment as $childClass)')
-          ..write('..${elementVariable.element.name} = element');
+          ..write('..${elementVariable.element.name!} = element');
 
         if (indexVariable != null) {
-          buffer.write('..${indexVariable.element.name} = index');
+          buffer.write('..${indexVariable.element.name!} = index');
         }
       }
 
       buffer.write(')');
     } else if (node is MountSlot) {
       final createFallback = _createSubFragment(
-          node.defaultContent.owningComponent!, componentThis);
+        node.defaultContent.owningComponent!,
+        componentThis,
+      );
 
       final providedSlot = '$componentThis.${_slotVariable(node.slotName)}';
       final fallback = '() => $createFallback';
 
-      buffer
-          .write('$zapPrefix.Slot($providedSlot ?? $fallback, $componentThis)');
+      buffer.write(
+        '$zapPrefix.Slot($providedSlot ?? $fallback, $componentThis)',
+      );
     } else {
       throw ArgumentError('Unknown node type: $node');
     }
   }
 
   void writePropertyAccessors() {
-    final variablesThatNeedChanges =
-        component.scope.declaredVariables.where((variable) {
+    final variablesThatNeedChanges = component.scope.declaredVariables.where((
+      variable,
+    ) {
       if (variable is DartCodeVariable) {
         return variable.isProperty;
       } else if (variable is SubcomponentVariable) {
@@ -955,7 +1000,7 @@ abstract class _ComponentOrSubcomponentWriter {
       buffer
         ..write(type)
         ..write(' get ')
-        ..write(element.name)
+        ..write(element.name!)
         ..write(' => ')
         ..write(name)
         ..writeln(';');
@@ -968,13 +1013,18 @@ abstract class _ComponentOrSubcomponentWriter {
         //   }
         // }
         buffer
-          ..writeln('set ${element.name} ($type value) {')
+          ..writeln('set ${element.name!} ($type value) {')
           ..writeln('  if (value != $name) {')
           ..writeln('    $name = value;');
         if (variable.needsUpdateTracking) {
-          final update =
-              _DartSourceRewriter(generator, component.scope, 0, '', true, {})
-                  .invalidateExpression(variable.updateBitmask.toString());
+          final update = _DartSourceRewriter(
+            generator,
+            component.scope,
+            0,
+            '',
+            true,
+            {},
+          ).invalidateExpression(variable.updateBitmask.toString());
           buffer.writeln('    $update');
         }
         buffer
@@ -1021,9 +1071,12 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
   final Component component;
   final String name;
 
-  _ComponentWriter(this.component, this.name, Generator generator,
-      GenerationScope classScope)
-      : super(generator, classScope);
+  _ComponentWriter(
+    this.component,
+    this.name,
+    Generator generator,
+    GenerationScope classScope,
+  ) : super(generator, classScope);
 
   @override
   void write() {
@@ -1045,7 +1098,7 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
         ..write(' ')
         ..write(name)
         ..write(';')
-        ..writeln(' // ${variable.element.name}');
+        ..writeln(' // ${variable.element.name!}');
     }
 
     // Slots are also passed down as variables
@@ -1076,8 +1129,8 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
     final zapPrefix = generator.imports.zapImport;
 
     buffer.write('$name(');
-    final dartVariables =
-        component.scope.declaredVariables.whereType<DartCodeVariable>();
+    final dartVariables = component.scope.declaredVariables
+        .whereType<DartCodeVariable>();
 
     final properties = dartVariables.where((e) => e.isProperty);
 
@@ -1092,7 +1145,7 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
       buffer
         ..write(type)
         ..write(r' $')
-        ..write(element.name)
+        ..write(element.name!)
         ..write(',');
     }
 
@@ -1119,8 +1172,9 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
             final name = referenceExpression(knownInitializer);
 
             buffer.write('$field = $name;');
-          } else if (generator.component.typeSystem
-              .isNullable(initializedVariable.type)) {
+          } else if (generator.component.typeSystem.isNullable(
+            initializedVariable.type,
+          )) {
             // If this were a regular variable, it would have been initialized
             // to null at the declaration. So, let's set the field to null to
             // mirror that.
@@ -1144,17 +1198,19 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
         buffer
           ..write(generator._nameForVar(variable))
           ..write(r' = $')
-          ..write(element.name)
+          ..write(element.name!)
           ..write(' != null ? ')
           ..write(r'$')
-          ..write(element.name)
+          ..write(element.name!)
           ..write('.value : (');
 
         final declaration = variable.declaration;
-        final defaultExpr =
-            declaration is VariableDeclaration ? declaration.initializer : null;
-        final isNullable =
-            generator.component.typeSystem.isNullable(variable.type);
+        final defaultExpr = declaration is VariableDeclaration
+            ? declaration.initializer
+            : null;
+        final isNullable = generator.component.typeSystem.isNullable(
+          variable.type,
+        );
 
         if (defaultExpr != null) {
           writeDartWithPatchedReferences(defaultExpr);
@@ -1164,7 +1220,8 @@ class _ComponentWriter extends _ComponentOrSubcomponentWriter {
           // No initializer and no value set -> error
           final argumentError = prefixIdentifier('ArgumentError');
           buffer.write(
-              'throw $argumentError(${dartStringLiteral('Parameter ${element.name} is required!')})');
+            'throw $argumentError(${dartStringLiteral('Parameter ${element.name!} is required!')})',
+          );
         }
 
         buffer.write(');');
@@ -1180,8 +1237,10 @@ class _SubComponentWriter extends _ComponentOrSubcomponentWriter {
   final ResolvedSubComponent component;
 
   _SubComponentWriter(
-      this.component, Generator generator, GenerationScope classScope)
-      : super(generator, classScope);
+    this.component,
+    Generator generator,
+    GenerationScope classScope,
+  ) : super(generator, classScope);
 
   @override
   void write() {
@@ -1207,20 +1266,20 @@ class _SubComponentWriter extends _ComponentOrSubcomponentWriter {
       switch (variable.kind) {
         case SubcomponentVariableKind.asyncSnapshot:
           buffer.writeln(
-              '$type $name = const $zapPrefix.ZapSnapshot.unresolved(); // ${variable.element.name}');
+            '$type $name = const $zapPrefix.ZapSnapshot.unresolved(); // ${variable.element.name!}',
+          );
           break;
         case SubcomponentVariableKind.forBlockElement:
         case SubcomponentVariableKind.forBlockIndex:
           needsInitialization.add(name);
-          buffer.writeln('$type $name; // ${variable.element.name}');
+          buffer.writeln('$type $name; // ${variable.element.name!}');
           break;
       }
     }
 
-    final initializers = [_parentField]
-        .followedBy(needsInitialization)
-        .map((e) => 'this.$e')
-        .join(',');
+    final initializers = [
+      _parentField,
+    ].followedBy(needsInitialization).map((e) => 'this.$e').join(',');
 
     buffer
       ..writeln('final $parentType $_parentField;')
@@ -1281,7 +1340,7 @@ class _DartTypeWriter extends UnifyingTypeVisitor<void> {
     type.returnType.accept(this);
 
     buffer.write(' Function');
-    final formals = type.typeFormals;
+    final formals = type.typeParameters;
     if (formals.isNotEmpty) {
       buffer.write('<');
       var i = 0;
@@ -1290,7 +1349,7 @@ class _DartTypeWriter extends UnifyingTypeVisitor<void> {
           buffer.write(', ');
         }
 
-        buffer.write(arg.name);
+        buffer.write(arg.name!);
         final bound = arg.bound;
         if (bound != null) {
           buffer.write(' extends ');
@@ -1307,7 +1366,7 @@ class _DartTypeWriter extends UnifyingTypeVisitor<void> {
 
     String? activeOptionalBlock;
 
-    for (final parameter in type.parameters) {
+    for (final parameter in type.formalParameters) {
       if (parameter.isNamed) {
         if (activeOptionalBlock == null) {
           buffer.write('{');
@@ -1328,7 +1387,7 @@ class _DartTypeWriter extends UnifyingTypeVisitor<void> {
 
       parameter.type.accept(this);
       if (parameter.isNamed) {
-        buffer.write(' ${parameter.name}');
+        buffer.write(' ${parameter.name!}');
       }
       i++;
     }
@@ -1345,9 +1404,9 @@ class _DartTypeWriter extends UnifyingTypeVisitor<void> {
   void visitInterfaceType(InterfaceType type) {
     final alias = type.alias;
     if (alias != null) {
-      _writeElement(alias.element, alias.element.name);
+      _writeElement(alias.element, alias.element.name!);
     } else {
-      _writeElement(type.element, type.element.name);
+      _writeElement(type.element, type.element.name!);
     }
 
     if (type.typeArguments.isNotEmpty) {
@@ -1416,7 +1475,7 @@ class _DartTypeWriter extends UnifyingTypeVisitor<void> {
 
   @override
   void visitTypeParameterType(TypeParameterType type) {
-    buffer.write(type.element.name);
+    buffer.write(type.element.name!);
     _writeSuffix(type.nullabilitySuffix);
   }
 
@@ -1457,8 +1516,14 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
   }) {
     final originalCode = generator.prepareResult.temporaryDartFile.contents
         .substring(dartCode.offset, dartCode.offset + dartCode.length);
-    final rewriter = _DartSourceRewriter(generator, component?.scope,
-        dartCode.offset, originalCode, patchSelf, watchExpressions);
+    final rewriter = _DartSourceRewriter(
+      generator,
+      component?.scope,
+      dartCode.offset,
+      originalCode,
+      patchSelf,
+      watchExpressions,
+    );
     dartCode.accept(rewriter);
     return rewriter.content;
   }
@@ -1473,7 +1538,10 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
     var actualStart = skew + start - startOffsetInDart;
 
     content = content.replaceRange(
-        actualStart, actualStart + originalLength, newContent);
+      actualStart,
+      actualStart + originalLength,
+      newContent,
+    );
     skew += newContent.length - originalLength;
   }
 
@@ -1485,8 +1553,9 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
     ZapVariableScope? scope = this.scope;
 
     while (scope != null) {
-      final variable =
-          scope.declaredVariables.firstWhereOrNull((v) => v.element == element);
+      final variable = scope.declaredVariables.firstWhereOrNull(
+        (v) => v.element == element,
+      );
       if (variable != null) {
         return variable;
       }
@@ -1550,8 +1619,11 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
         _replaceRange(node.offset, 0, '\$invalidateAssign($updateCode, ');
       } else {
         final prefix = _prefixFor(rootScope);
-        _replaceRange(node.offset, 0,
-            '$prefix.\$invalidateAssignSubcomponent(this, $updateCode, ');
+        _replaceRange(
+          node.offset,
+          0,
+          '$prefix.\$invalidateAssignSubcomponent(this, $updateCode, ',
+        );
       }
     }
 
@@ -1567,7 +1639,7 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
   /// simple identifier will add the necessary prefix.
   void _handleTarget(Expression? left, Token? operator) {
     if (left is SimpleIdentifier) {
-      final target = left.staticElement;
+      final target = left.element;
       if (target is PrefixElement && operator != null) {
         _replaceNode(left, '');
         _replaceNode(operator, '');
@@ -1580,8 +1652,8 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
 
     if (targetLibrary != generator.component.resolvedTmpLibrary) {
       // Referencing an element from an import, add necessary import prefix.
-      final isTopLevel = targetLibrary != null &&
-          targetLibrary.topLevelElements.contains(target);
+      final isTopLevel =
+          targetLibrary != null && targetLibrary.children.contains(target);
 
       if (isTopLevel) {
         final importPrefix = generator.imports.importForLibrary(targetLibrary);
@@ -1615,7 +1687,7 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
           _replaceNode(entity, prefix);
         }
       }
-    } else if (target is FunctionElement &&
+    } else if (target is LocalFunctionElement &&
         generator.component.userDefinedFunctions.contains(target)) {
       final newName = generator._nameForFunction(target);
       final prefix = _prefixFor(rootScope);
@@ -1633,7 +1705,7 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
   @override
   void visitFunctionDeclaration(FunctionDeclaration node) {
     node.returnType?.accept(this);
-    _patchIdentifier(node.name, node.declaredElement);
+    _patchIdentifier(node.name, node.declaredFragment?.element);
     node.functionExpression.accept(this);
   }
 
@@ -1684,7 +1756,7 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
       if (missingBraces) {
         _replaceRange(node.leftBracket.end, 0, '{');
       }
-      _patchIdentifier(expression, expression.staticElement);
+      _patchIdentifier(expression, expression.element);
       if (missingBraces) {
         _replaceRange(expression.end, 0, '}');
       }
@@ -1705,7 +1777,7 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
 
   @override
   void visitPrefixedIdentifier(PrefixedIdentifier node) {
-    final targetOfPrefix = node.prefix.staticElement;
+    final targetOfPrefix = node.prefix.element;
     if (targetOfPrefix is PrefixElement) {
       _handleTarget(node.prefix, node.period);
       visitSimpleIdentifier(node.identifier);
@@ -1726,13 +1798,13 @@ class _DartSourceRewriter extends GeneralizingAstVisitor<void> {
       // patchIdentifier will add the right identifier if needed.
       _replaceNode(prefix, '');
     }
-    _patchIdentifier(node.name2, node.element);
+    _patchIdentifier(node.name, node.element);
 
     node.typeArguments?.accept(this);
   }
 
   @override
   void visitSimpleIdentifier(SimpleIdentifier node) {
-    _patchIdentifier(node, node.staticElement);
+    _patchIdentifier(node, node.element);
   }
 }

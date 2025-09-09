@@ -1,4 +1,6 @@
 <script>
+  import 'dart:js_interop';
+
   import 'mapbox.dart' as mapbox;
   import 'package:riverpod_zap/riverpod.dart';
 
@@ -15,7 +17,7 @@
   final popup = module.newPopup(mapbox.PopupOptions(offset: 25))
       ..setText(label);
   module.newMarker()
-      ..setLngLat([lon, lat])
+      ..setLngLat([lon.toJS, lat.toJS].toJS)
       ..setPopup(popup)
       ..addTo(map);
 </script>

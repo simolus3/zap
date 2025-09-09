@@ -1,10 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:analyzer/file_system/file_system.dart';
-// ignore: implementation_imports
-import 'package:analyzer/src/generated/source.dart';
 import 'package:path/path.dart';
-import 'package:watcher/watcher.dart';
 
 /// The build system generates hidden assets into `.dart_tool/build/generated`,
 /// but these assets can be imported as if they were located right in the
@@ -19,6 +16,11 @@ class HideGeneratedBuildFolder extends ResourceProvider {
   final ResourceProvider _inner;
 
   HideGeneratedBuildFolder(this._inner);
+
+  @override
+  Link getLink(String path) {
+    throw UnimplementedError();
+  }
 
   @override
   File getFile(String path) {
@@ -55,7 +57,9 @@ abstract class _HideGeneratedBuildResource extends Resource {
   _HideGeneratedBuildResource(this._inner, this._provider);
 
   factory _HideGeneratedBuildResource.wrap(
-      HideGeneratedBuildFolder provider, Resource inner) {
+    HideGeneratedBuildFolder provider,
+    Resource inner,
+  ) {
     if (inner is File) {
       return _HideGeneratedBuildFile(inner, provider);
     } else if (inner is Folder) {
@@ -89,10 +93,6 @@ abstract class _HideGeneratedBuildResource extends Resource {
   bool isOrContains(String path) => _inner.isOrContains(path);
 
   @override
-  // ignore: deprecated_member_use
-  Folder get parent2 => _HideGeneratedBuildFolder(_inner.parent2, _provider);
-
-  @override
   Folder get parent => _HideGeneratedBuildFolder(_inner.parent, _provider);
 
   @override
@@ -103,7 +103,9 @@ abstract class _HideGeneratedBuildResource extends Resource {
 
   @override
   Resource resolveSymbolicLinksSync() => _HideGeneratedBuildResource.wrap(
-      _provider, _inner.resolveSymbolicLinksSync());
+    _provider,
+    _inner.resolveSymbolicLinksSync(),
+  );
 
   @override
   String get shortName => _inner.shortName;
@@ -120,8 +122,7 @@ class _HideGeneratedBuildFolder extends _HideGeneratedBuildResource
   @override
   Folder get _inner => super._inner as Folder;
 
-  _HideGeneratedBuildFolder(Resource inner, HideGeneratedBuildFolder provider)
-      : super(inner, provider);
+  _HideGeneratedBuildFolder(super.inner, super.provider);
 
   @override
   Folder copyTo(Folder parentFolder) {
@@ -130,10 +131,6 @@ class _HideGeneratedBuildFolder extends _HideGeneratedBuildResource
 
   @override
   String canonicalizePath(String path) => _inner.canonicalizePath(path);
-
-  @override
-  // ignore: deprecated_member_use
-  Stream<WatchEvent> get changes => _inner.changes;
 
   @override
   bool contains(String path) => _inner.contains(path);
@@ -148,20 +145,24 @@ class _HideGeneratedBuildFolder extends _HideGeneratedBuildResource
   @override
   File getChildAssumingFile(String relPath) {
     return _HideGeneratedBuildFile(
-        _inner.getChildAssumingFile(relPath), _provider);
+      _inner.getChildAssumingFile(relPath),
+      _provider,
+    );
   }
 
   @override
   Folder getChildAssumingFolder(String relPath) {
     return _HideGeneratedBuildFolder(
-        _inner.getChildAssumingFolder(relPath), _provider);
+      _inner.getChildAssumingFolder(relPath),
+      _provider,
+    );
   }
 
   @override
   List<Resource> getChildren() {
     return [
       for (final child in _inner.getChildren())
-        _HideGeneratedBuildResource.wrap(_provider, child)
+        _HideGeneratedBuildResource.wrap(_provider, child),
     ];
   }
 
@@ -174,20 +175,12 @@ class _HideGeneratedBuildFile extends _HideGeneratedBuildResource
   @override
   File get _inner => super._inner as File;
 
-  _HideGeneratedBuildFile(File inner, HideGeneratedBuildFolder provider)
-      : super(inner, provider);
+  _HideGeneratedBuildFile(File super.inner, super.provider);
 
   @override
   File copyTo(Folder parentFolder) {
     return _HideGeneratedBuildFile(_inner.copyTo(parentFolder), _provider);
   }
-
-  @override
-  // ignore: deprecated_member_use
-  Stream<WatchEvent> get changes => _inner.changes;
-
-  @override
-  Source createSource([Uri? uri]) => _inner.createSource(uri);
 
   @override
   int get lengthSync => _inner.lengthSync;

@@ -11,15 +11,17 @@ Future<void> main(List<String> args) async {
         packages.add(await FileSystemPackage.load(directory: 'zap'));
         break;
       case 'zap_dev':
-        packages.add(await FileSystemPackage.load(
-          directory: 'zap_dev',
-          listPackageFiles: (fs) async* {
-            final pkgDir = fs.directory('zap_dev');
+        packages.add(
+          await FileSystemPackage.load(
+            directory: 'zap_dev',
+            listPackageFiles: (fs) async* {
+              final pkgDir = fs.directory('zap_dev');
 
-            yield* pkgDir.childDirectory('lib').list(recursive: true);
-            yield pkgDir.childFile('build.yaml');
-          },
-        ));
+              yield* pkgDir.childDirectory('lib').list(recursive: true);
+              yield pkgDir.childFile('build.yaml');
+            },
+          ),
+        );
         break;
       case 'riverpod_zap':
         packages.add(await FileSystemPackage.load(directory: 'riverpod_zap'));

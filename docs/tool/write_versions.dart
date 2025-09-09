@@ -6,21 +6,18 @@ class WriteVersions implements Builder {
 
   @override
   Map<String, List<String>> get buildExtensions => const {
-        'pubspec.yaml': ['lib/src/getting_started/versions.dart'],
-      };
+    'pubspec.yaml': ['lib/src/getting_started/versions.dart'],
+  };
 
   Future<void> build(BuildStep step) async {
-    const packages = [
-      'zap',
-      'riverpod_zap',
-      'zap_dev',
-    ];
+    const packages = ['riverpod_zap', 'zap', 'zap_dev'];
 
     final buffer = StringBuffer();
 
     for (final package in packages) {
       final pubspec = Pubspec.parse(
-          await step.readAsString(AssetId(package, 'pubspec.yaml')));
+        await step.readAsString(AssetId(package, 'pubspec.yaml')),
+      );
 
       buffer.write("const $package = '${pubspec.version.toString()}';");
     }

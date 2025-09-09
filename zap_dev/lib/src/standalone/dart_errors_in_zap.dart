@@ -1,4 +1,4 @@
-import 'package:analyzer/error/error.dart';
+import 'package:analyzer/diagnostic/diagnostic.dart';
 
 import '../errors.dart';
 import '../resolver/dart.dart';
@@ -17,16 +17,16 @@ class MapDartErrorsInZapFile {
 
   MapDartErrorsInZapFile(this.prepareResult, this.component, this.reporter);
 
-  void reportErrors(List<AnalysisError> errors) => errors.forEach(_mapError);
+  void reportErrors(List<Diagnostic> errors) => errors.forEach(_mapError);
 
-  bool _errorIsRelevant(AnalysisError error) {
-    if (error.errorCode.uniqueName.contains('LATE')) {
+  bool _errorIsRelevant(Diagnostic error) {
+    if (error.diagnosticCode.uniqueName.contains('LATE')) {
       // we move variables around a lot, so late variable analysis doesn't
       // really work at the moment
       return false;
     }
 
-    switch (error.errorCode.name) {
+    switch (error.diagnosticCode.name) {
       case 'UNUSED_IMPORT':
       case 'URI_DOES_NOT_EXIST':
         // These imports are added to analyze external components, ignore
@@ -45,7 +45,7 @@ class MapDartErrorsInZapFile {
     return true;
   }
 
-  void _mapError(AnalysisError error) {
+  void _mapError(Diagnostic error) {
     final region = prepareResult.temporaryDartFile.regionAt(error.offset);
     if (region == null || !region.createdForNode.hasSpan) return;
 
@@ -62,9 +62,15 @@ class MapDartErrorsInZapFile {
         nodeSpan.start.offset + offsetRelativeToNode + region.startOffsetInNode;
 
     final errorSpan = nodeSpan.file.span(
-        offsetRelativeToSourceFile, offsetRelativeToSourceFile + error.length);
+      offsetRelativeToSourceFile,
+      offsetRelativeToSourceFile + error.length,
+    );
 
     reporter.reportError(
-        ZapError('${error.errorCode.uniqueName} ${error.message}', errorSpan));
+      ZapError(
+        '${error.diagnosticCode.uniqueName} ${error.message}',
+        errorSpan,
+      ),
+    );
   }
 }

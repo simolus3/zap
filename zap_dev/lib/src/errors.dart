@@ -13,7 +13,7 @@ class ZapError {
   }
 
   String humanReadableDescription() {
-    return span?.message(message, color: 'red') ?? message;
+    return span?.message(message, color: true) ?? message;
   }
 
   @override

@@ -1,21 +1,27 @@
 @Tags(['browser'])
+library;
+
 import 'dart:async';
-import 'dart:html';
 
 import 'package:test/test.dart';
+import 'package:web/web.dart';
 import 'package:zap/zap.dart';
 import 'stream.zap.dart' as gen;
 
 void main() {
   test('single stream', () async {
-    final testbed = Element.div();
+    final testbed = HTMLDivElement();
     final controller = StreamController<String>();
     addTearDown(controller.close);
 
     final component = gen.Stream(ZapValue(controller.stream));
-    expect(controller.hasListener, isFalse,
-        reason: 'Instantiating the component should not start a stream '
-            'subscription');
+    expect(
+      controller.hasListener,
+      isFalse,
+      reason:
+          'Instantiating the component should not start a stream '
+          'subscription',
+    );
 
     component.create(testbed);
     expect(testbed.innerText, contains('no data / no error'));

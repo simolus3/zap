@@ -29,11 +29,20 @@ targets:
         enabled: true
 
 global_options:
+  build_web_compilers:ddc:
+    options:
+      environment:
+        MAPBOX_TOKEN: mapbox_token
   build_web_compilers|entrypoint:
     options:
-        dart2js_args:
-          # todo: Set right token from environment, but how?
-          - "-DMAPBOX_TOKEN=mapbox_token"
+      compilers:
+        # todo: Set right token from environment, but how?
+        dart2js:
+          args:
+            - "-DMAPBOX_TOKEN=mapbox_token"
+        dart2wasm:
+          args:
+            - "-DMAPBOX_TOKEN=mapbox_token"
 
 additional_public_assets:
   - "pages/**"

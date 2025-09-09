@@ -11,7 +11,11 @@ abstract class ComponentOrSubcomponent {
   final List<Flow> flows;
 
   ComponentOrSubcomponent(
-      this.children, this.scope, this.fragment, this.flows) {
+    this.children,
+    this.scope,
+    this.fragment,
+    this.flows,
+  ) {
     fragment.owningComponent = this;
 
     for (final child in children) {
@@ -29,14 +33,14 @@ class Component extends ComponentOrSubcomponent {
   final List<String?> usedSlots;
 
   Component(
-    List<ComponentOrSubcomponent> children,
-    ZapVariableScope scope,
-    DomFragment fragment,
-    List<Flow> flows,
+    super.children,
+    super.scope,
+    super.fragment,
+    super.flows,
     this.componentInitializers,
     this.instanceFunctions,
     this.usedSlots,
-  ) : super(children, scope, fragment, flows);
+  );
 }
 
 class ResolvedSubComponent extends ComponentOrSubcomponent {
@@ -49,12 +53,12 @@ class ResolvedSubComponent extends ComponentOrSubcomponent {
   final bool isMountedInSlot;
 
   ResolvedSubComponent(
-    List<ComponentOrSubcomponent> children,
-    ZapVariableScope scope,
-    DomFragment fragment,
-    List<Flow> flows, {
+    super.children,
+    super.scope,
+    super.fragment,
+    super.flows, {
     this.isMountedInSlot = false,
-  }) : super(children, scope, fragment, flows);
+  });
 }
 
 abstract class ComponentInitializer {}

@@ -32,7 +32,7 @@ abstract class ReactiveNode {
 
 class ReactiveElement extends ReactiveNode {
   final String tagName;
-  final KnownElementInfo? knownElement;
+  final String? knownElement;
 
   /// Constant attributes are expressed as Dart string literals.
   final Map<String, ReactiveAttribute> attributes;
@@ -42,8 +42,14 @@ class ReactiveElement extends ReactiveNode {
   @override
   final List<ReactiveNode> children;
 
-  ReactiveElement(this.tagName, this.knownElement, this.attributes,
-      this.eventHandlers, this.children, this.binders) {
+  ReactiveElement(
+    this.tagName,
+    this.knownElement,
+    this.attributes,
+    this.eventHandlers,
+    this.children,
+    this.binders,
+  ) {
     for (final handler in eventHandlers) {
       handler.parent = this;
     }
@@ -128,11 +134,7 @@ class ReactiveAttribute {
   ReactiveAttribute(this.backingExpression, this.mode);
 }
 
-enum AttributeMode {
-  setValue,
-  addIfTrue,
-  setIfNotNullClearOtherwise,
-}
+enum AttributeMode { setValue, addIfTrue, setIfNotNullClearOtherwise }
 
 class SubComponent extends ReactiveNode {
   final ExternalComponent component;
@@ -219,8 +221,14 @@ class EventHandler {
 
   bool get isForwarding => listener == null;
 
-  EventHandler(this.event, this.knownType, this.dartEventType, this.modifier,
-      this.listener, this.isNoArgsListener);
+  EventHandler(
+    this.event,
+    this.knownType,
+    this.dartEventType,
+    this.modifier,
+    this.listener,
+    this.isNoArgsListener,
+  );
 }
 
 EventModifier? parseEventModifier(String s) {
@@ -251,7 +259,7 @@ abstract class ElementBinder {
 }
 
 class BindThis extends ElementBinder {
-  BindThis(DartCodeVariable target) : super(target);
+  BindThis(super.target);
 }
 
 class BindProperty extends ElementBinder {
@@ -261,9 +269,7 @@ class BindProperty extends ElementBinder {
   bool get isReadOnly => false;
 
   BindProperty(this.attribute, DartCodeVariable target, {this.specialMode})
-      : super(target);
+    : super(target);
 }
 
-enum SpecialBindingMode {
-  inputValue,
-}
+enum SpecialBindingMode { inputValue }

@@ -17,8 +17,8 @@ class Scanner {
   int position = 0;
 
   Scanner(String contents, Uri uri, this.errors)
-      : codeUnits = Uint16List.fromList(contents.codeUnits),
-        file = SourceFile.decoded(contents.codeUnits, url: uri);
+    : codeUnits = Uint16List.fromList(contents.codeUnits),
+      file = SourceFile.decoded(contents.codeUnits, url: uri);
 
   void _error(FileSpan span, String message) {
     errors.reportError(ZapError(message, span));
@@ -187,8 +187,10 @@ class Scanner {
           if (entities.containsKey(name)) {
             buffer.write(name);
           } else {
-            _error(_spanUntilHere(ampersandPosition),
-                'Unknown escape entity &$name;');
+            _error(
+              _spanUntilHere(ampersandPosition),
+              'Unknown escape entity &$name;',
+            );
           }
 
           escapeEntity = null;

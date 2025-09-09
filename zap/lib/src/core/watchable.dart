@@ -18,10 +18,14 @@ abstract class Watchable<T> implements Stream<T> {
 
   static Watchable<ZapSnapshot<T>> snapshots<T>(Stream<T> stream) {
     final snapshots = Stream<ZapSnapshot<T>>.eventTransformed(
-        stream, _ToSnapshotTransformer.new);
+      stream,
+      _ToSnapshotTransformer.new,
+    );
 
     return _StreamWatchable(
-        _ValueWrappingStream(snapshots), const ZapSnapshot<Never>.unresolved());
+      _ValueWrappingStream(snapshots),
+      const ZapSnapshot<Never>.unresolved(),
+    );
   }
 }
 
@@ -66,8 +70,12 @@ class WritableWatchable<T> extends Stream<T> implements Watchable<T> {
   bool get isBroadcast => true;
 
   @override
-  StreamSubscription<T> listen(void Function(T event)? onData,
-      {Function? onError, void Function()? onDone, bool? cancelOnError}) {
+  StreamSubscription<T> listen(
+    void Function(T event)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
     return _stream.listen(onData, onDone: onDone);
   }
 }
@@ -85,8 +93,12 @@ class _StreamWatchable<T> extends Stream<T> implements Watchable<T> {
   T get value => (_source._hasValue ? _source._lastValue : _initialValue) as T;
 
   @override
-  StreamSubscription<T> listen(void Function(T event)? onData,
-      {Function? onError, void Function()? onDone, bool? cancelOnError}) {
+  StreamSubscription<T> listen(
+    void Function(T event)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
     // Skipping onError because the source stream isn't supposed to emit errors
     // ever. We want this to be an unhandled error.
     return _source.listen(onData, cancelOnError: cancelOnError, onDone: onDone);
@@ -135,11 +147,15 @@ class _ValueWrappingStream<T> extends Stream<T> {
       void resumeOrStart() {
         _listeners++;
 
-        _subscription ??= _source.listen((event) {
-          _hasValue = true;
-          _lastValue = event;
-          _controller.add(event);
-        }, onError: _controller.addError, onDone: _controller.close);
+        _subscription ??= _source.listen(
+          (event) {
+            _hasValue = true;
+            _lastValue = event;
+            _controller.add(event);
+          },
+          onError: _controller.addError,
+          onDone: _controller.close,
+        );
       }
 
       void pauseOrStop() {
@@ -164,9 +180,17 @@ class _ValueWrappingStream<T> extends Stream<T> {
   }
 
   @override
-  StreamSubscription<T> listen(void Function(T event)? onData,
-      {Function? onError, void Function()? onDone, bool? cancelOnError}) {
-    return _refCounting.listen(onData,
-        onError: onError, onDone: onDone, cancelOnError: cancelOnError);
+  StreamSubscription<T> listen(
+    void Function(T event)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
+    return _refCounting.listen(
+      onData,
+      onError: onError,
+      onDone: onDone,
+      cancelOnError: cancelOnError,
+    );
   }
 }

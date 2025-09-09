@@ -5,11 +5,7 @@ const _uuid = Uuid();
 
 /// A read-only description of a todo-item
 class Todo {
-  Todo({
-    required this.description,
-    required this.id,
-    this.completed = false,
-  });
+  Todo({required this.description, required this.id, this.completed = false});
 
   final String id;
   final String description;
@@ -26,13 +22,7 @@ class TodoList extends StateNotifier<List<Todo>> {
   TodoList([List<Todo>? initialTodos]) : super(initialTodos ?? []);
 
   void add(String description) {
-    state = [
-      ...state,
-      Todo(
-        id: _uuid.v4(),
-        description: description,
-      ),
-    ];
+    state = [...state, Todo(id: _uuid.v4(), description: description)];
   }
 
   void toggle(String id) {
@@ -53,11 +43,7 @@ class TodoList extends StateNotifier<List<Todo>> {
     state = [
       for (final todo in state)
         if (todo.id == id)
-          Todo(
-            id: todo.id,
-            completed: todo.completed,
-            description: description,
-          )
+          Todo(id: todo.id, completed: todo.completed, description: description)
         else
           todo,
     ];

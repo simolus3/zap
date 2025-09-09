@@ -13,18 +13,20 @@ class ImportsTracker {
   final Map<Uri, Set<String>> _unaliasedImports = {};
 
   ImportsTracker(GenerationScope scope, this.expectedOutput)
-      : imports = scope.leaf();
+    : imports = scope.leaf();
 
   void ensureImportsAreWritten() {
     _unaliasedImports.forEach((import, shown) {
       final showCombinator = shown.join(', ');
 
       imports.writeln(
-          'import ${dartStringLiteral(import.toString())} show $showCombinator;');
+        'import ${dartStringLiteral(import.toString())} show $showCombinator;',
+      );
     });
   }
 
-  String get dartHtmlImport => importForUri(Uri.parse('dart:html'));
+  String get packageWebImport =>
+      importForUri(Uri.parse('package:web/web.dart'));
 
   String get zapImport => importForUri(Uri.parse('package:zap/zap.dart'));
 
@@ -35,10 +37,12 @@ class ImportsTracker {
     // defined twice.
     if (url.extension(uri.path, 4) == '.tmp.zap.api.dart') {
       uri = uri.replace(
-          path: uri.path.replaceAll('.tmp.zap.api.dart', '.zap.dart'));
+        path: uri.path.replaceAll('.tmp.zap.api.dart', '.zap.dart'),
+      );
     } else if (url.extension(uri.path, 3) == '.tmp.zap.dart') {
-      uri =
-          uri.replace(path: uri.path.replaceAll('.tmp.zap.dart', '.zap.dart'));
+      uri = uri.replace(
+        path: uri.path.replaceAll('.tmp.zap.dart', '.zap.dart'),
+      );
     }
 
     if (uri.scheme == 'asset') {
@@ -50,7 +54,8 @@ class ImportsTracker {
       }
 
       return Uri.parse(
-          url.relative(asset.path, from: url.dirname(expectedOutput.path)));
+        url.relative(asset.path, from: url.dirname(expectedOutput.path)),
+      );
     }
     return uri;
   }
@@ -61,7 +66,7 @@ class ImportsTracker {
   /// rewriting them to explicitly refer to the extension used is hard to do for
   /// cascade expressions.
   void importWithoutAlias(LibraryElement element, String show) {
-    final uri = _normalizeUri(_uriFor(element));
+    final uri = _normalizeUri(element.uri);
 
     final shownElements = _unaliasedImports.putIfAbsent(uri, () => {});
     shownElements.add(show);
@@ -78,16 +83,7 @@ class ImportsTracker {
     });
   }
 
-  Uri _uriFor(LibraryElement element) {
-    if (element.isInSdk) {
-      final name = element.name.split('.').last;
-      return Uri.parse('dart:$name');
-    }
-
-    return element.source.uri;
-  }
-
   String importForLibrary(LibraryElement element) {
-    return importForUri(_uriFor(element));
+    return importForUri(element.uri);
   }
 }

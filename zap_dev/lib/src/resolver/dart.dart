@@ -14,9 +14,9 @@ class ZapVariableScope {
   ZapVariableScope(this.function);
 
   SubcomponentVariable? findForSubcomponent(SubcomponentVariableKind kind) {
-    return declaredVariables
-        .whereType<SubcomponentVariable>()
-        .firstWhereOrNull((v) => v.kind == kind);
+    return declaredVariables.whereType<SubcomponentVariable>().firstWhereOrNull(
+      (v) => v.kind == kind,
+    );
   }
 }
 
@@ -60,7 +60,7 @@ abstract class BaseZapVariable implements HasUpdateMask {
   AstNode get declaration;
 
   /// The [Element] created by the [declaration].
-  PromotableElement get element;
+  VariableElement get element;
 
   /// The resolved type of this variable.
   DartType get type => element.type;
@@ -149,10 +149,9 @@ class SelfReference extends BaseZapVariable {
   @override
   final FormalParameter declaration;
   @override
-  final ParameterElement element;
+  final VariableElement element;
 
-  SelfReference(ZapVariableScope scope, this.declaration, this.element)
-      : super._(scope);
+  SelfReference(super.scope, this.declaration, this.element) : super._();
 }
 
 class ResolvedDartExpression {
@@ -182,8 +181,4 @@ class WatchedExpression implements HasUpdateMask {
   int? updateSlot;
 }
 
-enum SubcomponentVariableKind {
-  asyncSnapshot,
-  forBlockElement,
-  forBlockIndex,
-}
+enum SubcomponentVariableKind { asyncSnapshot, forBlockElement, forBlockIndex }

@@ -1,14 +1,16 @@
 @Tags(['browser'])
-import 'dart:html';
+library;
 
+import 'package:sanitize_dom/sanitize_dom.dart';
 import 'package:test/test.dart';
+import 'package:web/web.dart';
 
 import 'assign.zap.dart';
 import 'multi.zap.dart';
 
 void main() {
   test('uses default content', () {
-    final testbed = Element.div();
+    final testbed = HTMLDivElement();
     Multi(null, null).create(testbed);
 
     expect(
@@ -21,7 +23,7 @@ void main() {
   });
 
   test('can assign slots', () {
-    final testbed = Element.div();
+    final testbed = HTMLDivElement();
     Assign().create(testbed);
 
     expect(

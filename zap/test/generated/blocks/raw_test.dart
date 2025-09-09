@@ -1,26 +1,30 @@
 @Tags(['browser'])
-import 'dart:html';
+library;
+
+import 'dart:js_interop';
 
 import 'package:test/test.dart';
+import 'package:web/web.dart';
 import 'package:zap/zap.dart';
 
 import 'raw.zap.dart';
 
 void main() {
   test('@html works with simple text', () {
-    final testbed = Element.div();
+    final testbed = HTMLDivElement();
     Raw(ZapValue('simple text')).create(testbed);
 
-    expect(testbed.text, 'simple text');
+    expect(testbed.textContent, 'simple text');
   });
 
   test('@html can use html tags', () {
-    final testbed = Element.div();
+    final testbed = HTMLDivElement();
     Raw(ZapValue('<a href="https://github.com">GitHub</a>')).create(testbed);
 
-    expect(testbed.text, 'GitHub');
-    expect(testbed.children, [
-      isA<AnchorElement>().having((e) => e.href, 'href', 'https://github.com/')
-    ]);
+    expect(testbed.textContent, 'GitHub');
+    expect(testbed.children.length, equals(1));
+    final anchor = testbed.children.item(0);
+    expect(anchor.isA<HTMLAnchorElement>(), isTrue);
+    expect((anchor as HTMLAnchorElement).href, equals('https://github.com/'));
   });
 }
